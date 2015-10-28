@@ -8,13 +8,8 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-class Client : public Communicator {
+struct Client : Communicator {
 
-    using Message = Communicator::Message;
-    using Resolution = Communicator::Resolution;
-    using Socket = Communicator::Socket;
-
-public:
     Client( const char *port ) :
         Communicator( port, false )
     {}
@@ -46,6 +41,8 @@ private:
     void reset( Address );
     bool processControl( Message &, Socket ) override;
     void processDisconnected( Socket ) override;
+    void processStandardOutput( Message &, Socket ) override;
+    void processStandardError( Message &, Socket ) override;
 
     bool done();
     void error( Socket );

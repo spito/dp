@@ -40,6 +40,23 @@ int start( int argc, char **argv ) {
     Daemon &d = Daemon::instance();
     std::cout << "id: " << d.id() << std::endl;
     std::cout << "data: " << ( d.data() ? "yes" : "no" ) << std::endl;
+
+
+    if ( d.id() == 1 ) {
+        int time = 1259;
+        brick::net::Message m( MessageType::Data );
+        m << time;
+        bool b = d.sendTo( 2, m );
+        std::cout << (b ? "ok" : "fail") << std::endl;
+        sleep(1);
+    }
+    if ( d.id() == 2 ) {
+        int time;
+        brick::net::Message m = d.receiveFrom( 1 );
+        m.storeTo() >> time;
+        std::cout << "time: " << time << std::endl;
+    }
+
     return 0;
 }
 

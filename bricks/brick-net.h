@@ -7,6 +7,7 @@
 #include <queue>
 #include <mutex>
 #include <thread>
+#include <future>
 #include <chrono>
 #include <algorithm>
 #include <type_traits>
@@ -22,6 +23,7 @@
 #include <poll.h>
 
 #include <brick-common.h>
+#include <brick-types.h>
 #include <brick-unittest.h>
 
 #ifndef BRICK_NET_H
@@ -32,7 +34,7 @@ namespace net {
 
 namespace settings {
     // set default timeout to sockets
-    static constexpr int timeout = 1000;
+    static constexpr int timeout = 8 * 60 * 1000;
 }
 
 struct NetException : std::exception {};
@@ -183,6 +185,10 @@ public:
     {
         _header.category = static_cast< uint8_t >( category );
     }
+
+    Message( const Message & ) = delete;
+    Message( Message && ) = default;
+    Message &operator=( const Message & ) = delete;
 
     static Message dynamicMessage() {
         Message m;
@@ -720,7 +726,7 @@ struct Network {
         for ( const auto &s : toWait )
             fds.emplace_back( s->fd(), POLLIN );
 
-        int r = ::poll( static_cast< pollfd * >( &fds.front() ), nfds, timeout );
+        int r = ::poll( static_cast< pollfd * >( &fds.front() ), fds.size(), timeout );
 
         if ( r == -1 )
             throw SystemException( "poll" );
@@ -941,6 +947,81 @@ private:
     std::queue< Socket > _incomming;
 };
 
+struct Redirector {
+    using FD = int;
+    enum { Invalid = -1 };
+
+    template< typename Handler >
+    Redirector( FD source, Handler h, int bufferSize = 4 * 1024 ) :
+        _output( source ),
+        _original( ::dup( source ) ),
+        _bufferSize( bufferSize )
+    {
+        if ( _original == Invalid )
+            throw SystemException( "dup" );
+
+        FD p[2];
+        if ( ::pipe( p ) == -1 )
+            throw SystemException( "pipe" );
+        _input = p[ 0 ];
+
+        if ( ::dup2( p[ 1 ], _output ) == -1 )
+            throw SystemException( "dup2" );
+
+        if ( ::close( p[ 1 ] ) == -1 )
+            throw SystemException( "close" );
+
+        _future = std::async( std::launch::async, [h,this] {
+            executive( h );
+        } );
+    }
+    Redirector( const Redirector & ) = delete;
+    Redirector &operator=( const Redirector & ) = delete;
+
+    ~Redirector() {
+        try {
+            stop();
+        } catch (...) {
+        }
+    }
+
+    void stop() {
+        if ( _output == Invalid )
+            return;
+        ::close( _output );
+
+        types::Defer d( [&] {
+            ::dup2( _original, _output );
+            _output = Invalid;
+            ::close( _original );
+            _original = Invalid;
+        } );
+
+        _future.get();
+    }
+
+private:
+
+    template< typename Handler >
+    void executive( Handler h ) {
+        std::unique_ptr< char[] > buffer( new char[ _bufferSize ] );
+
+        ssize_t r;
+        while ( ( r = ::read( _input, buffer.get(), _bufferSize ) ) > 0 ) {
+            h( buffer.get(), r );
+        }
+        if ( r == -1 )
+            throw SystemException( "read" );
+        ::close( _input );
+        _input = Invalid;
+    }
+
+    FD _input;
+    FD _output;
+    FD _original;
+    int _bufferSize;
+    std::future< void > _future;
+};
 
 } // namespace net
 } // namespace brick
@@ -1010,6 +1091,21 @@ struct MessageTest {
         ASSERT( di == data.end() );
     }
 
+    TEST( integer ) {
+        Message mOut;
+        Socket in, out;
+        std::tie( in, out ) = Network::socketPair();
+        int time = 1258;
+        int rTime = 0;
+        mOut << time;
+        out.send( mOut );
+
+        Message mIn = in.receive();
+        mIn.storeTo() >> rTime;
+
+        ASSERT_EQ( rTime, time );
+    }
+
     TEST( tagged ) {
         Message mOut;
         mOut.tag( 10 );
@@ -1021,6 +1117,25 @@ struct MessageTest {
         Message mIn = in.receive();
         ASSERT_EQ( 10, mIn.tag() );
         ASSERT_EQ( 0, mIn.count() );
+    }
+
+    TEST( redirector ) {
+        ::alarm( 10 );
+
+        int p[2];
+        ::pipe( p );
+        char buffer[ 20 ] = {};
+
+        Redirector redirector( p[ 1 ], []( const char *m, size_t length ) {
+            ASSERT_EQ( std::string( m, length ), "hello dolly!" );
+        } );
+
+        ASSERT_EQ( ::write( p[ 1 ], "hello dolly!", 12 ), 12 );
+        redirector.stop();
+        ASSERT_EQ( ::write( p[ 1 ], "hello!", 6 ), 6 );
+        ASSERT_EQ( ::read( p[ 0 ], buffer, 20 ), 6 );
+        ::close( p[ 1 ] );
+        ASSERT_EQ( ::read( p[ 0 ], buffer, 20 ), 0 );
     }
 };
 

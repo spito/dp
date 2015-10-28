@@ -37,11 +37,16 @@ Message Communicator::receiveFrom( int id, int timeout ) {
     if ( !peer )
         return Message();
 
+    if ( timeout < 0 )
+        return peer->receive();
+
     std::vector< Socket > sources{ std::move( peer ) };
     Resolution r = _net.poll( sources, timeout );
 
     return processResolution( r );
 }
+
+#include <sstream>
 
 Message Communicator::processResolution( const Resolution &r ) {
     if ( r.resolution() == Resolution::Incomming )
@@ -49,6 +54,7 @@ Message Communicator::processResolution( const Resolution &r ) {
 
     if ( r.resolution() == Resolution::Ready && !r.sockets().empty() )
         return r.sockets().front()->receive();
-    return Message();
+
+    throw WouldBlock();
 }
 

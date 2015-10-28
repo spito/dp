@@ -9,10 +9,6 @@
 
 class Daemon : public Communicator {
 
-    using Resolution = Communicator::Resolution;
-    using Socket = Communicator::Socket;
-    using BaseSocket = Communicator::BaseSocket;
-
     enum class State {
         Free,
         Enslaved,
@@ -21,6 +17,11 @@ class Daemon : public Communicator {
         OverWatching,
         Running,
         Leaving,
+    };
+
+    enum class Output {
+        Standard,
+        Error
     };
 
     enum { NoChild = -1 };
@@ -35,6 +36,8 @@ public:
     {
         Logger::setAddress( net().selfAddress() );
     }
+    Daemon( const Daemon & ) = delete;
+    Daemon &operator=( const Daemon & ) = delete;
 
     static Daemon &instance();
     static bool hasInstance();
@@ -77,6 +80,7 @@ private:
     void becomeParent( Socket );
     void becomeChild( Socket );
 
+    void redirectOutput( char *, size_t, Output );
 
     State _state;
     Socket _rope;

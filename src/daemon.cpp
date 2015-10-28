@@ -3,8 +3,6 @@
 
 #include "daemon.h"
 
-//#include <brick-types.h>
-
 Daemon *Daemon::_self = nullptr;
 
 Daemon &Daemon::instance() {
@@ -434,8 +432,17 @@ void Daemon::runMain( Message &message, Socket socket ) {
         std::memcpy( arguments.back(), arg.data(), arg.size() );
     }
 
-    _main( arguments.size(), &arguments.front() );
+    {
+        brick::net::Redirector stdOutput( 1, [this] ( char *s, size_t length ) {
+            redirectOutput( s, length, Output::Standard );
+        }  );
+        brick::net::Redirector stdError( 2, [this] ( char *s, size_t length ) {
+            redirectOutput( s, length, Output::Error );
+        }  );
 
+        _main( arguments.size(), &arguments.front() );
+
+    }
     response.tag( Code::DONE );
     socket->send( response );
 }
@@ -479,10 +486,10 @@ void Daemon::setDefault() {
     if ( _childPid != NoChild ) {
         int status = 0;
         Logger::log( id(), "waiting for child" );
-        waitpid(_childPid, &status, WNOHANG);
+        ::waitpid(_childPid, &status, WNOHANG);
         if ( !WIFEXITED( status ) && !WIFSIGNALED( status ) ) {
             Logger::log( id(), "kill child" );
-            kill( _childPid, 9 ); // just kill our child
+            ::kill( _childPid, 9 ); // just kill our child
         }
 
 
@@ -508,4 +515,20 @@ void Daemon::becomeParent( Socket rope ) {
     _rope = std::move( rope );
     _rope->name( name() + " (child)" );
     Logger::log( id(), "parent arise" );
+}
+
+void Daemon::redirectOutput( char *s, size_t length, Output type ) {
+    Message message(
+        type == Output::Standard ?
+        MessageType::OutputStandard :
+        MessageType::OutputError );
+
+    message.add( s, length );
+    Socket master = connections().lockedFind( 0 );
+    if ( !master ) {
+        Logger::log( id(), "cannot send output data" );
+        return;
+    }
+
+    master->send( message );
 }

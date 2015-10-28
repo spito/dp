@@ -10,8 +10,17 @@
 
 enum class MessageType : uint8_t {
     Data = 128,
-    ExpandData,
     Control,
+    OutputStandard,
+    OutputError
+};
+
+struct DataMessage : brick::net::Message {
+
+    DataMessage() :
+        Message( MessageType::Data )
+    {}
+
 };
 
 struct NetworkException : brick::net::NetException {
@@ -131,7 +140,7 @@ private:
         message.add( address._value, Address::SIZE );
         return message;
     }
-    
+
     char _value[ SIZE ];
 };
 

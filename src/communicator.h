@@ -48,8 +48,8 @@ public:
 
     void sendAll( Message & );
 
-    Message receive( int = 100 );
-    Message receiveFrom( int, int = 100 );
+    Message receive( int = -1 );
+    Message receiveFrom( int, int = -1 );
 
     void listen() {
         listen( []( Message & ){} );
@@ -127,7 +127,7 @@ protected:
 
     void processHyperCube( Message & );
 
-    void loop( std::vector< Socket > &sockets, int timeout = 100 ) {
+    void loop( std::vector< Socket > &sockets, int timeout = 1000 ) {
         loop( sockets, []( const Message & ){}, timeout );
     }
 
@@ -145,15 +145,22 @@ protected:
         }
         Resolution r = _net.poll( sockets, timeout );
 
-        if ( r.resolution() == Resolution::Timeout )
+        if ( r.resolution() == Resolution::Timeout ) {
+            if ( id() )
+                Logger::log( id(), "R=timeout" );
             return;
+        }
 
         if ( r.resolution() == Resolution::Incomming ) {
+            if ( id() )
+                Logger::log( id(), "R=incomming" );
             processIncomming( std::make_shared< BaseSocket >( _net.incomming() ) );
             return;
         }
 
         for ( Socket &s : r.sockets() ) {
+            if ( id() )
+                Logger::log( id(), "R=ready" );
             if ( s->closed() ) {
                 processDisconnected( std::move( s ) );
                 continue;
@@ -179,6 +186,12 @@ protected:
             break;
         case MessageType::Control:
             return processControl( message, std::move( socket ) );
+        case MessageType::OutputStandard:
+            processStandardOutput( message, std::move( socket ) );
+            break;
+        case MessageType::OutputError:
+            processStandardError( message, std::move( socket ) );
+            break;
         default:
             Logger::log( id(), "invalid header of incomming message from " + info( socket ) );
             break;
@@ -203,6 +216,8 @@ private:
         s->close();
         throw NetworkException{ "unexpected incomming connection" };
     }
+    virtual void processStandardOutput( Message &, Socket ) {}
+    virtual void processStandardError( Message &, Socket ) {}
 
 
     Message processResolution( const Resolution & );

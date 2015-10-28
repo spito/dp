@@ -326,6 +326,18 @@ void Client::processDisconnected( Socket socket ) {
 }
 
 // single-thread environment
+void Client::processStandardOutput( Message &message, Socket socket ) {
+    for ( const auto &item : message )
+        std::cout.write( item.data(), item.size() );
+}
+
+// single-thread environment
+void Client::processStandardError( Message &message, Socket socket ) {
+    for ( const auto &item : message )
+        std::cerr.write( item.data(), item.size() );
+}
+
+// single-thread environment
 bool Client::done() {
     ++_done;
     if ( _done >= connections().size() ) {
