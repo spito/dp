@@ -4,17 +4,12 @@
 
 #include "client.h"
 #include "message.h"
-#include "logger.h"
 
 // parallel environment
 // not called from loop
 void Client::quit() {
 
-    stopListening();
-    while ( listenerRunning() );
-
-// single-thread environment
-    if ( !connections().empty() ) {
+    if ( !connections().lockedEmpty() ) {
         if ( _established )
             dissolve();
         else
@@ -32,19 +27,30 @@ bool Client::shutdown( const std::string &slave ) {
     if ( i != _names.end() )
         return false;
 
-    Socket socket = connect( slave.c_str() );
+    Channel channel = connect( slave.c_str() );
 
-    Message message( MessageType::Control );
-    message.tag( Code::SHUTDOWN );
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::Shutdown );
 
-    socket->send( message );
-    Message response = socket->receive();
+    channel->send( message );
 
-    if ( response.tag< Code >() == Code::ACK )
+    InputMessage response;
+    channel->receiveHeader( response );
+
+    if ( response.tag< Code >() == Code::OK )
         return true;
-    if ( response.tag< Code >() == Code::REFUSE )
+    if ( response.tag< Code >() == Code::Refuse )
         return false;
-    throw NetworkException( "invalid response" );
+    throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
+}
+
+void Client::forceShutdown( const std::string &slave ) {
+    Channel channel = connect( slave.c_str() );
+
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::ForceShutdown );
+
+    channel->send( message );
 }
 
 // single-thread environment
@@ -59,30 +65,37 @@ bool Client::add( std::string slaveName ) {
 
     int slaveId = _idCounter;
 
-    Socket slave = connect( slaveName.c_str() );
+    Channel channel = connect( slaveName.c_str() );
 
-    Message message( MessageType::Control );
-    message.tag( Code::ENSLAVE );
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::Enslave );
     message
         << slaveId
         << slaveName;
 
-    slave->send( message );
-    Message response = slave->receive();
+    channel->send( message );
+    InputMessage response;
+    channel->receiveHeader( response );
 
-    if ( response.tag< Code >() == Code::ACK ) {
+    if ( response.tag< Code >() == Code::OK ) {
         _idCounter++;
 
-        slave->properties( slaveId, slaveName, net().peerAddress( *slave ) );
+        std::string slaveAddress( net().peerAddress( *channel ) );
+        Line slave = std::make_shared< Peer >(
+            slaveId,
+            slaveName,
+            slaveAddress.c_str(),
+            std::move( channel )
+         );
 
         connections().insert( slaveId, std::move( slave ) );
         _names.emplace( std::move( slaveName ), slaveId );
         worldSize( worldSize() + 1 );
         return true;
     }
-    if ( response.tag< Code >() == Code::REFUSE )
+    if ( response.tag< Code >() == Code::Refuse )
         return false;
-    throw NetworkException( "invalid response" );
+    throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
 }
 
 // single-thread environment
@@ -90,10 +103,10 @@ bool Client::removeAll() {
     if ( _established )
         return false;
 
-    Message message( MessageType::Control );
-    message.tag( Code::DISCONNECT );
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::Disconnect );
 
-    sendAll( message );
+    sendAll( message, ChannelType::Control );
 
     connections().clear();
     _names.clear();
@@ -112,14 +125,33 @@ void Client::list() {
 
 // single-thread environment
 void Client::table() {
-    Message message( MessageType::Control );
-    message.tag( Code::TABLE );
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::Table );
 
-    sendAll( message );
+    sendAll( message, ChannelType::Control );
 }
 
 // single-thread environment
-bool Client::establish( int argc, char **argv, void *initData, size_t initDataLength ) {
+void Client::run( int argc, char **argv, const void *initData, size_t initDataLength ) {
+    try {
+        establish( argc, argv, initData, initDataLength );
+
+        _quit = false;
+        refreshCache();
+
+        while ( !_quit ) {
+            probe( _cache, []( Channel channel ) {}, false, 2000 );
+        }
+        dissolve();
+    } catch ( brick::net::NetException &e ) {
+        std::cerr << "network exception: " << e.what() << std::endl;
+    } catch ( std::exception &e ) {
+        std::cerr << "exception: " << e.what() << std::endl;
+    }
+}
+
+// single-thread environment
+bool Client::establish( int argc, char **argv, const void *initData, size_t initDataLength ) {
     if ( _established || connections().empty() )
         return false;
 
@@ -149,38 +181,36 @@ bool Client::dissolve() {
 
     _established = false;
 
-    Message message( MessageType::Control );
-    message.tag( Code::PREPARE );
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::PrepareToLeave );
 
     for ( const auto &slave : connections().values() ) {
-        slave->send( message );
-        Message response = slave->receive();
+        slave->control()->send( message );
+        InputMessage response;
+        slave->control()->receiveHeader( response );
 
-        if ( response.tag< Code >() == Code::ACK )
+        if ( response.tag< Code >() == Code::OK )
             continue;
-        if ( response.tag< Code >() == Code::REFUSE ) {
+        if ( response.tag< Code >() == Code::Refuse ) {
             std::cout << "! slave " << info( slave ) << " refused to prepare" << std::endl;
             break;
         }
-        std::cout << "! protocol error - invalid response" << std::endl
-                  << "expected ACK or REFUSE, got " << codeToString( response.tag< Code >() ) << std::endl;
-        break;
+        throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
     }
 
-    message.tag( Code::LEAVE );
+    message.tag( Code::Leave );
     for ( const auto &slave : connections().values() ) {
-        slave->send( message );
-        Message response = slave->receive();
+        slave->control()->send( message );
+        InputMessage response;
+        slave->control()->receiveHeader( response );
 
-        if ( response.tag< Code >() == Code::ACK )
+        if ( response.tag< Code >() == Code::OK )
             continue;
-        if ( response.tag< Code >() == Code::REFUSE ) {
+        if ( response.tag< Code >() == Code::Refuse ) {
             std::cout << "! slave " << info( slave ) << " refused to leave" << std::endl;
             break;
         }
-        std::cout << "! protocol error - invalid response" << std::endl
-                  << "expected ACK or REFUSE, got " << codeToString( response.tag< Code >() ) << std::endl;
-        break;
+        throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
     }
     connections().clear();
     _names.clear();
@@ -191,22 +221,22 @@ bool Client::dissolve() {
 bool Client::initWorld() {
     int world = worldSize();
 
-    Message message( MessageType::Control );
-    message.tag( Code::PEERS );
-    message
-        << world;
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::Peers );
+    message << world;
 
     for ( const auto &slave : connections().values() ) {
-        slave->send( message );
-        Message response = slave->receive();
+        slave->control()->send( message );
+        InputMessage response;
+        slave->control()->receiveHeader( response );
 
-        if ( response.tag< Code >() == Code::ACK )
+        if ( response.tag< Code >() == Code::OK )
             continue;
-        if ( response.tag < Code >() == Code::REFUSE ) {
-            Logger::log( id(), "slave '" + slave->name() + "' refused to beign grouped" );
+        if ( response.tag < Code >() == Code::Refuse ) {
+            std::cerr << "slave '" << slave->name() << "' refused to beign grouped" << std::endl;
             return false;
         }
-        throw NetworkException( "invalid response" );
+        throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
     }
     return true;
 }
@@ -222,57 +252,79 @@ bool Client::connectAll() {
             std::string slaveName = (*p)->name();
             Address address = (*p)->address();
 
-            Message message( MessageType::Control );
-            message.tag( Code::CONNECT );
-            message
-                << id
-                << slaveName
-                << address;
+            OutputMessage message( MessageType::Control );
+            message.tag( Code::ConnectTo );
+            message << id << slaveName << address << _channels;
 
-            (*i)->send( message );
-            Message response = (*i)->receive();
+            (*i)->control()->send( message );
+            InputMessage response;
+            (*i)->control()->receiveHeader( response );
 
-            if ( response.tag< Code >() == Code::SUCCESS )
-                continue;
-            return false;
+            switch( response.tag< Code >() ) {
+            case Code::Success:
+                break;
+            case Code::Refuse:
+                return false;
+            default:
+                throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
+            }
         }
     }
 
-    Message message( MessageType::Control );
-    message.tag( Code::GROUPED );
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::Grouped );
     for ( const auto &slave : connections().values() ) {
-        slave->send( message );
-        Message response = slave->receive();
+        slave->control()->send( message );
+        InputMessage response;
+        slave->control()->receiveHeader( response );
+
+        switch( response.tag< Code >() ) {
+        case Code::OK:
+            break;
+        case Code::Refuse:
+            return false;
+        default:
+            throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
+        }
     }
 
     return true;
 }
 
 // single environment
-bool Client::start( int argc, char **argv, void *initData, size_t initDataLength ) {
+bool Client::start( int argc, char **argv, const void *initData, size_t initDataLength ) {
     if ( initData ) {
-        Message data( MessageType::Control );
+        OutputMessage data( MessageType::Control );
+        data.tag( Code::InitialData );
         data.add( initData, initDataLength );
 
-        sendAll( data );
+        sendAll( data, ChannelType::Control );
     }
 
-    Message message( MessageType::Control );
-    message.tag( Code::RUN );
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::Run );
     for ( int i = 0; i < argc; ++i )
         message.add( argv[ i ], std::strlen( argv[ i ] ) );
 
     for ( const auto &slave : connections().values() ) {
-        slave->send( message );
-        Message response = slave->receive();
-        if ( response.tag< Code >() != Code::ACK )
+        slave->control()->send( message );
+        InputMessage response;
+        slave->control()->receiveHeader( response );
+
+        switch( response.tag< Code >() ) {
+        case Code::OK:
+            break;
+        case Code::Refuse:
             return false;
+        default:
+            throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
+        }
     }
 
-    message.reset();
-    message.tag( Code::START );
+    message.clear();
+    message.tag( Code::Start );
     for ( const auto &slave : connections().values() )
-        slave->send( message );
+        slave->control()->send( message );
     return true;
 }
 
@@ -280,8 +332,8 @@ bool Client::start( int argc, char **argv, void *initData, size_t initDataLength
 void Client::reset() {
     _idCounter = 1;
     _done = 0;
+    _quit = true;
     _established = false;
-    stopListening();
 
     connections().clear();
     _names.clear();
@@ -289,29 +341,33 @@ void Client::reset() {
 
 // single environment
 void Client::reset( Address address ) {
-    Message message( MessageType::Control );
-    message.tag( Code::RENEGADE );
-    message
-        << address;
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::Renegade );
+    message << address;
     {
         std::lock_guard< std::mutex > lock( connections().mutex() );
         for ( const auto &slave : connections().values() ) {
-            slave->send( message, true );
+            slave->control()->send( message, true );
         }
     }
     reset();
 }
 
 // single-thread environment
-bool Client::processControl( Message &message, Socket socket ) {
+bool Client::processControl( Channel channel ) {
+    InputMessage message;
+    channel->peek( message );
+
     switch ( message.tag< Code >() ) {
-    case Code::DONE:
+    case Code::Done:
+        channel->receiveHeader( message );
         return done();
-    case Code::ERROR:
-        error( socket );
+    case Code::Error:
+        channel->receiveHeader( message );
+        error( channel );
         return false;
-    case Code::RENEGADE:
-        renegade( message, socket );
+    case Code::Renegade:
+        renegade( message, channel );
         return false;
     default:
         break;
@@ -320,46 +376,62 @@ bool Client::processControl( Message &message, Socket socket ) {
 }
 
 // single-thread environment
-void Client::processDisconnected( Socket socket ) {
-    Logger::log( id(), "closed connection to " + info( socket ) );
+void Client::processDisconnected( Channel channel ) {
+    std::cerr << "closed connection to " << info( channel ) << std::endl;
     reset();
 }
 
 // single-thread environment
-void Client::processStandardOutput( Message &message, Socket socket ) {
-    for ( const auto &item : message )
-        std::cout.write( item.data(), item.size() );
-}
+void Client::processOutput( Channel channel ) {
+    InputMessage message;
+    channel->receive( message );
 
-// single-thread environment
-void Client::processStandardError( Message &message, Socket socket ) {
-    for ( const auto &item : message )
-        std::cerr.write( item.data(), item.size() );
+    std::ostream &out = message.tag< Output >() == Output::Standard ?
+        std::cout :
+        std::cerr;
+
+    message.process( [&] ( char *data, size_t size ) {
+        out.write( data, size );
+    } );
+
+    message.cleanup< char >( []( char *d ) {
+        delete[] d;
+    } );
 }
 
 // single-thread environment
 bool Client::done() {
     ++_done;
     if ( _done >= connections().size() ) {
-        stopListening();
+        _quit = true;
         return false;
     }
     return true;
 }
 
 // single-thread environment
-void Client::error( Socket socket ) {
-    Logger::log( id(), info( socket ) + " got itself into error state" );
-    reset( socket->address() );
+void Client::error( Channel channel ) {
+    std::cerr << info( channel ) << " got itself into error state" << std::endl;
+    reset();
 }
 
 // single-thread environment
-void Client::renegade( Message &message, Socket socket ) {
+void Client::renegade( InputMessage &message, Channel channel ) {
     Address culprit;
 
-    message.storeTo()
-        >> culprit;
+    message >> culprit;
+    channel->receive( message );
 
-    Logger::log( id(), std::string( "slave " ) + culprit.value() + " got itself into error state" );
+    std::cerr << "slave " << culprit.value() << " got itself into error state" << std::endl;
     reset( culprit );
+}
+
+void Client::refreshCache() {
+    std::vector< Channel > cache;
+    cache.reserve( connections().size() );
+    for ( Line &line : connections().values() ) {
+        if ( line->controlChannel() )
+            cache.push_back( line->control() );
+    }
+    _cache.swap( cache );
 }

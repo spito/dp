@@ -1,11 +1,10 @@
 #include <brick-unittest.h>
 #include <brick-net.h>
 
-#define private public
-#define protected public
+//#include "communicator.h"
 
-#include "client.h"
-#include "daemon.h"
+//#include "client.h"
+//#include "daemon.h"
 
 int main( int argc, char **argv ) {
 

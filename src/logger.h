@@ -5,16 +5,16 @@
 
 struct Logger {
 
-    static void log( int, std::string );
-    static void setAddress( std::string );
+    static void log( std::string );
+    static void file( std::string );
     static void becomeChild();
 private:
-    static std::string _address;
+    static std::string _file;
     static bool _child;
 };
 
 //#ifdef DEBUG
-#define NOTE() Logger::log( id(), __PRETTY_FUNCTION__ )
+#define NOTE() Logger::log( __PRETTY_FUNCTION__ )
 //#else
 //#define NOTE() do {} while(false)
 //#endif

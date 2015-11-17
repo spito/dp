@@ -1,4 +1,5 @@
 #include <memory>
+#include <unordered_map>
 
 #include "communicator.h"
 #include "message.h"
@@ -19,22 +20,25 @@ class Daemon : public Communicator {
         Leaving,
     };
 
-    enum class Output {
-        Standard,
-        Error
+    enum class LineType {
+        Control,
+        Data
     };
 
     enum { NoChild = -1 };
 
+    using InputMessage = brick::net::InputMessage;
+    using OutputMessage = brick::net::OutputMessage;
+
 public:
-    Daemon( const char *port, int (*main)( int, char ** ) ) :
+    Daemon( const char *port, int (*main)( int, char ** ), std::string logFile = std::string() ) :
         Communicator( port, true ),
         _state( State::Free ),
         _childPid( NoChild ),
         _quit( false ),
         _main( main )
     {
-        Logger::setAddress( net().selfAddress() );
+        Logger::file( std::move( logFile ) );
     }
     Daemon( const Daemon & ) = delete;
     Daemon &operator=( const Daemon & ) = delete;
@@ -44,6 +48,9 @@ public:
 
     void run();
 
+    [[noreturn]]
+    void exit( int = 0 );
+
     void *data() const {
         return _initData.get();
     }
@@ -51,39 +58,55 @@ public:
         return _initDataLength;
     }
 
+    template< typename Ap >
+    void probe( Ap applicator, ChannelID chId = ChannelType::Data, int timeout = -1 ) {
+        auto i = _cache.find( chId );
+        if ( i == _cache.end() )
+            i = refreshCache( chId );
+
+        Communicator::probe( i->second, applicator, false, timeout );
+    }
+
 private:
 
-    bool processControl( Message &, Socket ) override;
-    void processDisconnected( Socket ) override;
-    void processIncomming( Socket ) override;
+    bool processControl( Channel ) override;
+    void processDisconnected( Channel ) override;
+    void processIncomming( Channel ) override;
 
-    bool enslave( Message &, Socket );
-    void startGrouping( Message &, Socket );
-    bool connecting( Message &, Socket );
-    bool join( Message &, Socket );
-    bool grouped( Socket );
-    void prepare( Socket );
-    void leave( Socket );
-    void release( Socket );
-    void cutRope( Socket );
-    void shutdown( Socket );
-    void error( Socket );
-    void renegade( Message & );
+    void enslave( InputMessage &, Channel );
+    void startGrouping( InputMessage &, Channel );
+    void connecting( InputMessage &, Channel );
+    Channel connectLine( Address &, LineType, int = 0 );
+    void addDataLine( InputMessage &, Channel );
+    void join( InputMessage &, Channel );
+    void grouped( Channel );
+    void prepare( Channel );
+    void leave( Channel );
+    void release( Channel );
+    void cutRope( Channel );
+    void shutdown( Channel );
+    void forceShutdown();
+    void error( Channel );
+    void renegade( InputMessage &, Channel );
     void table(); // debug
-    void initData( Message & );
-    void runMain( Message &, Socket );
+    void initData( InputMessage &, Channel );
+    void runMain( InputMessage &, Channel );
 
     void reset();
     void reset( Address );
     void setDefault();
 
-    void becomeParent( Socket );
-    void becomeChild( Socket );
+    void becomeParent( Channel );
+    void becomeChild( Channel );
 
-    void redirectOutput( char *, size_t, Output );
+    void consumeMessage( Channel );
+    void redirectOutput( const char *, size_t, Output );
+
+    auto refreshCache( ChannelID )
+        -> std::unordered_map< int, std::vector< Channel > >::iterator;
 
     State _state;
-    Socket _rope;
+    Channel _rope;
     int _childPid;
     bool _quit;
     int ( *_main )( int, char ** );
@@ -91,6 +114,8 @@ private:
     size_t _initDataLength = 0;
 
     static Daemon *_self;
+
+    std::unordered_map< int, std::vector< Channel > > _cache;
 };
 
 #endif

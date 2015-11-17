@@ -2,32 +2,32 @@
 
 #include <fstream>
 #include <ctime>
-#include <sstream>
 
-void Logger::log( int id, std::string record ) {
+void Logger::log( std::string record ) {
+    if ( _file.empty() )
+        return;
+
     std::time_t t = std::time( nullptr );
     char timestamp[ 20 ] = {};
     std::strftime( timestamp, 20, "%Y-%m-%d %H:%M:%S", std::localtime( &t ) );
 
-    std::ostringstream oss;
+    std::ofstream file( _file, std::ios::app );
 
-    oss << "problems-" << _address << "-" << id;
+    file << "[" << timestamp << "] ";
     if ( _child )
-        oss << "-child";
-    oss << ".log";
-
-    std::ofstream file( oss.str().c_str(), std::ios::app );
-
-    file << "[" << timestamp << "] " << record << std::endl;
+        file << "(child) ";
+    file << record << std::endl;
 }
 
-void Logger::setAddress( std::string address ) {
-    _address = std::move( address );
+void Logger::file( std::string address ) {
+    _file = std::move( address );
+    if ( !_file.empty() && _file.find_last_of( '.' ) == std::string::npos )
+        _file += ".log";
 }
 
 void Logger::becomeChild() {
     _child = true;
 }
 
-std::string Logger::_address( "~" );
+std::string Logger::_file;
 bool Logger::_child( false );

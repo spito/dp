@@ -9,60 +9,138 @@
 #ifndef CONNECTIONS__H_
 #define CONNECTIONS__H_
 
-struct Connections {
+struct Socket : brick::net::Socket {
+    using Base = brick::net::Socket;
 
-    struct BaseSocket : brick::net::Socket {
+    Socket( int id, Base &&base ) :
+        Base( std::move( base ) ),
+        _id( id )
+    {}
+    Socket( Base &&base ) noexcept :
+        Base( std::move( base ) )
+    {}
 
-        BaseSocket( int id, Socket &&base ) :
-            Socket( std::move( base ) ),
-            _id( id )
-        {}
+    int id() const {
+        return _id;
+    }
 
-        BaseSocket( Socket &&base ) :
-            Socket( std::move( base ) )
-        {}
+    void id( int i ) {
+        _id = i;
+    }
 
-        template< typename A >
-        void properties( int i, std::string n, A a ) {
-            id( i );
-            name( std::move( n ) );
-            address( std::move( a ) );
-        }
+private:
+    int _id;
+};
 
-        int id() const {
-            return _id;
-        };
+using Channel = std::shared_ptr< Socket >;
 
-        void id( int i ) {
-            _id = i;
-        }
+enum class ChannelType {
 
-        const std::string &name() const {
-            return _name;
-        }
-        void name( std::string n ) {
-            _name = std::move( n );
-        }
+    Control = -2,
+    Data = 0,
+    DataAll = -1,
+    Data01 = 0, Data02, Data03, Data04, Data05, Data06, Data07, Data08, Data09, Data10,
+    Data11,     Data12, Data13, Data14, Data15, Data16, Data17, Data18, Data19, Data20,
+    Data21,     Data22, Data23, Data24, Data25, Data26, Data27, Data28, Data29, Data30,
+};
 
-        const Address &address() const {
-            return _address;
-        }
-        template< typename A >
-        void address( A a ) {
-            _address = std::move( a );
-        }
 
-    private:
-        int _id;
-        std::string _name;
-        Address _address;
+struct ChannelID {
+
+    ChannelID( int channel ) :
+        _channel( channel )
+    {}
+    ChannelID( ChannelType type ) :
+        _channel( static_cast< int >( type ) )
+    {}
+
+    operator int() const {
+        return _channel;
+    }
+    ChannelType asType() const {
+        return static_cast< ChannelType >( _channel );
+    }
+private:
+    int _channel;
+};
+
+struct Peer {
+
+    Peer( int id, std::string name, const char *address, Channel control, int channels = 0 ) :
+        _id( id ),
+        _name( std::move( name ) ),
+        _address( address ),
+        _control( std::move( control ) )
+    {
+        if ( _control )
+            _control->id( _id );
+        if ( channels )
+            _data.reserve( channels );
+    }
+
+    Peer( Peer && ) noexcept = default;
+
+    // template< typename A >
+    // void properties( int i, std::string n, A a ) {
+    //     _id = i;
+    //     _name = std::move( n );
+    //     address = a;
+    // }
+
+    int id() const {
+        return _id;
     };
-    using Socket = std::shared_ptr< BaseSocket >;
+
+    const std::string &name() const {
+        return _name;
+    }
+
+    const Address &address() const {
+        return _address;
+    }
+    bool dataChannel( ChannelID number ) const {
+        return size_t( number ) < _data.size() && _data[ number ];
+    }
+    bool controlChannel() const {
+        return bool( _control );
+    }
+
+    Channel control() const {
+        return _control;
+    }
+    Channel data( ChannelID number ) const {
+        if ( size_t( number ) < _data.size() )
+            return _data[ number ];
+        return Channel();
+    }
+    const std::vector< Channel > &data() const {
+        return _data;
+    }
+
+    void openDataChannel( Channel channel, ChannelID number ) {
+        if ( number >= _data.size() )
+            _data.resize( number + 1 );
+        channel->id( id() );
+        _data[ number ] = std::move( channel );
+    }
+
+private:
+    int _id;
+    std::string _name;
+    Address _address;
+
+    Channel _control;
+    std::vector< Channel > _data;
+};
+
+using Line = std::shared_ptr< Peer >;
+
+struct Connections {
 
     enum { InsertFailed = -1 };
 
-    using iterator = std::unordered_map< int, Socket >::iterator;
-    using const_iterator = std::unordered_map< int, Socket >::const_iterator;
+    using iterator = std::unordered_map< int, Line >::iterator;
+    using const_iterator = std::unordered_map< int, Line >::const_iterator;
 
 	struct key_iterator : iterator {
         using iterator::iterator;
@@ -80,11 +158,11 @@ struct Connections {
         value_iterator( iterator self ) :
             iterator( self )
         {}
-        Socket &operator*() const {
+        Line &operator*() const {
             return iterator::operator*().second;
         }
 
-        Socket operator->() const {
+        Line operator->() const {
             return iterator::operator->()->second;
         }
     };
@@ -143,22 +221,22 @@ struct Connections {
         swap( other );
     }
 
-    bool insert( int id, Socket socket ) {
-        return _table.emplace( id, std::move( socket ) ).second;
+    bool insert( int id, Line connection ) {
+        return _table.emplace( id, std::move( connection ) ).second;
     }
 
-    bool lockedInsert( int id, Socket socket ) {
+    bool lockedInsert( int id, Line connection ) {
         std::lock_guard< std::mutex > _( _mutex );
-        return insert( id, std::move( socket ) );
+        return insert( id, std::move( connection ) );
     }
 
-    Socket find( int id ) const {
+    Line find( int id ) const {
         auto i = _table.find( id );
         if ( i == _table.end() )
-            return Socket();
+            return Line();
         return i->second;
     }
-    Socket lockedFind( int id ) {
+    Line lockedFind( int id ) {
         std::lock_guard< std::mutex > _( _mutex );
         return find( id );
     }
@@ -249,7 +327,7 @@ struct Connections {
     }
 
 private:
-    std::unordered_map< int, Socket > _table;
+    std::unordered_map< int, Line > _table;
     std::mutex _mutex;
 };
 

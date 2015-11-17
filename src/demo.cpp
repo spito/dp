@@ -11,16 +11,48 @@
 #include <algorithm>
 #include <thread>
 
+#include "worker.h"
+
 const char *port = "41813";
+
+#if 0
+void dummyMain() {
+    Daemon &d = Daemon::instance();
+    std::cout << "id: " << d.id() << std::endl;
+    std::cout << "data: " << ( d.data() ? "yes" : "no" ) << std::endl;
+
+
+    if ( d.id() == 1 ) {
+        int time = 1259;
+        brick::net::OutputMessage m( MessageType::Data );
+        m << time;
+        bool b = d.sendTo( 2, m );
+        std::cout << (b ? "ok" : "fail") << std::endl;
+    }
+    if ( d.id() == 2 ) {
+        int time;
+        d.receive(
+            1,
+            [&] ( size_t ) { return &time; },
+            [] ( char * ) {},
+            [] ( int *i ) { return reinterpret_cast< char * >( i ); },
+            [] ( int * ) {}
+        );
+        std::cout << "time: " << time << std::endl;
+    }
+}
+#endif
 
 void run( const std::string &port, int argc, char **argv ) {
     try {
         Client c( port.c_str() );
-        for ( int i = 2; i < argc; ++i )
-            c.add( argv[ i ] );
-        if ( c.establish( argc, argv ) )
-            c.listen();
-        c.dissolve();
+        bool ok = true;
+        for ( int i = 2; ok && i < argc; ++i )
+            ok = c.add( argv[ i ] );
+        if ( ok )
+            c.run( argc, argv );
+        else
+            std::cerr << "cannot connect to all peers" << std::endl;
     } catch ( NetworkException &e ) {
         std::cerr << "net exception: " << e.what() << std::endl;
     } catch ( std::exception &e ) {
@@ -32,34 +64,32 @@ void run( const std::string &port, int argc, char **argv ) {
 
 void shutdown( const std::string &port, int argc, char **argv ) {
     Client c( port.c_str() );
-    for ( int i = 2; i < argc; ++i )
-        c.shutdown( argv[ i ] );
+    for ( int i = 2; i < argc; ++i ) {
+        std::cout << argv[ i ] << ": ";
+        if ( c.shutdown( argv[ i ] ) )
+            std::cout << "shutdown";
+        else
+            std::cout << "refused";
+        std::cout << std::endl;
+    }
+}
+
+void forceShutdown( const std::string &port, int argc, char **argv ) {
+    Client c( port.c_str() );
+    for ( int i = 2; i < argc; ++i ) {
+        c.forceShutdown( argv[ i ] );
+    }
 }
 
 int start( int argc, char **argv ) {
-    Daemon &d = Daemon::instance();
-    std::cout << "id: " << d.id() << std::endl;
-    std::cout << "data: " << ( d.data() ? "yes" : "no" ) << std::endl;
 
-
-    if ( d.id() == 1 ) {
-        int time = 1259;
-        brick::net::Message m( MessageType::Data );
-        m << time;
-        bool b = d.sendTo( 2, m );
-        std::cout << (b ? "ok" : "fail") << std::endl;
-        sleep(1);
-    }
-    if ( d.id() == 2 ) {
-        int time;
-        brick::net::Message m = d.receiveFrom( 1 );
-        m.storeTo() >> time;
-        std::cout << "time: " << time << std::endl;
-    }
+    Workers w( 4, 1000000 );
+    w.run();
 
     return 0;
 }
-
+// TODO add restart service
+// TODO add start service
 int main( int argc, char **argv ) {
 
     std::ifstream config( "net.cfg" );
@@ -67,12 +97,15 @@ int main( int argc, char **argv ) {
     config >> port;
 
     try {
-        if ( argc == 2 && *argv[ 1 ] == 'd' ) {
-            Daemon d( port.c_str(), &start );
+        if ( argc >= 2 && *argv[ 1 ] == 'd' ) {
+            Daemon d( port.c_str(), &start, argc >= 3 ? argv[2] : "" );
             d.run();
         }
         else if ( argc > 1 && *argv[ 1 ] == 'c' ) {
             run( port, argc, argv );
+        }
+        else if ( argc > 1 && *argv[ 1 ] == 'q' ) {
+            forceShutdown( port, argc, argv );
         }
         else if ( argc > 1 && *argv[ 1 ] == 's' ) {
             shutdown( port, argc, argv );

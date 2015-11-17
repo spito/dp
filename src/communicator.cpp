@@ -1,60 +1,46 @@
 #include "communicator.h"
 
+#include <future>
+
 using namespace brick::net;
 
-void Communicator::sendAll( Message &message ) {
-    std::lock_guard< std::mutex > _( connections().mutex() );
-    // TODO: hyper-cube
+void Communicator::sendAll( OutputMessage &message, ChannelID chID ) {
     message.from( _id );
     message.to( ALL );
-    for ( auto &peer : connections() ) {
-        peer.second->send( message );
-    }
-}
 
-void Communicator::processHyperCube( Message &message ) {
-    // TODO: hyper-cube
-}
-
-Message Communicator::receive( int timeout ) {
-    std::vector< Socket > peers;
+    std::vector< Channel > peers;
+    std::vector< std::future< void > > handles;
     {
         std::lock_guard< std::mutex > _( connections().mutex() );
         peers.reserve( connections().size() );
-        std::copy(
-            connections().vbegin(),
-            connections().vend(),
-            std::back_inserter( peers )
-         );
+        handles.reserve( connections().size() );
+
+        switch ( chID.asType() ) {
+        case ChannelType::Control:
+            for ( auto &peer : connections().values() ) {
+                if ( peer->id() == id() || !peer->controlChannel() )
+                    continue;
+                peers.emplace_back( peer->control() );
+            }
+            break;
+        case ChannelType::DataAll:
+            return;
+        default:
+            for ( auto &peer : connections().values() ) {
+                if ( peer->id() == id() || !peer->dataChannel( chID ) )
+                    continue;
+                peers.push_back( peer->data( chID ) );
+            }
+            break;
+        }
     }
-    Resolution r = _net.poll( peers, timeout );
 
-    return processResolution( r );
-}
-
-Message Communicator::receiveFrom( int id, int timeout ) {
-    Socket peer = connections().lockedFind( id );
-    if ( !peer )
-        return Message();
-
-    if ( timeout < 0 )
-        return peer->receive();
-
-    std::vector< Socket > sources{ std::move( peer ) };
-    Resolution r = _net.poll( sources, timeout );
-
-    return processResolution( r );
-}
-
-#include <sstream>
-
-Message Communicator::processResolution( const Resolution &r ) {
-    if ( r.resolution() == Resolution::Incomming )
-        throw NetworkException{ "unexpected incomming connection" };
-
-    if ( r.resolution() == Resolution::Ready && !r.sockets().empty() )
-        return r.sockets().front()->receive();
-
-    throw WouldBlock();
+    for ( auto &peer : peers ) {
+        handles.emplace_back( std::async( std::launch::async, [&] {
+            peer->send( message );
+        } ) );
+    }
+    for ( auto &h : handles )
+        h.get();
 }
 

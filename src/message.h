@@ -2,26 +2,58 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <initializer_list>
 
 #include <brick-net.h>
 
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
+// CATEGORY
 enum class MessageType : uint8_t {
     Data = 128,
     Control,
-    OutputStandard,
-    OutputError
+    Output
 };
 
-struct DataMessage : brick::net::Message {
-
-    DataMessage() :
-        Message( MessageType::Data )
-    {}
-
+// TAG (Output)
+enum class Output {
+    Standard,
+    Error
 };
+
+// TAG (Control)
+enum class Code {
+    NoOp = 0,
+    OK = 6,
+    Success,
+    Refuse,
+    Enslave,
+    ID, // %D // dead
+    ConnectTo, // %S %D
+    DataLine, // %D (%D)
+    Join,
+    Disconnect,
+    Peers, // %D
+    Leave,
+    Grouped,
+    PrepareToLeave,
+    Shutdown,
+    ForceShutdown,
+    CutRope,
+    InitialData,
+    Run,
+    Start,
+    Done,
+
+
+    Error = 32,
+    Renegade,
+
+    Table = 64, // debug only
+};
+
+const char *codeToString( Code code );
 
 struct NetworkException : brick::net::NetException {
     NetworkException() :
@@ -39,41 +71,23 @@ private:
     std::string _what;
 };
 
-enum class Code : int {
-    NOOP,
-    ACK = 6,
-    SUCCESS,
-    FAILED,
-    REFUSE,
-    ENSLAVE,
-    ID, // %D // dead
-    CONNECT, // %S %D
-    JOIN,
-    DISCONNECT,
-    PEERS, // %D
-    LEAVE,
-    GROUPED,
-    PREPARE,
-    SHUTDOWN,
-    CUTROPE,
-    INITDATA,
-    RUN,
-    START,
-    DONE,
-
-
-    ERROR = 32,
-    RENEGADE,
-
-    TABLE = 64, // debug only
+struct ResponseException : brick::net::NetException {
+    ResponseException( std::initializer_list< Code > expected, Code given ) {
+        _what += "invalid response; expected: { ";
+        for ( Code c : expected ) {
+            _what += codeToString( c );
+            _what += " ";
+        }
+        _what += "} given: ";
+        _what += codeToString( given );
+    }
+    const char *what() const noexcept override {
+        return _what.c_str();
+    }
+private:
+    std::string _what;
 };
 
-enum class Tags : int {
-    OUTPUT,
-    DATA
-};
-
-const char *codeToString( Code code );
 
 struct Address {
 private:
@@ -127,16 +141,11 @@ private:
         std::memcpy( _value, address, length );
     }
 
-    friend brick::net::Message &operator>>( brick::net::Message &message, Address &address ) {
-        brick::net::IOvector *v = message.read();
-        if ( !v )
-            throw NetworkException( "missing address item" );
-        if ( v->size() != Address::SIZE )
-            throw NetworkException( "not an address object" );
-        std::memcpy( address._value, v->data(), Address::SIZE );
+    friend brick::net::InputMessage &operator>>( brick::net::InputMessage &message, Address &address ) {
+        message.add( address._value, SIZE );
         return message;
     }
-    friend brick::net::Message &operator<<( brick::net::Message &message, Address &address ) {
+    friend brick::net::OutputMessage &operator<<( brick::net::OutputMessage &message, const Address &address ) {
         message.add( address._value, Address::SIZE );
         return message;
     }

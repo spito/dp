@@ -65,7 +65,9 @@ namespace shmem {
 struct Thread {
     std::unique_ptr< std::thread > _thread;
     std::atomic< bool > _interrupted;
-    virtual void main() = 0;
+    virtual void main() {
+        std::cerr << "brick::shmem::Thread::main failed" << std::endl;
+    };
     virtual void exception( std::exception_ptr ep ) {
         try {
             std::rethrow_exception( ep );
@@ -83,12 +85,12 @@ struct Thread {
         if( other._thread )
             throw std::logic_error( "cannot copy running thread" );
     }
-    Thread( Thread &&other ) :
+    Thread( Thread &&other ) noexcept :
         _thread( std::move( other._thread ) ),
         _interrupted( other.interrupted() )
     {}
 
-    ~Thread() { stop(); }
+    virtual ~Thread() { stop(); }
 
     Thread &operator=( const Thread &other ) {
         if ( _thread )

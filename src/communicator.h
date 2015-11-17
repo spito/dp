@@ -4,7 +4,6 @@
 
 #include <brick-net.h>
 #include <brick-unittest.h>
-//#include <brick-db.h>
 
 #include "connections.h"
 #include "message.h"
@@ -17,63 +16,68 @@ struct Communicator {
 protected:
 
     using Network = brick::net::Network;
-    using Message = brick::net::Message;
-    using BaseSocket = Connections::BaseSocket;
-    using Socket = Connections::Socket;
-    using Resolution = brick::net::Resolution< Socket >;
+    using OutputMessage = brick::net::OutputMessage;
+    using InputMessage = brick::net::InputMessage;
+    using Resolution = brick::net::Resolution< Channel >;
 
     enum { ALL = 255 };
-
 public:
+
     Communicator( const char *port, bool autobind ) :
         _id( 0 ),
         _worldSize( 0 ),
-        _net( port, autobind ),
-        _listenerRunning( false )
+        _net( port, autobind )
     {}
-    virtual ~Communicator() {
-        stopListening();
-        while( listenerRunning() );
-    }
+    virtual ~Communicator() = default;
 
-    bool sendTo( int id, Message &message ) {
-        Socket socket = connections().find( id );
-        if ( !socket )
+    bool sendTo( int id, brick::net::OutputMessage &message, ChannelID chID = ChannelType::Data ) {
+        Line peer = connections().find( id );
+        if ( !peer )
+            return false;
+        Channel channel;
+        switch ( chID.asType() ) {
+        case ChannelType::Control:
+            if ( peer->controlChannel() )
+                channel = peer->control();
+            break;
+        case ChannelType::DataAll:
+            return false;
+        default:
+            if ( peer->dataChannel( chID ) )
+                channel = peer->data( chID );
+            break;
+        }
+        if ( !channel )
             return false;
         message.from( _id );
         message.to( id );
-        socket->send( message );
+        channel->send( message );
         return true;
     }
 
-    void sendAll( Message & );
+    void sendAll( OutputMessage &, ChannelID = ChannelType::Data );
 
-    Message receive( int = -1 );
-    Message receiveFrom( int, int = -1 );
+    template< typename Al, typename D, typename C, typename Ap >
+    bool receive( int id, Al allocator, D deallocator, C convertor, Ap applicator ) {
+        Line peer = connections().find( id );
+        if ( !peer )
+            return false;
+        if ( !peer->dataChannel( 0 ) )
+            return false;
 
-    void listen() {
-        listen( []( Message & ){} );
-    }
+        brick::net::InputMessage message;
+        std::vector< typename std::result_of< Al( size_t ) >::type > handles;
 
-    template< typename Callback >
-    void listen( Callback callback ) {
-        static_assert(
-            std::is_same< void, typename std::result_of< Callback( Message & ) >::type >::value,
-            "callback has to have signature `void( DataContainer * )`" );
+        peer->data( 0 )->receive( message, [&] ( size_t size ) -> char * {
+            handles.emplace_back( allocator( size ) );
+            return convertor( handles.back() );
+        } );
 
-        _listen.store( true, std::memory_order_relaxed );
-        _listenerRunning.store( true, std::memory_order_relaxed );
+        for ( auto &h : handles )
+            applicator( h );
 
-        while ( _listen.load( std::memory_order_relaxed ) ) {
-            std::vector< Socket > sockets;
-            loop( sockets, callback );
-        }
-
-        _listenerRunning.store( false, std::memory_order_relaxed );
-    }
-
-    void stopListening() {
-        _listen.store( false, std::memory_order_relaxed );
+        message.cleanup< char >( deallocator );
+        return true;
     }
 
     bool master() const {
@@ -88,6 +92,16 @@ public:
     const std::string &name() const {
         return _name;
     }
+
+    static std::pair< Channel, Channel > socketPair() {
+        auto original = Network::socketPair();
+
+        return {
+            std::make_shared< Socket >( std::move( original.first ) ),
+            std::make_shared< Socket >( std::move( original.second ) )
+        };
+    }
+
 protected:
 
     void id( int i ) {
@@ -108,124 +122,115 @@ protected:
         return _net;
     }
 
-    Socket connect( const Address &address ) {
-        return std::make_shared< BaseSocket >( _net.connect( address.value() ) );
+    Channel connect( const Address &address ) {
+        return std::make_shared< Socket >( _net.connect( address.value() ) );
     }
 
-    static std::pair< Socket, Socket > socketPair() {
-        auto original = Network::socketPair();
-
-        return {
-            std::make_shared< BaseSocket >( std::move( original.first ) ),
-            std::make_shared< BaseSocket >( std::move( original.second ) )
-        };
+    std::string info( Channel channel ) {
+        Line line = connections().lockedFind( channel->id() );
+        if ( line )
+            return info( line );
+        return '#' + std::to_string( channel->id() );
+    }
+    std::string info( Line line ) {
+        if ( !line )
+            return "unknown line";
+        return
+            '#' + std::to_string( line->id() ) +
+            ' ' + line->name() +
+            " [" + line->address().value() + "]";
     }
 
-    bool listenerRunning() const {
-        return _listenerRunning.load( std::memory_order_relaxed );
-    }
+    template< typename Ap >
+    void probe( std::vector< Channel > &channels, Ap applicator, bool listen, int timeout ) {
+        do {
+            Resolution r = _net.poll( channels, listen, timeout );
 
-    void processHyperCube( Message & );
+            if ( r.resolution() == Resolution::Timeout )
+                return;
 
-    void loop( std::vector< Socket > &sockets, int timeout = 1000 ) {
-        loop( sockets, []( const Message & ){}, timeout );
-    }
-
-    template< typename Callback >
-    void loop( std::vector< Socket > &sockets, Callback callback, int timeout = 100 ) {
-        {
-            std::lock_guard< std::mutex > _( connections().mutex() );
-            sockets.reserve( sockets.size() + connections().size() );
-
-            std::copy(
-                connections().vbegin(),
-                connections().vend(),
-                std::back_inserter( sockets )
-            );
-        }
-        Resolution r = _net.poll( sockets, timeout );
-
-        if ( r.resolution() == Resolution::Timeout ) {
-            if ( id() )
-                Logger::log( id(), "R=timeout" );
-            return;
-        }
-
-        if ( r.resolution() == Resolution::Incomming ) {
-            if ( id() )
-                Logger::log( id(), "R=incomming" );
-            processIncomming( std::make_shared< BaseSocket >( _net.incomming() ) );
-            return;
-        }
-
-        for ( Socket &s : r.sockets() ) {
-            if ( id() )
-                Logger::log( id(), "R=ready" );
-            if ( s->closed() ) {
-                processDisconnected( std::move( s ) );
+            if ( listen && r.resolution() == Resolution::Incomming ) {
+                processIncomming( std::make_shared< Socket >( _net.incomming() ) );
                 continue;
             }
 
-            if ( !readSocket( std::move( s ), callback ) )
-                break;
-        }
-    }
+            for ( Channel &channel : r.sockets() ) {
+                if ( channel->closed() ) {
+                    processDisconnected( std::move( channel ) );
+                    continue;
+                }
+                InputMessage message;
+                channel->peek( message );
 
-    bool readSocket( Socket &&socket ) {
-        return readSocket( std::move( socket ), []( const Message & ) {} );
-    }
-    template< typename Callback >
-    bool readSocket( Socket &&socket, Callback callback ) {
-        Message message = socket->receive();
-
-        if ( message.to() == ALL )
-            processHyperCube( message );
-        switch ( message.category< MessageType >() ) {
-        case MessageType::Data:
-            callback( message );
-            break;
-        case MessageType::Control:
-            return processControl( message, std::move( socket ) );
-        case MessageType::OutputStandard:
-            processStandardOutput( message, std::move( socket ) );
-            break;
-        case MessageType::OutputError:
-            processStandardError( message, std::move( socket ) );
-            break;
-        default:
-            Logger::log( id(), "invalid header of incomming message from " + info( socket ) );
-            break;
-        }
-        return true;
-    }
-
-    std::string info( Socket s ) {
-        return s->name() + " [" + s->address().value() + "]";
+                bool performBreak = false;
+                switch ( message.category< MessageType >() ) {
+                case MessageType::Data:
+                    if ( !takeBool( applicator, std::move( channel ) ) )
+                        performBreak = true;
+                    break;
+                case MessageType::Control:
+                    if ( !processControl( std::move( channel ) ) )
+                        performBreak = true;
+                    break;
+                case MessageType::Output:
+                    processOutput( std::move( channel ) );
+                    break;
+                default:
+                    channel->receiveHeader( message );
+                    break;
+                }
+                if ( performBreak )
+                    break;
+            }
+        } while ( false );
     }
 
 private:
 
-    virtual bool processControl( Message &, Socket ) = 0;
-    virtual void processDisconnected( Socket socket ) {
-        connections().lockedEraseIf( [&]( const std::pair< int, Socket > &s ) -> bool {
-            return socket == s.second;
-        } );
+    virtual bool processControl( Channel ) = 0;
+    virtual void processOutput( Channel channel ) {
+        InputMessage message;
+        channel->receiveHeader( message );
     }
-    virtual void processIncomming( Socket s ) {
-        Logger::log( _id, "unacceptable incomming connection from " + info( s ) );
-        s->close();
+    virtual void processDisconnected( Channel channel ) {
+        connections().lockedErase( channel->id() );
+    }
+    virtual void processIncomming( Channel channel ) {
+        Logger::log( "unacceptable incomming connection from " + info( channel ) );
+        channel->close();
         throw NetworkException{ "unexpected incomming connection" };
     }
-    virtual void processStandardOutput( Message &, Socket ) {}
-    virtual void processStandardError( Message &, Socket ) {}
 
+    template< typename Ap >
+    auto takeBool( Ap applicator, Channel channel )
+        -> typename std::enable_if<
+            std::is_same<
+                typename std::result_of< Ap(Channel) >::type,
+                void
+            >::value,
+            bool
+        >::type
+    {
+        applicator( std::move( channel ) );
+        return true;
+    }
 
-    Message processResolution( const Resolution & );
+    template< typename Ap >
+    auto takeBool( Ap applicator, Channel channel )
+        -> typename std::enable_if<
+            std::is_same<
+                typename std::result_of< Ap(Channel) >::type,
+                bool
+            >::value,
+            bool
+        >::type
+    {
+        return applicator( std::move( channel ) );
+    }
+
 
     int _id;
     int _worldSize;
-    std::atomic< bool > _listen;
-    std::atomic< bool > _listenerRunning;
     Connections _connections;
     Network _net;
     std::string _name;
@@ -239,6 +244,8 @@ using namespace brick::net;
 
 struct Test {
 
+    using Socket = ::Socket;
+
     TEST(NetworkSocketPair) {
         auto pair = Network::socketPair();
         ASSERT_NEQ( pair.first.fd(), Socket::Invalid );
@@ -250,7 +257,7 @@ struct Test {
         ASSERT_NEQ( pair.second->fd(), Socket::Invalid );
     }
     TEST(tie) {
-        Communicator::Socket a, b;
+        Channel a, b;
         std::tie( a, b ) = Communicator::socketPair();
         ASSERT_NEQ( a->fd(), Socket::Invalid );
         ASSERT_NEQ( b->fd(), Socket::Invalid );

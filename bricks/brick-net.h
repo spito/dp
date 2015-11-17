@@ -11,6 +11,7 @@
 #include <chrono>
 #include <algorithm>
 #include <type_traits>
+#include <numeric>
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -34,7 +35,13 @@ namespace net {
 
 namespace settings {
     // set default timeout to sockets
-    static constexpr int timeout = 8 * 60 * 1000;
+    static constexpr int timeout =
+//#ifdef DEBUG
+//        8 * 60 * 1000
+//#else
+        1000
+//#endif
+    ;
 }
 
 struct NetException : std::exception {};
@@ -80,9 +87,13 @@ private:
 };
 
 struct DataTransferException : NetException {
-    DataTransferException( const char *what ) :
-        _what( what )
-    {}
+    DataTransferException( const char *what, int expected, int actual )
+    {
+        _what += "Incomplete data transfer when ";
+        _what += what;
+        _what += ": expected=" + std::to_string( expected );
+        _what += " actual=" + std::to_string( actual );
+    }
 
     const char *what() const noexcept override {
         return _what.c_str();
@@ -94,6 +105,28 @@ private:
 struct WouldBlock : NetException {
     const char *what() const noexcept override { return "would block"; }
 };
+
+template< typename It >
+struct Adaptor {
+    Adaptor( It b, It e ) :
+        _begin( b ),
+        _end( e )
+    {}
+    It begin() {
+        return _begin;
+    }
+    It end() {
+        return _end;
+    }
+private:
+    It _begin;
+    It _end;
+};
+
+template< typename It >
+Adaptor< It > make_adaptor( It begin, It end ) {
+    return Adaptor< It >( begin, end );
+}
 
 enum class Shutdown : int {
     Read = SHUT_RD,
@@ -141,9 +174,14 @@ struct PollFD : pollfd {
 
 class Message {
     struct Header {
-
         Header() {
             clear();
+        }
+        Header( const Header & ) = default;
+        Header( Header &&other ) :
+            Header( other )
+        {
+            other.clear();
         }
 
         void clear() {
@@ -162,6 +200,9 @@ class Message {
         size_t size() const {
             return HEAD + count * sizeof( uint32_t );
         }
+        size_t head() const {
+            return HEAD;
+        }
 
         uint8_t category;
         uint8_t count;
@@ -170,39 +211,24 @@ class Message {
         int32_t tag;
         uint32_t segments[ SEGMENTS ];
     };
-
     static_assert(
         Header::SIZE == sizeof( Header ),
         "wrong length of header of message" );
+    static_assert(
+        sizeof( IOvector ) == sizeof( iovec ),
+        "wrong length of C++ wrapper over iovec" );
+
 public:
-
-    template< typename T = uint8_t >
-    Message( T category = T() ) :
-        _header{},
-        _data{ { &_header, _header.size() } },
-        _readIndex( 1 ),
-        _allocated( false )
-    {
-        _header.category = static_cast< uint8_t >( category );
-    }
-
-    Message( const Message & ) = delete;
-    Message( Message && ) = default;
-    Message &operator=( const Message & ) = delete;
-
-    static Message dynamicMessage() {
-        Message m;
-        m._allocated = true;
-        return m;
-    }
-
-    ~Message() {
-        reset();
-    }
-
+    Message() :
+        _data{ { &_header, _header.size() } }
+    {}
     template< typename T = int >
     T category() const {
         return static_cast< T >( _header.category );
+    }
+    template< typename T >
+    void category( T c ) {
+        _header.category = static_cast< uint8_t >( c );
     }
 
     template< typename T = int >
@@ -227,143 +253,13 @@ public:
         _header.to = t;
     }
 
-    bool full() const {
-        return _header.count == Header::SEGMENTS || _allocated;
-    }
-
-    bool add( void *data, uint32_t length ) {
-        if ( full() )
-            return false;
-        _header.segments[ _header.count ] = length;
-        ++_header.count;
-        _data.emplace_back( data, length );
-        updatedHeaderSize();
-        return true;
-    }
-
-    template< typename T >
-    auto operator<<( T &data )
-#ifndef __GLIBCXX__
-        -> typename std::enable_if<
-            std::is_trivially_copyable< T >::value,
-            Message &
-        >::type
-#else
-    -> Message &
-#endif
-    {
-        add( &data, sizeof( T ) );
-        return *this;
-    }
-    template< typename T >
-    auto operator>>( T &data )
-#ifndef __GLIBCXX__
-        -> typename std::enable_if<
-            std::is_trivially_copyable< T >::value,
-            Message &
-        >::type
-#else
-    -> Message &
-#endif
-    {
-        auto *v = read();
-        if ( v )
-            data = *v->data< T >();
-        return *this;
-    }
-
-    Message &operator<<( std::string &data ) {
-        add( &data.front(), data.size() );
-        return *this;
-    }
-    Message &operator>>( std::string &data ) {
-        auto *v = read();
-        if ( v )
-            data.assign( v->data(), v->size() );
-        return *this;
-    }
-
-    template< typename T >
-    auto operator<<( std::vector< T > &data )
-#ifndef __GLIBCXX__
-        -> typename std::enable_if<
-            std::is_trivially_copyable< T >::value,
-            Message &
-        >::type
-#else
-    -> Message &
-#endif
-    {
-        add( data.data(), data.size() * sizeof( T ) );
-        return *this;
-    }
-#if 0
-    template< typename T >
-    auto operator>>( std:vector< T > &data )
-        -> typename std::enable_if<
-            std::is_trivially_copyable< T >::value,
-            Message &
-        >::type
-    {
-        auto *v = read();
-        if ( v )
-            data.assign(  )
-        return *this;
-    }
-#endif
-
-    bool canRead() const {
-        return _readIndex <= count();
-    }
-    void resetReading() {
-        _readIndex = 1;
-    }
-    Message &storeTo() {
-        resetReading();
-        return *this;
-    }
-    IOvector *read() {
-        if ( !canRead() )
-            return nullptr;
-        return &_data[ _readIndex++ ];
-    }
-
     size_t count() const {
         return _header.count;
     }
 
-    size_t length() const {
-        size_t l = 0;
-        for ( const auto &i : _data )
-            l += i.size();
-        return l;
+    bool full() const {
+        return _header.count == Header::SEGMENTS;
     }
-
-    void disown() {
-        _allocated = false;
-    }
-    std::vector< IOvector >::iterator begin() {
-        return _data.begin() + 1;
-    }
-    std::vector< IOvector >::iterator end() {
-        return _data.end();
-    }
-
-    void reset() {
-        if ( _allocated )
-            // skip first item -- _header
-            for ( auto &i : *this ) {
-                delete[] i.data();
-            }
-        uint8_t cat = _header.category;
-        _header.clear();
-        _header.category = cat;
-        _data.clear();
-        _readIndex = 1;
-        _allocated = false;
-        _data.emplace_back( &_header, _header.size() );
-    }
-
     Header &header() {
         return _header;
     }
@@ -371,39 +267,171 @@ public:
         return _header;
     }
 
-    void allocateData() {
-        updatedHeaderSize();
-        if ( _data.size() != 1 ) {
-            if ( _data.size() < _header.count )
-                throw DataTransferException( "incomming message is too long" );
-            return;
+    bool add( void *data, uint32_t length ) {
+        if ( full() && _data.size() == Header::SEGMENTS + 1 )
+            return false;
+        _data.emplace_back( data, length );
+        // fill unknown positions
+        // one for header
+        if ( _data.size() > _header.count + 1 ) {
+            _header.count = _data.size() - 1;
+            updatedHeaderSize();
         }
-        _data.reserve( Header::SEGMENTS );
-        for ( uint8_t i = 0; i != _header.count; ++i ) {
-            size_t segmentSize = _header.segments[ i ];
-            if ( segmentSize == 0 )
-                break;
-            _data.emplace_back( new char[ segmentSize ], segmentSize );
-        }
+        _header.segments[ _data.size() - 2 ] = length;
+        return true;
     }
 
-    IOvector *ioVector() {
-        return _data.data(); // skip first item -- _header
+    void count( int c ) {
+        _header.count = c;
+    }
+    IOvector *vector() {
+        return _data.data();
+    }
+    size_t bytes() const {
+        return std::accumulate(
+            _data.begin(),
+            _data.end(),
+            size_t( 0 ),
+            []( size_t sum, const IOvector &v ) {
+                return sum + v.size();
+            } );
+    }
+    void clear() {
+        _header.clear();
+        _data.clear();
+        _data.emplace_back( &_header, _header.size() );
+    }
+protected:
+    std::vector< IOvector > &data() {
+        return _data;
     }
 
-    size_t ioVectorSize() const {
-        return _data.size();
+    uint32_t segment( int i ) {
+        return _header.segments[ i ];
     }
-private:
-
     void updatedHeaderSize() {
         _data.front().size( _header.size() );
     }
 
+private:
+
     Header _header;
     std::vector< IOvector > _data;
-    size_t _readIndex;
-    bool _allocated;
+};
+
+struct OutputMessage : Message {
+    template< typename T >
+    OutputMessage( T c ) {
+        category( c );
+    }
+
+    OutputMessage( const OutputMessage & ) = default;
+    OutputMessage( OutputMessage &&other ) = default;
+    OutputMessage &operator=( const OutputMessage & ) = default;
+
+    explicit operator bool() const noexcept {
+        return !full();
+    }
+
+    bool add( const void *data, uint32_t length ) {
+        return Message::add( const_cast< void * >( data ), length );
+    }
+
+    template< typename T >
+    auto operator<<( const T &data )
+        -> typename std::enable_if<
+            std::is_trivially_copyable< T >::value,
+            OutputMessage &
+        >::type
+    {
+        add( &data, sizeof( T ) );
+        return *this;
+    }
+
+    OutputMessage &operator<<( std::string &data ) {
+        add( &data.front(), data.size() );
+        return *this;
+    }
+
+    template< typename T >
+    auto operator<<( std::vector< T > &data )
+        -> typename std::enable_if<
+            std::is_trivially_copyable< T >::value,
+            OutputMessage &
+        >::type
+    {
+        add( data.data(), data.size() * sizeof( T ) );
+        return *this;
+    }
+};
+
+struct InputMessage : Message {
+    InputMessage() = default;
+    InputMessage( const InputMessage & ) = default;
+    InputMessage( InputMessage && ) = default;
+
+    template< typename T >
+    auto operator>>( T &data )
+        -> typename std::enable_if<
+            std::is_trivially_copyable< T >::value,
+            InputMessage &
+        >::type
+    {
+        add( &data, sizeof( T ) );
+        return *this;
+    }
+
+    InputMessage &operator>>( std::string &data ) {
+        add( &data, 0 );
+        return *this;
+    }
+
+    template< typename A >
+    void allocateData( A allocator ) {
+        // empty buffer
+        if ( data().size() == 1 ) {
+            data().reserve( count() + 1 );
+
+            for ( int i = 0; i < count(); ++i )
+                data().emplace_back(
+                    allocator( segment( i ) ),
+                    segment( i )
+                );
+        }
+        // only prepare strings
+        else {
+            uint32_t *segmentSize = header().segments;
+            for ( IOvector &v : make_adaptor( data().begin() + 1, data().end() ) ) {
+                if ( v.size() == 0 ) {// handle string separately
+                    std::string *string = v.data< std::string >();
+                    string->reserve( *segmentSize );
+                    string->assign( *segmentSize, ' ' );
+                    v.data( &string->front() );
+                }
+
+                if ( *segmentSize != v.size() )
+                    v.size( *segmentSize );
+                ++segmentSize;
+            }
+        }
+        updatedHeaderSize();
+    }
+
+    template< typename T, typename C >
+    void cleanup( C cleaner ) {
+        for ( IOvector &v : make_adaptor( data().begin() + 1, data().end() ) ) {
+            cleaner( v.data< T >() );
+        }
+    }
+
+    template< typename > class Dummy;
+
+    template< typename T = char, typename P = Dummy< T > >
+    void process( P processor ) {
+        for ( IOvector &v : make_adaptor( data().begin() + 1, data().end() ) ) {
+            processor( v.data< T >(), v.size() );
+        }
+    }
 };
 
 enum class Access : bool {
@@ -513,42 +541,65 @@ struct Socket : common::Comparable, common::Orderable {
         _fd = fd;
     }
 
-    void receive( Message &message ) const {
+    void peek( InputMessage &message ) {
+        std::lock_guard< std::mutex > _( _mRead );
+        recv( &message.header(), message.header().size(), true );
+    }
+
+    void receive( InputMessage &message ) const {
+        receive( message, []( size_t s ) { return new char[ s ]; } );
+    }
+
+    void receiveHeader( InputMessage &message ) const {
+        receive( message );
+        message.cleanup< char >( []( char *d ) {
+            delete[] d;
+        } );
+    }
+
+    template< typename A >
+    void receive( InputMessage &message, A allocator ) const {
         struct msghdr header;
         std::memset( &header, 0, sizeof( header ) );
 
         std::lock_guard< std::mutex > _( _mRead );
-        recv( &message.header(), message.header().size(), true ); // peek
+
+        recv( &message.header(), message.header().head(), true ); // peek
         recv( &message.header(), message.header().size() );
 
         if ( message.count() ) {
-            message.allocateData();
+            message.allocateData( allocator );
 
-            header.msg_iov = message.ioVector() + 1;
-            header.msg_iovlen = message.ioVectorSize() - 1;
-            if ( message.length() != message.header().size() + recvmsg( header ) )
-                throw DataTransferException( "incomplete on receiving" );
+            header.msg_iov = message.vector() + 1;// skip the header
+            header.msg_iovlen = message.count();
+
+            ssize_t received = recvmsg( header );
+
+            if ( message.bytes() != message.header().size() + received )
+                throw DataTransferException(
+                    "receive",
+                    message.bytes(),
+                    message.header().size() + received
+                );
         }
     }
 
-    Message receive() const {
-        Message message = Message::dynamicMessage();
-        receive( message );
-        return message;
-    }
-
-    void send( Message &message, bool noThrow = false ) const {
+    void send( OutputMessage &message, bool noThrow = false ) const {
         struct msghdr header;
         std::memset( &header, 0, sizeof( header ) );
 
-        header.msg_iov = message.ioVector();
-        header.msg_iovlen = message.ioVectorSize();
+        header.msg_iov = message.vector();
+        header.msg_iovlen = message.count() + 1;
 
         std::lock_guard< std::mutex > _( _mWrite );
-        size_t length = sendmsg( header, noThrow );
+        size_t sent = sendmsg( header, noThrow );
 
-        if ( !noThrow && message.length() != length )
-            throw DataTransferException( "incomplete on sending" );
+        if ( !noThrow && message.bytes() != sent )
+            throw DataTransferException(
+                "send",
+                message.bytes(),
+                sent
+            );
     }
 
     ssize_t peek( void *buffer, size_t length ) const {
@@ -715,12 +766,11 @@ struct Network {
     }
 
     template< typename SocketPtr >
-    Resolution< SocketPtr > poll( const std::vector< SocketPtr > &toWait, int timeout ) {
-        nfds_t nfds = toWait.size() + 1;
+    Resolution< SocketPtr > poll( const std::vector< SocketPtr > &toWait, bool useEar, int timeout ) {
         std::vector< PollFD > fds;
-        fds.reserve( nfds );
+        fds.reserve( toWait.size() + 1 );
 
-        if ( _ear )
+        if ( useEar && _ear )
             fds.emplace_back( _ear.fd(), POLLIN );
 
         for ( const auto &s : toWait )
@@ -735,14 +785,14 @@ struct Network {
 
         std::vector< SocketPtr > ready;
 
-        if ( _ear && fds.front().revents ) {
+        if ( useEar && _ear && fds.front().revents ) {
             _incomming.emplace( ::accept( _ear.fd(), nullptr, nullptr ) );
             return { Resolution< SocketPtr >::Incomming, std::move( ready ) };
         }
 
         ready.reserve( toWait.size() );
         auto selected = fds.begin();
-        if ( _ear )
+        if ( useEar && _ear )
             ++selected;
 
         for ( const auto &source : toWait ) {
@@ -927,6 +977,9 @@ private:
             int s = ::socket( rp->ai_family, rp->ai_socktype, rp->ai_protocol );
             if ( s == -1 )
                 continue;
+            int on = 1;
+            if ( ::setsockopt( s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof( on ) ) )
+                throw SystemException( "setsockopt" );
 
             if ( !::bind( s, rp->ai_addr, rp->ai_addrlen ) ) {
                 _ear.reset( s );
@@ -939,7 +992,8 @@ private:
 
         if ( !rp )
             throw SystemException( "bind" );
-        ::listen( _ear.fd(), 25 );
+        if ( ::listen( _ear.fd(), 25 ) )
+            throw SystemException( "listen" );
     }
 
     const char *_port;
@@ -1031,37 +1085,67 @@ namespace net {
 
 using namespace brick::net;
 
-struct MessageTest {
-    TEST(preallocated) {
+struct Message {
+    TEST( preallocated ) {
         Socket in, out;
         std::tie( in, out ) = Network::socketPair();
 
         std::string outBuffer = "karel";
         char inBuffer[ 6 ] = {};
 
-        Message o;
+        OutputMessage o( 0 );
         o << outBuffer;
 
-        Message i;
+        InputMessage i;
         i.add( inBuffer, 5 );
 
         out.send( o );
         in.receive( i );
 
-        ASSERT_EQ( std::string( outBuffer ), std::string( inBuffer ) );
+        ASSERT_EQ( outBuffer, std::string( inBuffer ) );
     }
 
-    TEST(string) {
-        std::string out( "test string" );
-        std::string in;
-        Message m;
-        m << out;
+    TEST( string ) {
+        Socket in, out;
+        std::tie( in, out ) = Network::socketPair();
 
-        m.storeTo() >> in;
-        ASSERT_EQ( in, out );
+        std::string outBuffer = "karel";
+        std::string inBuffer;
+
+        OutputMessage o( 0 );
+        o << outBuffer;
+
+        InputMessage i;
+        i >> inBuffer;
+
+        out.send( o );
+        in.receive( i );
+
+        ASSERT_EQ( outBuffer, inBuffer );
     }
 
-    TEST(dynamic) {
+    TEST( peek ) {
+        //::alarm( 10 );
+        Socket in, out;
+        std::tie( in, out ) = Network::socketPair();
+
+        std::string outBuffer = "karel";
+        std::string inBuffer;
+
+        OutputMessage o( 0 );
+        o << outBuffer;
+
+        InputMessage i;
+        out.send( o );
+        in.peek( i );
+
+        i >> inBuffer;
+        in.receive( i );
+
+        ASSERT_EQ( outBuffer, inBuffer );
+    }
+
+    TEST( dynamic ) {
         std::vector< std::string > data = {
             "test1",
             "next",
@@ -1072,27 +1156,31 @@ struct MessageTest {
         Socket in, out;
         std::tie( in, out ) = Network::socketPair();
 
-        Message o;
+        OutputMessage o( 0 );
 
         for ( auto &s : data )
             o << s;
         out.send( o );
 
-        Message m = in.receive();
+        InputMessage m;
+        in.receive( m, []( size_t s ) { return new char[ s ]; } );
 
-        auto mi = m.begin();
         auto di = data.begin();
-        for ( ; mi != m.end() && di != data.end(); ++mi, ++di ) {
-            std::string str( mi->data(), mi->size() );
+        m.process< char >( [&]( const char *msg, size_t length ) {
+            ASSERT( di != data.end() );
+            std::string str( msg, length );
             ASSERT_EQ( str, *di );
-        }
-
-        ASSERT( mi == m.end() );
+            ++di;
+        } );
         ASSERT( di == data.end() );
+
+        m.cleanup< char >( []( char *d ) {
+            delete[] d;
+        } );
     }
 
     TEST( integer ) {
-        Message mOut;
+        OutputMessage mOut( 0 );
         Socket in, out;
         std::tie( in, out ) = Network::socketPair();
         int time = 1258;
@@ -1100,28 +1188,70 @@ struct MessageTest {
         mOut << time;
         out.send( mOut );
 
-        Message mIn = in.receive();
-        mIn.storeTo() >> rTime;
+        InputMessage mIn;
+        mIn >> rTime;
+        in.receive( mIn );
 
         ASSERT_EQ( rTime, time );
     }
 
     TEST( tagged ) {
-        Message mOut;
+        OutputMessage mOut( 0 );
         mOut.tag( 10 );
 
         Socket in, out;
         std::tie( in, out ) = Network::socketPair();
 
         out.send( mOut );
-        Message mIn = in.receive();
+
+        InputMessage mIn;
+        in.receive( mIn );
+
         ASSERT_EQ( 10, mIn.tag() );
         ASSERT_EQ( 0, mIn.count() );
     }
 
+    TEST( allocation ) {
+        Socket in, out;
+        std::tie( in, out ) = Network::socketPair();
+
+        OutputMessage o( 0 );
+        o.tag( 10 );
+        o.add( "abc", 3 );
+        o.add( "def", 3 );
+        o.add( "xkcd", 4 );
+
+        out.send( o );
+        InputMessage i;
+        in.receiveHeader( i );
+        ASSERT_EQ( 10, i.tag() );
+
+        i.clear();
+
+        o.tag( 12 );
+        out.send( o );
+        in.receiveHeader( i );
+        ASSERT_EQ( 12, i.tag() );
+    }
+
+    TEST( overfilled ) {
+        Socket in, out;
+        std::tie( in, out ) = Network::socketPair();
+
+        OutputMessage o( 0 );
+        o.tag( 10 );
+
+        out.send( o );
+
+        int data;
+        InputMessage i;
+        i >> data;
+        in.receive( i );
+        ASSERT_EQ( 10, i.tag() );
+    }
+
     TEST( redirector ) {
         ::alarm( 10 );
-
         int p[2];
         ::pipe( p );
         char buffer[ 20 ] = {};
