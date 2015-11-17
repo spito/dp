@@ -1,0 +1,10 @@
+single channel; 2 nodes; 4 threads; 1,000,000 numbers
+    real    4m46.233s
+    user    0m0.002s
+    sys     0m0.008s
+
+single channel; 2 nodes; 4 threads; 1,000,000 numbers; after optimization (cache for sockets)
+    real    4m12.351s
+    user    0m0.002s
+    sys     0m0.007s
+
