@@ -16,14 +16,14 @@ void Communicator::sendAll( OutputMessage &message, ChannelID chID ) {
         handles.reserve( connections().size() );
 
         switch ( chID.asType() ) {
-        case ChannelType::Control:
+        case ChannelType::Master:
             for ( auto &peer : connections().values() ) {
-                if ( peer->id() == id() || !peer->controlChannel() )
+                if ( peer->id() == id() || !peer->masterChannel() )
                     continue;
-                peers.emplace_back( peer->control() );
+                peers.emplace_back( peer->master() );
             }
             break;
-        case ChannelType::DataAll:
+        case ChannelType::All:
             return;
         default:
             for ( auto &peer : connections().values() ) {
@@ -37,7 +37,11 @@ void Communicator::sendAll( OutputMessage &message, ChannelID chID ) {
 
     for ( auto &peer : peers ) {
         handles.emplace_back( std::async( std::launch::async, [&] {
-            peer->send( message );
+            try {
+                peer->send( message );
+            } catch ( const std::exception &e ) {
+                std::cerr << "(sendAll) exception: " << e.what() << std::endl;
+            }
         } ) );
     }
     for ( auto &h : handles )

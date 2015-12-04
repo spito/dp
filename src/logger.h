@@ -5,10 +5,13 @@
 
 struct Logger {
 
-    static void log( std::string );
+    static void log( std::string text ) {
+        log( std::move( text ), false );
+    }
     static void file( std::string );
     static void becomeChild();
 private:
+    static void log( std::string, bool );
     static std::string _file;
     static bool _child;
 };

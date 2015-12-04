@@ -1,6 +1,8 @@
 #include <memory>
 #include <unordered_map>
 
+#include <brick-shmem.h>
+
 #include "communicator.h"
 #include "message.h"
 #include "logger.h"
@@ -15,13 +17,13 @@ class Daemon : public Communicator {
         Enslaved,
         FormingGroup,
         Grouped,
-        OverWatching,
+        Supervising,
         Running,
         Leaving,
     };
 
     enum class LineType {
-        Control,
+        Master,
         Data
     };
 
@@ -30,20 +32,16 @@ class Daemon : public Communicator {
     using InputMessage = brick::net::InputMessage;
     using OutputMessage = brick::net::OutputMessage;
 
+    Daemon( const char *, int (*)( int, char ** ), std::string );
 public:
-    Daemon( const char *port, int (*main)( int, char ** ), std::string logFile = std::string() ) :
-        Communicator( port, true ),
-        _state( State::Free ),
-        _childPid( NoChild ),
-        _quit( false ),
-        _main( main )
-    {
-        Logger::file( std::move( logFile ) );
-    }
+
+    enum { MainSlave = 1 };
+
     Daemon( const Daemon & ) = delete;
     Daemon &operator=( const Daemon & ) = delete;
 
     static Daemon &instance();
+    static Daemon &instance( const char *, int(*)( int, char ** ), std::string );
     static bool hasInstance();
 
     void run();
@@ -51,7 +49,7 @@ public:
     [[noreturn]]
     void exit( int = 0 );
 
-    void *data() const {
+    char *data() const {
         return _initData.get();
     }
     size_t dataSize() const {
@@ -59,19 +57,18 @@ public:
     }
 
     template< typename Ap >
-    void probe( Ap applicator, ChannelID chId = ChannelType::Data, int timeout = -1 ) {
-        auto i = _cache.find( chId );
-        if ( i == _cache.end() )
-            i = refreshCache( chId );
-
-        Communicator::probe( i->second, applicator, false, timeout );
+    void probe( Ap applicator, ChannelID chId = ChannelType::Master, int timeout = -1 ) {
+        Communicator::probe( _cache.at( chId.asIndex() ), applicator, timeout, false );
     }
+    void table();
+
 
 private:
+    bool daemonize();
 
     bool processControl( Channel ) override;
     void processDisconnected( Channel ) override;
-    void processIncomming( Channel ) override;
+    void processIncoming( Channel ) override;
 
     void enslave( InputMessage &, Channel );
     void startGrouping( InputMessage &, Channel );
@@ -88,13 +85,14 @@ private:
     void forceShutdown();
     void error( Channel );
     void renegade( InputMessage &, Channel );
-    void table(); // debug
+    void status( Channel );
     void initData( InputMessage &, Channel );
     void runMain( InputMessage &, Channel );
 
+
     void reset();
     void reset( Address );
-    void setDefault();
+    void setDefault( bool = false );
 
     void becomeParent( Channel );
     void becomeChild( Channel );
@@ -102,20 +100,20 @@ private:
     void consumeMessage( Channel );
     void redirectOutput( const char *, size_t, Output );
 
-    auto refreshCache( ChannelID )
-        -> std::unordered_map< int, std::vector< Channel > >::iterator;
+    void buildCache();
+    const char *status() const;
 
     State _state;
     Channel _rope;
     int _childPid;
     bool _quit;
     int ( *_main )( int, char ** );
-    std::unique_ptr< char > _initData;
+    std::unique_ptr< char[] > _initData;
     size_t _initDataLength = 0;
 
-    static Daemon *_self;
+    static std::unique_ptr< Daemon > _self;
 
-    std::unordered_map< int, std::vector< Channel > > _cache;
+    std::vector< std::vector< Channel > > _cache;
 };
 
 #endif

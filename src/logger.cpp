@@ -3,7 +3,7 @@
 #include <fstream>
 #include <ctime>
 
-void Logger::log( std::string record ) {
+void Logger::log( std::string record, bool erase ) {
     if ( _file.empty() )
         return;
 
@@ -11,7 +11,7 @@ void Logger::log( std::string record ) {
     char timestamp[ 20 ] = {};
     std::strftime( timestamp, 20, "%Y-%m-%d %H:%M:%S", std::localtime( &t ) );
 
-    std::ofstream file( _file, std::ios::app );
+    std::ofstream file( _file, erase ? std::ios::out : std::ios::app );
 
     file << "[" << timestamp << "] ";
     if ( _child )
@@ -23,6 +23,7 @@ void Logger::file( std::string address ) {
     _file = std::move( address );
     if ( !_file.empty() && _file.find_last_of( '.' ) == std::string::npos )
         _file += ".log";
+    log( "logging started", true );
 }
 
 void Logger::becomeChild() {

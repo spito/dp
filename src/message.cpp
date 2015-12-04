@@ -32,6 +32,8 @@ const char *codeToString( Code code ) {
         return "PrepareToLeave";
     case Code::Shutdown:
         return "Shutdown";
+    case Code::ForceShutdown:
+        return "ForceShutdown";
     case Code::CutRope:
         return "CutRope";
     case Code::InitialData:
@@ -46,8 +48,8 @@ const char *codeToString( Code code ) {
         return "Error";
     case Code::Renegade:
         return "Renegade";
-    case Code::Table: // debug only
-        return "Table";
+    case Code::Status:
+        return "Status";
     default:
         return "<unknown code>";
     }

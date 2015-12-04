@@ -15,5 +15,5 @@ target_link_libraries(test DIVINE-net)
 add_executable(brickTest src/test.cpp)
 set_target_properties(brickTest PROPERTIES COMPILE_FLAGS "-DBRICK_UNITTEST_REG")
 
-add_executable(demo src/demo.cpp)
+add_executable(demo src/demo.cpp src/meta.cpp)
 target_link_libraries(demo DIVINE-net)

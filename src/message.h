@@ -50,7 +50,7 @@ enum class Code {
     Error = 32,
     Renegade,
 
-    Table = 64, // debug only
+    Status = 64,
 };
 
 const char *codeToString( Code code );

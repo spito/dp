@@ -1,6 +1,7 @@
 //#include "network.h"
 #include "client.h"
 #include "daemon.h"
+#include "meta.hpp"
 
 #include <vector>
 #include <string>
@@ -11,9 +12,8 @@
 #include <algorithm>
 #include <thread>
 
-#include "worker.h"
-
-const char *port = "41813";
+#include "workerPing.hpp"
+#include "workerLoad.hpp"
 
 #if 0
 void dummyMain() {
@@ -43,16 +43,30 @@ void dummyMain() {
 }
 #endif
 
-void run( const std::string &port, int argc, char **argv ) {
+void run( int argc, char **argv, const Meta &meta ) {
     try {
-        Client c( port.c_str() );
-        bool ok = true;
-        for ( int i = 2; ok && i < argc; ++i )
-            ok = c.add( argv[ i ] );
-        if ( ok )
+        Client c{ meta.port.c_str(), meta.threads };
+
+        std::vector< std::pair< std::string, std::string > > problematic;
+        for ( const auto &host : meta.hosts ) {
+            std::string description;
+            if ( !c.add( host, &description ) )
+                problematic.emplace_back( host, description );
+        }
+
+        if ( problematic.empty() ) {
+            //auto block = meta.block();
             c.run( argc, argv );
-        else
-            std::cerr << "cannot connect to all peers" << std::endl;
+        }
+        else {
+            std::cerr << "cannot connect to those peers:" << std::endl;
+            for ( const auto &peer : problematic )
+                std::cerr
+                    << '\t' << peer.first
+                    << " (" << peer.second << ")"
+                    << std::endl;
+
+        }
     } catch ( NetworkException &e ) {
         std::cerr << "net exception: " << e.what() << std::endl;
     } catch ( std::exception &e ) {
@@ -62,61 +76,125 @@ void run( const std::string &port, int argc, char **argv ) {
     }
 }
 
-void shutdown( const std::string &port, int argc, char **argv ) {
-    Client c( port.c_str() );
-    for ( int i = 2; i < argc; ++i ) {
-        std::cout << argv[ i ] << ": ";
-        if ( c.shutdown( argv[ i ] ) )
-            std::cout << "shutdown";
-        else
-            std::cout << "refused";
+void shutdown( const Meta &meta ) {
+    Client c{ meta.port.c_str() };
+
+    for ( const auto &host : meta.hosts ) {
+        std::cout << host << ": ";
+        try {
+            if ( c.shutdown( host ) )
+                std::cout << "shutdown";
+            else
+                std::cout << "refused";
+        } catch ( const std::exception &e ) {
+            std::cout << e.what();
+        }
         std::cout << std::endl;
     }
 }
 
-void forceShutdown( const std::string &port, int argc, char **argv ) {
-    Client c( port.c_str() );
-    for ( int i = 2; i < argc; ++i ) {
-        c.forceShutdown( argv[ i ] );
+void forceShutdown( const Meta &meta ) {
+    Client c{ meta.port.c_str() };
+
+    for ( const auto &host : meta.hosts ) {
+        std::cout << host << ": ";
+        try {
+            c.forceShutdown( host );
+            std::cout << "killed";
+        } catch ( const std::exception &e ) {
+            std::cout << e.what();
+        }
+        std::cout << std::endl;
     }
 }
 
-int start( int argc, char **argv ) {
-
-    Workers w( 4, 1000000 );
+template<
+    template< typename > class W,
+    typename I,
+    typename... Args
+>
+void startWorker( Args... args ) {
+    W< I > w( args... );
     w.run();
+}
 
+int mainD( int argc, char **argv ) {
+
+    Meta meta( argc, argv, true );
+
+
+    switch ( meta.algorithm ) {
+    case Algorithm::LoadDedicated:
+        startWorker< load::Workers, load::Dedicated >( meta.threads, meta.workLoad );
+        break;
+    case Algorithm::LoadShared:
+        startWorker< load::Workers, load::Shared >( meta.threads, meta.workLoad );
+        break;
+    case Algorithm::PingDedicated:
+        startWorker< ping::Workers, ping::Dedicated >( meta.threads, meta.workLoad, meta.selection );
+        break;
+    case Algorithm::PingShared:
+        startWorker< ping::Workers, ping::Shared >( meta.threads, meta.workLoad, meta.selection );
+        break;
+    case Algorithm::Table:
+        Daemon::instance().table();
+        break;
+    case Algorithm::None:
+    default:
+        std::cout << "unknown algorithm" << std::endl;
+    }
     return 0;
 }
-// TODO add restart service
-// TODO add start service
+
+void start( const Meta &meta ) {
+    Client c{ meta.port.c_str() };
+    std::vector< bool > result = c.start( meta.hosts );
+
+    auto r = result.begin();
+    auto m = meta.hosts.begin();
+
+    for ( ; r != result.end(); ++r, ++m )
+        std::cout << *m << ": " << ( *r ? "started" : "failed" ) << std::endl;
+}
+
+void status( const Meta &meta ) {
+    Client c{ meta.port.c_str() };
+
+    for ( const auto &host : meta.hosts ) {
+        std::cout << host << ": ";
+        std::cout << c.status( host ) << std::endl;
+    }
+}
+
 int main( int argc, char **argv ) {
 
-    std::ifstream config( "net.cfg" );
-    std::string port = ::port;
-    config >> port;
-
     try {
-        if ( argc >= 2 && *argv[ 1 ] == 'd' ) {
-            Daemon d( port.c_str(), &start, argc >= 3 ? argv[2] : "" );
-            d.run();
+        Meta meta( argc, argv );
+
+        switch ( meta.command ) {
+        case Command::Start:
+            start( meta );
+            break;
+        case Command::Status:
+            status( meta );
+            break;
+        case Command::Shutdown:
+            shutdown( meta );
+            break;
+        case Command::ForceShutdown:
+            forceShutdown( meta );
+            break;
+        case Command::Restart:
+            forceShutdown( meta );
+            start( meta );
+            break;
+        case Command::Daemon:
+            Daemon::instance( meta.port.c_str(), &mainD, meta.logFile ).run();
+            break;
+        case Command::Run:
+            run( argc, argv, meta );
+            break;
         }
-        else if ( argc > 1 && *argv[ 1 ] == 'c' ) {
-            run( port, argc, argv );
-        }
-        else if ( argc > 1 && *argv[ 1 ] == 'q' ) {
-            forceShutdown( port, argc, argv );
-        }
-        else if ( argc > 1 && *argv[ 1 ] == 's' ) {
-            shutdown( port, argc, argv );
-        }
-        else {
-            //std::ofstream out( "out.txt", std::ios::app );
-            std::cerr << "unsupported parametres" << std::endl;
-        }
-//    } catch ( brick::net::NetException &e ) {
-//        std::cerr << "net exception: " << e.what() << std::endl;
-//        throw;// rethrow exceptions to be catched by network layer
     } catch ( std::exception &e ) {
         std::cerr << "\terror: " << e.what() << std::endl;
     } catch ( ... ) {

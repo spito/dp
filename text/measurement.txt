@@ -8,3 +8,65 @@ single channel; 2 nodes; 4 threads; 1,000,000 numbers; after optimization (cache
     user    0m0.002s
     sys     0m0.007s
 
+single channel; 2 nodes; 4 threads; 1,000,000 numbers; release; condition variables
+    real    4m46.426s
+    user    0m0.006s
+    sys     0m0.003s
+
+single channel; 2 nodes; 4 threads; 1,000,000 numbers; release;
+    real    3m58.641s
+    user    0m0.003s
+    sys     0m0.004s
+
+    real    4m1.798s
+    user    0m0.005s
+    sys     0m0.002s
+
+    real    3m59.201s
+    user    0m0.005s
+    sys     0m0.001s
+
+multiple channels; 2 nodes; 4 threads; 1,000,000 numbers; release;
+    real    3m15.217s
+    user    0m0.004s
+    sys     0m0.002s
+
+single channels; 3 nodes; 4 threads; 1,000,000 numbers; release;
+    real    6m0.369s
+    user    0m0.006s
+    sys     0m0.007s
+
+    real    5m54.926s
+    user    0m0.007s
+    sys     0m0.006s
+
+    real    5m57.383s
+    user    0m0.008s
+    sys     0m0.004s
+
+    real    5m57.250s
+    user    0m0.007s
+    sys     0m0.006s
+
+    real    5m55.037s
+    user    0m0.006s
+    sys     0m0.006s
+
+
+
+multiple channels; 3 nodes; 4 threads; 1,000,000 numbers; release
+    real    5m9.312s
+    user    0m0.004s
+    sys     0m0.005s
+
+    real    5m10.036s
+    user    0m0.002s
+    sys     0m0.007s
+
+    real    5m10.408s
+    user    0m0.004s
+    sys     0m0.006s
+
+    real    5m10.985s
+    user    0m0.005s
+    sys     0m0.004s

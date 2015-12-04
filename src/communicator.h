@@ -30,45 +30,40 @@ public:
     {}
     virtual ~Communicator() = default;
 
-    bool sendTo( int id, brick::net::OutputMessage &message, ChannelID chID = ChannelType::Data ) {
-        Line peer = connections().find( id );
-        if ( !peer )
-            return false;
-        Channel channel;
-        switch ( chID.asType() ) {
-        case ChannelType::Control:
-            if ( peer->controlChannel() )
-                channel = peer->control();
-            break;
-        case ChannelType::DataAll:
-            return false;
-        default:
-            if ( peer->dataChannel( chID ) )
-                channel = peer->data( chID );
-            break;
-        }
-        if ( !channel )
+    bool sendTo( int id, OutputMessage &message, ChannelID chID = ChannelType::Master ) {
+        return sendTo( findChannel( id, chID ), message );
+    }
+    bool sendTo( Channel channel, OutputMessage &message ) {
+        if ( !channel || !*channel )
             return false;
         message.from( _id );
-        message.to( id );
+        message.to( channel->id() );
         channel->send( message );
         return true;
     }
 
-    void sendAll( OutputMessage &, ChannelID = ChannelType::Data );
+    void sendAll( OutputMessage &, ChannelID = ChannelType::Master );
+
+    bool receive( int id, InputMessage &message, ChannelID chID = ChannelType::Master ) {
+        return receive( findChannel( id, chID ), message );
+    }
+    bool receive( Channel channel, InputMessage &message ) {
+        if ( !channel )
+            return false;
+        channel->receive( message );
+        return true;
+    }
 
     template< typename Al, typename D, typename C, typename Ap >
-    bool receive( int id, Al allocator, D deallocator, C convertor, Ap applicator ) {
-        Line peer = connections().find( id );
-        if ( !peer )
-            return false;
-        if ( !peer->dataChannel( 0 ) )
+    bool receive( int id, Al allocator, D deallocator, C convertor, Ap applicator, ChannelID chID = ChannelType::Master ) {
+        Channel channel = findChannel( id, chID );
+        if ( !channel )
             return false;
 
-        brick::net::InputMessage message;
+        InputMessage message;
         std::vector< typename std::result_of< Al( size_t ) >::type > handles;
 
-        peer->data( 0 )->receive( message, [&] ( size_t size ) -> char * {
+        channel->receive( message, [&] ( size_t size ) -> char * {
             handles.emplace_back( allocator( size ) );
             return convertor( handles.back() );
         } );
@@ -89,6 +84,9 @@ public:
     int worldSize() const {
         return _worldSize;
     }
+    int channels() const {
+        return _channels;
+    }
     const std::string &name() const {
         return _name;
     }
@@ -104,11 +102,34 @@ public:
 
 protected:
 
+    Channel findChannel( int id, ChannelID chID ) {
+        Line peer = connections().find( id );
+        Channel channel;
+        if ( !peer )
+            return channel;
+        switch ( chID.asType() ) {
+        case ChannelType::Master:
+            if ( peer->masterChannel() )
+                channel = peer->master();
+            break;
+        case ChannelType::All:
+            break;
+        default:
+            if ( peer->dataChannel( chID ) )
+                channel = peer->data( chID );
+            break;
+        }
+        return channel;
+    }
+
     void id( int i ) {
         _id = i;
     }
     void worldSize( int ws ) {
         _worldSize = ws;
+    }
+    void channels( int c ) {
+        _channels = c;
     }
     void name( std::string n ) {
         _name.swap( n );
@@ -122,8 +143,11 @@ protected:
         return _net;
     }
 
-    Channel connect( const Address &address ) {
-        return std::make_shared< Socket >( _net.connect( address.value() ) );
+    Channel connect( const Address &address, bool noThrow = false ) {
+        Socket s = _net.connect( address.value(), noThrow );
+        if ( s )
+            return std::make_shared< Socket >( std::move( s ) );
+        return Channel{};
     }
 
     std::string info( Channel channel ) {
@@ -142,15 +166,15 @@ protected:
     }
 
     template< typename Ap >
-    void probe( std::vector< Channel > &channels, Ap applicator, bool listen, int timeout ) {
+    void probe( std::vector< Channel > &channels, Ap applicator, int timeout, bool listen ) {
         do {
             Resolution r = _net.poll( channels, listen, timeout );
 
             if ( r.resolution() == Resolution::Timeout )
                 return;
 
-            if ( listen && r.resolution() == Resolution::Incomming ) {
-                processIncomming( std::make_shared< Socket >( _net.incomming() ) );
+            if ( listen && r.resolution() == Resolution::Incoming ) {
+                processIncoming( std::make_shared< Socket >( _net.incoming() ) );
                 continue;
             }
 
@@ -195,10 +219,10 @@ private:
     virtual void processDisconnected( Channel channel ) {
         connections().lockedErase( channel->id() );
     }
-    virtual void processIncomming( Channel channel ) {
-        Logger::log( "unacceptable incomming connection from " + info( channel ) );
+    virtual void processIncoming( Channel channel ) {
+        Logger::log( "unacceptable incoming connection from " + info( channel ) );
         channel->close();
-        throw NetworkException{ "unexpected incomming connection" };
+        throw NetworkException{ "unexpected incoming connection" };
     }
 
     template< typename Ap >
@@ -231,6 +255,7 @@ private:
 
     int _id;
     int _worldSize;
+    int _channels;
     Connections _connections;
     Network _net;
     std::string _name;

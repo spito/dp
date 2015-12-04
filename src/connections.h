@@ -1,5 +1,6 @@
 #include <memory>
 #include <unordered_map>
+#include <map>
 #include <mutex>
 
 #include <brick-net.h>
@@ -34,14 +35,15 @@ private:
 
 using Channel = std::shared_ptr< Socket >;
 
-enum class ChannelType {
+enum class ChannelType : int {
 
-    Control = -2,
-    Data = 0,
-    DataAll = -1,
+    All = -2,
+    Master = -1,
     Data01 = 0, Data02, Data03, Data04, Data05, Data06, Data07, Data08, Data09, Data10,
     Data11,     Data12, Data13, Data14, Data15, Data16, Data17, Data18, Data19, Data20,
     Data21,     Data22, Data23, Data24, Data25, Data26, Data27, Data28, Data29, Data30,
+
+    _offsetToZero = 2
 };
 
 
@@ -60,32 +62,28 @@ struct ChannelID {
     ChannelType asType() const {
         return static_cast< ChannelType >( _channel );
     }
+    int asIndex() const {
+        return _channel + static_cast< int >( ChannelType::_offsetToZero );
+    }
 private:
     int _channel;
 };
 
 struct Peer {
 
-    Peer( int id, std::string name, const char *address, Channel control, int channels = 0 ) :
+    Peer( int id, std::string name, const char *address, Channel master, int channels = 0 ) :
         _id( id ),
         _name( std::move( name ) ),
         _address( address ),
-        _control( std::move( control ) )
+        _master( std::move( master ) )
     {
-        if ( _control )
-            _control->id( _id );
+        if ( _master )
+            _master->id( _id );
         if ( channels )
             _data.reserve( channels );
     }
 
     Peer( Peer && ) noexcept = default;
-
-    // template< typename A >
-    // void properties( int i, std::string n, A a ) {
-    //     _id = i;
-    //     _name = std::move( n );
-    //     address = a;
-    // }
 
     int id() const {
         return _id;
@@ -101,12 +99,12 @@ struct Peer {
     bool dataChannel( ChannelID number ) const {
         return size_t( number ) < _data.size() && _data[ number ];
     }
-    bool controlChannel() const {
-        return bool( _control );
+    bool masterChannel() const {
+        return bool( _master );
     }
 
-    Channel control() const {
-        return _control;
+    Channel master() const {
+        return _master;
     }
     Channel data( ChannelID number ) const {
         if ( size_t( number ) < _data.size() )
@@ -129,7 +127,7 @@ private:
     std::string _name;
     Address _address;
 
-    Channel _control;
+    Channel _master;
     std::vector< Channel > _data;
 };
 
@@ -138,9 +136,10 @@ using Line = std::shared_ptr< Peer >;
 struct Connections {
 
     enum { InsertFailed = -1 };
+    using Table = std::map< int, Line >;
 
-    using iterator = std::unordered_map< int, Line >::iterator;
-    using const_iterator = std::unordered_map< int, Line >::const_iterator;
+    using iterator = Table::iterator;
+    using const_iterator = Table::const_iterator;
 
 	struct key_iterator : iterator {
         using iterator::iterator;
@@ -327,7 +326,7 @@ struct Connections {
     }
 
 private:
-    std::unordered_map< int, Line > _table;
+    Table _table;
     std::mutex _mutex;
 };
 

@@ -1,12 +1,12 @@
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <cstring>
+#include <iomanip>
 
 #include "client.h"
 #include "message.h"
 
-// parallel environment
-// not called from loop
 void Client::quit() {
 
     if ( !connections().lockedEmpty() ) {
@@ -17,17 +17,16 @@ void Client::quit() {
     }
 }
 
-// single-thread environment
-bool Client::shutdown( const std::string &slave ) {
+bool Client::shutdown( const std::string &machine ) {
 
     if ( _established )
         return false;
 
-    auto i = _names.find( slave );
+    auto i = _names.find( machine );
     if ( i != _names.end() )
         return false;
 
-    Channel channel = connect( slave.c_str() );
+    Channel channel = connect( machine.c_str() );
 
     OutputMessage message( MessageType::Control );
     message.tag( Code::Shutdown );
@@ -44,8 +43,8 @@ bool Client::shutdown( const std::string &slave ) {
     throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
 }
 
-void Client::forceShutdown( const std::string &slave ) {
-    Channel channel = connect( slave.c_str() );
+void Client::forceShutdown( const std::string &machine ) {
+    Channel channel = connect( machine.c_str() );
 
     OutputMessage message( MessageType::Control );
     message.tag( Code::ForceShutdown );
@@ -53,8 +52,38 @@ void Client::forceShutdown( const std::string &slave ) {
     channel->send( message );
 }
 
-// single-thread environment
-bool Client::add( std::string slaveName ) {
+std::vector< bool > Client::start( const std::vector< std::string > &machines ) {
+
+    std::vector< std::future< bool > > handles;
+    std::vector< bool > result( machines.size(), false );
+
+    char path[ 256 ] = {}; // FIXME: add some system constant
+    if ( ::readlink( "/proc/self/exe", path, 255 ) == -1 )
+        return result;
+
+    handles.reserve( machines.size() );
+
+    brick::net::Redirect out{ STDOUT_FILENO };
+    brick::net::Redirect err{ STDERR_FILENO };
+
+    for ( const auto &m : machines ) {
+        handles.emplace_back( std::async( std::launch::async, [&] {
+            std::ostringstream os;
+            os  << "ssh -T " << m << "<<'ENDSSH'\n"
+                << path << " d -l " << m << "\n"
+                << "ENDSSH";
+            std::string command{ os.str() };
+            return ::system( command.c_str() ) == 0;
+        } ) );
+    }
+
+    std::transform( handles.begin(), handles.end(), result.begin(), []( std::future< bool > &h ) {
+        return h.get();
+    } );
+    return result;
+}
+
+bool Client::add( std::string slaveName, std::string *description ) {
 
     if ( _established )
         return false;
@@ -71,11 +100,18 @@ bool Client::add( std::string slaveName ) {
     message.tag( Code::Enslave );
     message
         << slaveId
-        << slaveName;
+        << slaveName
+        << channels();
 
     channel->send( message );
     InputMessage response;
-    channel->receiveHeader( response );
+
+    if ( description ) {
+        response >> *description;
+        channel->receive( response );
+    }
+    else
+        channel->receiveHeader( response );
 
     if ( response.tag< Code >() == Code::OK ) {
         _idCounter++;
@@ -98,7 +134,6 @@ bool Client::add( std::string slaveName ) {
     throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
 }
 
-// single-thread environment
 bool Client::removeAll() {
     if ( _established )
         return false;
@@ -106,32 +141,31 @@ bool Client::removeAll() {
     OutputMessage message( MessageType::Control );
     message.tag( Code::Disconnect );
 
-    sendAll( message, ChannelType::Control );
+    sendAll( message, ChannelType::Master );
 
     connections().clear();
     _names.clear();
     return true;
 }
 
-// single-thread environment
-void Client::list() {
-    std::cout << "== list of slaves ==" << std::endl;
-    for ( const auto &slave : connections().values() ) {
-        std::cout << "\t" << slave->id() << " --> "
-                  << info( slave )
-                  << std::endl;
-    }
-}
+std::string Client::status( const std::string &machine ) {
+    Channel channel = connect( machine.c_str(), true );
+    if ( !channel || !*channel )
+        return "not available";
 
-// single-thread environment
-void Client::table() {
     OutputMessage message( MessageType::Control );
-    message.tag( Code::Table );
+    message.tag( Code::Status );
 
-    sendAll( message, ChannelType::Control );
+    channel->send( message );
+
+    InputMessage response;
+    std::string description;
+    response >> description;
+
+    channel->receive( response );
+    return description;
 }
 
-// single-thread environment
 void Client::run( int argc, char **argv, const void *initData, size_t initDataLength ) {
     try {
         establish( argc, argv, initData, initDataLength );
@@ -140,7 +174,7 @@ void Client::run( int argc, char **argv, const void *initData, size_t initDataLe
         refreshCache();
 
         while ( !_quit ) {
-            probe( _cache, []( Channel channel ) {}, false, 2000 );
+            probe( _cache, &Client::discardMessage, 2000, false );
         }
         dissolve();
     } catch ( brick::net::NetException &e ) {
@@ -150,7 +184,6 @@ void Client::run( int argc, char **argv, const void *initData, size_t initDataLe
     }
 }
 
-// single-thread environment
 bool Client::establish( int argc, char **argv, const void *initData, size_t initDataLength ) {
     if ( _established || connections().empty() )
         return false;
@@ -173,7 +206,6 @@ bool Client::establish( int argc, char **argv, const void *initData, size_t init
     return true;
 }
 
-// single-thread environment
 bool Client::dissolve() {
 
     if ( !_established )
@@ -185,9 +217,9 @@ bool Client::dissolve() {
     message.tag( Code::PrepareToLeave );
 
     for ( const auto &slave : connections().values() ) {
-        slave->control()->send( message );
+        slave->master()->send( message );
         InputMessage response;
-        slave->control()->receiveHeader( response );
+        slave->master()->receiveHeader( response );
 
         if ( response.tag< Code >() == Code::OK )
             continue;
@@ -200,9 +232,9 @@ bool Client::dissolve() {
 
     message.tag( Code::Leave );
     for ( const auto &slave : connections().values() ) {
-        slave->control()->send( message );
+        slave->master()->send( message );
         InputMessage response;
-        slave->control()->receiveHeader( response );
+        slave->master()->receiveHeader( response );
 
         if ( response.tag< Code >() == Code::OK )
             continue;
@@ -217,7 +249,6 @@ bool Client::dissolve() {
     return true;
 }
 
-// single environment
 bool Client::initWorld() {
     int world = worldSize();
 
@@ -226,9 +257,9 @@ bool Client::initWorld() {
     message << world;
 
     for ( const auto &slave : connections().values() ) {
-        slave->control()->send( message );
+        slave->master()->send( message );
         InputMessage response;
-        slave->control()->receiveHeader( response );
+        slave->master()->receiveHeader( response );
 
         if ( response.tag< Code >() == Code::OK )
             continue;
@@ -241,7 +272,6 @@ bool Client::initWorld() {
     return true;
 }
 
-// single environment
 bool Client::connectAll() {
     for ( auto i = connections().vbegin(); i != connections().vend(); ++i ) {
 
@@ -254,11 +284,11 @@ bool Client::connectAll() {
 
             OutputMessage message( MessageType::Control );
             message.tag( Code::ConnectTo );
-            message << id << slaveName << address << _channels;
+            message << id << slaveName << address;
 
-            (*i)->control()->send( message );
+            (*i)->master()->send( message );
             InputMessage response;
-            (*i)->control()->receiveHeader( response );
+            (*i)->master()->receiveHeader( response );
 
             switch( response.tag< Code >() ) {
             case Code::Success:
@@ -274,9 +304,9 @@ bool Client::connectAll() {
     OutputMessage message( MessageType::Control );
     message.tag( Code::Grouped );
     for ( const auto &slave : connections().values() ) {
-        slave->control()->send( message );
+        slave->master()->send( message );
         InputMessage response;
-        slave->control()->receiveHeader( response );
+        slave->master()->receiveHeader( response );
 
         switch( response.tag< Code >() ) {
         case Code::OK:
@@ -291,14 +321,13 @@ bool Client::connectAll() {
     return true;
 }
 
-// single environment
 bool Client::start( int argc, char **argv, const void *initData, size_t initDataLength ) {
     if ( initData ) {
         OutputMessage data( MessageType::Control );
         data.tag( Code::InitialData );
         data.add( initData, initDataLength );
 
-        sendAll( data, ChannelType::Control );
+        sendAll( data, ChannelType::Master );
     }
 
     OutputMessage message( MessageType::Control );
@@ -307,9 +336,9 @@ bool Client::start( int argc, char **argv, const void *initData, size_t initData
         message.add( argv[ i ], std::strlen( argv[ i ] ) );
 
     for ( const auto &slave : connections().values() ) {
-        slave->control()->send( message );
+        slave->master()->send( message );
         InputMessage response;
-        slave->control()->receiveHeader( response );
+        slave->master()->receiveHeader( response );
 
         switch( response.tag< Code >() ) {
         case Code::OK:
@@ -324,11 +353,10 @@ bool Client::start( int argc, char **argv, const void *initData, size_t initData
     message.clear();
     message.tag( Code::Start );
     for ( const auto &slave : connections().values() )
-        slave->control()->send( message );
+        slave->master()->send( message );
     return true;
 }
 
-// single environment
 void Client::reset() {
     _idCounter = 1;
     _done = 0;
@@ -339,7 +367,6 @@ void Client::reset() {
     _names.clear();
 }
 
-// single environment
 void Client::reset( Address address ) {
     OutputMessage message( MessageType::Control );
     message.tag( Code::Renegade );
@@ -347,13 +374,12 @@ void Client::reset( Address address ) {
     {
         std::lock_guard< std::mutex > lock( connections().mutex() );
         for ( const auto &slave : connections().values() ) {
-            slave->control()->send( message, true );
+            slave->master()->send( message, true );
         }
     }
     reset();
 }
 
-// single-thread environment
 bool Client::processControl( Channel channel ) {
     InputMessage message;
     channel->peek( message );
@@ -375,13 +401,11 @@ bool Client::processControl( Channel channel ) {
     return true;
 }
 
-// single-thread environment
 void Client::processDisconnected( Channel channel ) {
     std::cerr << "closed connection to " << info( channel ) << std::endl;
     reset();
 }
 
-// single-thread environment
 void Client::processOutput( Channel channel ) {
     InputMessage message;
     channel->receive( message );
@@ -392,6 +416,7 @@ void Client::processOutput( Channel channel ) {
 
     message.process( [&] ( char *data, size_t size ) {
         out.write( data, size );
+        out.flush();
     } );
 
     message.cleanup< char >( []( char *d ) {
@@ -399,7 +424,6 @@ void Client::processOutput( Channel channel ) {
     } );
 }
 
-// single-thread environment
 bool Client::done() {
     ++_done;
     if ( _done >= connections().size() ) {
@@ -409,13 +433,11 @@ bool Client::done() {
     return true;
 }
 
-// single-thread environment
 void Client::error( Channel channel ) {
     std::cerr << info( channel ) << " got itself into error state" << std::endl;
     reset();
 }
 
-// single-thread environment
 void Client::renegade( InputMessage &message, Channel channel ) {
     Address culprit;
 
@@ -430,8 +452,26 @@ void Client::refreshCache() {
     std::vector< Channel > cache;
     cache.reserve( connections().size() );
     for ( Line &line : connections().values() ) {
-        if ( line->controlChannel() )
-            cache.push_back( line->control() );
+        if ( line->masterChannel() )
+            cache.push_back( line->master() );
     }
     _cache.swap( cache );
+}
+
+void Client::discardMessage( Channel channel ) {
+    InputMessage message;
+    channel->receiveHeader( message );
+    // channel->receive( message );
+    // std::cout << "discarded message ("
+    //     << "from: " << message.from() << ", "
+    //     << "to: " << message.to() << ", "
+    //     << "count: " << message.count() << ", "
+    //     << "tag:" << message.tag() << ")" << std::endl;
+    // message.process( []( char *data, size_t s ) {
+    //     std::cout << "@ " << std::hex << std::setfill( '0' );
+    //     for ( int i = 0; i < s; ++i )
+    //         std::cout << std::setw( 2 ) << int( data[ i ] );
+    //     std::cout << std::dec << std::setfill( ' ' ) << std::endl;
+    // } );
+    // message.cleanup< char >( []( char *d ){ delete[] d; } );
 }

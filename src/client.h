@@ -11,24 +11,24 @@
 struct Client : Communicator {
 
     Client( const char *port, int channels = 1 ) :
-        Communicator( port, false ),
-        _channels( channels )
-    {}
+        Communicator( port, false )
+    {
+        this->channels( channels );
+    }
 
     ~Client() {
         quit();
     }
 
-    // the only thread-safe method
     void quit();
     bool shutdown( const std::string & );
     void forceShutdown( const std::string & );
+    std::vector< bool > start( const std::vector< std::string > & );
 
-    bool add( std::string );
+    bool add( std::string, std::string * = nullptr );
     bool removeAll();
 
-    void list();
-    void table();
+    std::string status( const std::string & );
 
     void run( int, char **, const void * = nullptr, size_t = 0);
 
@@ -52,10 +52,11 @@ private:
     void renegade( InputMessage &, Channel );
 
     void refreshCache();
+    static void discardMessage( Channel );
+
 
     int _idCounter = 1;
     int _done = 0;
-    int _channels;
     bool _quit = false;
     bool _established = false;
 
