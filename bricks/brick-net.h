@@ -4,7 +4,6 @@
 #include <iterator>
 #include <string>
 #include <cstring>
-#include <queue>
 #include <chrono>
 #include <tuple>
 #include <future>
@@ -925,7 +924,6 @@ private:
 
     const char *_port;
     Socket _ear;
-    std::queue< Socket > _incoming;
 };
 
 
