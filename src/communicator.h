@@ -13,12 +13,7 @@
 #ifndef COMMUNICATOR_H_
 #define COMMUNICATOR_H_
 
-struct CommunicatorBase {
-
-};
-
-
-struct Communicator : CommunicatorBase {
+struct Communicator {
 protected:
 
     using Network = brick::net::Network;
@@ -47,8 +42,6 @@ public:
         channel->send( message );
         return true;
     }
-
-    void sendAll( OutputMessage &, ChannelID = ChannelType::Master );
 
     bool receive( int id, InputMessage &message, ChannelID chID = ChannelType::Master ) {
         return receive( findChannel( id, chID ), message );
@@ -110,6 +103,9 @@ public:
     }
 
 protected:
+    bool sendAll( OutputMessage &, ChannelID = ChannelType::Master );
+    bool sendAll( OutputMessage &, std::vector< Channel > & );
+
 
     Channel findChannel( int id, ChannelID chID ) {
         Line peer = connections().lockedFind( id );

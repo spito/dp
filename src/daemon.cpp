@@ -667,12 +667,7 @@ void Daemon::reset() {
     OutputMessage message( MessageType::Control );
     message.tag( Code::Error );
 
-    {
-        std::lock_guard< std::mutex > lock( connections().mutex() );
-        for ( Line &peer : connections().values() ) {
-            peer->master()->send( message, true );
-        }
-    }
+    sendAll( message );
     setDefault();
 }
 
@@ -683,12 +678,7 @@ void Daemon::reset( Address address ) {
     message
         << address;
 
-    {
-        std::lock_guard< std::mutex > lock( connections().mutex() );
-        for ( Line &peer : connections().values() ) {
-            peer->master()->send( message, true );
-        }
-    }
+    sendAll( message );
     setDefault();
 }
 

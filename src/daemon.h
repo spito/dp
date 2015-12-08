@@ -61,6 +61,9 @@ public:
     void probe( Ap applicator, ChannelID chId = ChannelType::Master, int timeout = -1 ) {
         Communicator::probe( _cache.at( chId.asIndex() ), applicator, timeout, false );
     }
+    bool sendAll( OutputMessage &message, ChannelID chId = ChannelType::Master ) {
+        return Communicator::sendAll( message, _cache.at( chId.asIndex() ) );
+    }
     void table();
 
 

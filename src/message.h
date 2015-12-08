@@ -88,6 +88,16 @@ private:
     std::string _what;
 };
 
+struct SendAllException : brick::net::NetException {
+    SendAllException() :
+        _what{ "sendAll failed - not all recepients received the message" }
+    {}
+    const char *what() const noexcept override {
+        return _what;
+    }
+private:
+    const char *_what;
+};
 
 struct Address {
 private:

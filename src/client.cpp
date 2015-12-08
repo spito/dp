@@ -141,7 +141,8 @@ bool Client::removeAll() {
     OutputMessage message( MessageType::Control );
     message.tag( Code::Disconnect );
 
-    sendAll( message, ChannelType::Master );
+    if ( !sendAll( message, ChannelType::Master ) )
+        return false;
 
     connections().clear();
     _names.clear();
@@ -327,7 +328,8 @@ bool Client::start( int argc, char **argv, const void *initData, size_t initData
         data.tag( Code::InitialData );
         data.add( initData, initDataLength );
 
-        sendAll( data, ChannelType::Master );
+        if ( !sendAll( data, ChannelType::Master ) )
+            throw SendAllException();
     }
 
     OutputMessage message( MessageType::Control );
