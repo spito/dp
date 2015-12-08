@@ -125,16 +125,32 @@ int mainD( int argc, char **argv ) {
 
     switch ( meta.algorithm ) {
     case Algorithm::LoadDedicated:
-        startWorker< load::Workers, load::Dedicated >( meta.threads, meta.workLoad );
+        startWorker< load::Workers, load::Dedicated >(
+            meta.threads,
+            meta.workLoad,
+            meta.selection
+        );
         break;
     case Algorithm::LoadShared:
-        startWorker< load::Workers, load::Shared >( meta.threads, meta.workLoad );
+        startWorker< load::Workers, load::Shared >(
+            meta.threads,
+            meta.workLoad,
+            meta.selection
+        );
         break;
     case Algorithm::PingDedicated:
-        startWorker< ping::Workers, ping::Dedicated >( meta.threads, meta.workLoad, meta.selection );
+        startWorker< ping::Workers, ping::Dedicated >(
+            meta.threads,
+            meta.workLoad,
+            meta.selection
+        );
         break;
     case Algorithm::PingShared:
-        startWorker< ping::Workers, ping::Shared >( meta.threads, meta.workLoad, meta.selection );
+        startWorker< ping::Workers, ping::Shared >(
+            meta.threads,
+            meta.workLoad,
+            meta.selection
+        );
         break;
     case Algorithm::Table:
         Daemon::instance().table();

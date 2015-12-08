@@ -1,4 +1,5 @@
 #include <future>
+#include <queue>
 #include <brick-hashset.h>
 
 #include "daemon.h"
@@ -43,7 +44,9 @@ struct Hasher {
 using Set = brick::hashset::FastConcurrent< Package, Hasher >;
 
 struct Common {
-    Common() :
+    Common( int workLoad, int selection ) :
+        _workLoad{ workLoad },
+        _selection{ selection },
         _done{ false },
         _processed{ 0u }
     {
@@ -77,7 +80,27 @@ struct Common {
     Set::WithTD withTD( Set::ThreadData &td ) {
         return _set.withTD( td );
     }
+
+    int F() {
+        return F( _selection );
+    }
+
+    int workLoad() const {
+        return _workLoad;
+    }
+
 private:
+
+    int F( int n ) {
+        if ( n == 0 )
+            return 0;
+        if ( n == 1 )
+            return 1;
+        return F( n - 1 ) + F( n - 2 );
+    }
+
+    int _workLoad;
+    int _selection;
     std::mutex _m;
     std::queue< Package > _queue;
     std::atomic< bool > _done;
@@ -89,9 +112,8 @@ private:
 template< typename Self >
 struct BaseWorker {
 
-    BaseWorker( int id, int workLoad, Common &common ) :
+    BaseWorker( int id, Common &common ) :
         _id{ id },
-        _workLoad{ workLoad },
         _common{ common }
     {}
 
@@ -112,7 +134,7 @@ struct BaseWorker {
         return _id;
     }
     int workLoad() const {
-        return _workLoad;
+        return _common.workLoad();
     }
     static void notifyAll() {
         brick::net::OutputMessage msg( MessageType::Data );
@@ -129,13 +151,13 @@ protected:
     void successors( Package p, Yield yield ) {
         if ( p.first < workLoad() ) {
             Package s = p;
-            s.result = F();
+            s.result = _common.F();
             s.first++;
             yield( s );
         }
         if ( p.second < workLoad() ) {
             Package s = p;
-            s.result = F();
+            s.result = _common.F();
             s.second++;
             yield( s );
         }
@@ -145,7 +167,6 @@ protected:
         _common.process();
 
         if ( p.first == workLoad() && p.second == workLoad() ) {
-            // std::cout << "done" << std::endl;
             done();
             return;
         }
@@ -189,16 +210,7 @@ private:
         return *static_cast< Self * >( this );
     }
 
-    static int F( int n = 25 ) {
-        if ( n == 0 )
-            return 0;
-        if ( n == 1 )
-            return 1;
-        return F( n - 1 ) + F( n - 2 );
-    }
-
     int _id;
-    int _workLoad;
     std::future< void > _handle;
     Common &_common;
     Set::ThreadData _td;
@@ -233,12 +245,11 @@ struct Shared : BaseWorker< Shared > {
             );
             auto now = std::chrono::steady_clock::now();
             if ( std::chrono::duration< double >( now - timePoint ).count() >= 10.0 ) {
-                // std::cout << Daemon::instance().id() << ": " << common.processed()
-                //     << std::endl;
                 timePoint = now;
             }
         }
     }
+
     static void processDispatch( Common &common, Channel channel ) {
         static Set::ThreadData td;
         brick::net::InputMessage incoming;
@@ -270,17 +281,12 @@ struct Dedicated : BaseWorker< Dedicated > {
                     process( p, id() );
                 } );
             }
-            // bool taken = true;
-            // for ( int i = 0; i < 10 && taken; ++i ) {
-            //     taken = false;
-                Daemon::instance().probe( [&,this]( Channel channel ) {
-                        // taken = true;
-                        receive( channel );
-                    },
-                    id(),
-                    0
-                );
-            // }
+            Daemon::instance().probe( [&,this]( Channel channel ) {
+                    receive( channel );
+                },
+                id(),
+                0
+            );
         }
     }
 
@@ -290,12 +296,6 @@ struct Dedicated : BaseWorker< Dedicated > {
         incoming >> p;
         channel->receive( incoming );
         expand( p, id() );
-        // if ( !withTD().insert( p ).isnew() )
-        //     return;
-        // std::cout << "[" << p.first << ";" << p.second << "]"<< std::endl;
-        // successors( p, [this]( Package p ) {
-        //     process( p, id() );
-        // } );
     }
 
     static void dispatcher ( Common &common ) {
@@ -309,7 +309,6 @@ struct Dedicated : BaseWorker< Dedicated > {
             );
             auto now = std::chrono::steady_clock::now();
             if ( std::chrono::duration< double >( now - timePoint ).count() >= 10.0 ) {
-                // std::cout << Daemon::instance().id() << ": " << common.processed() << std::endl;
                 timePoint = now;
             }
         }
@@ -320,18 +319,16 @@ struct Dedicated : BaseWorker< Dedicated > {
         if ( incoming.tag< Tag >() == Tag::Done )
             common.done();
     }
-
-
 };
-
-
 
 template< typename W >
 struct Workers {
-    Workers( int workers, int workLoad ) {
+    Workers( int workers, int workLoad, int selection ) :
+        _common{ workLoad, selection }
+    {
         _workers.reserve( workers );
         for ( int i = 0; i < workers; ++i ) {
-            _workers.emplace_back( i, workLoad, _common );
+            _workers.emplace_back( i, _common );
         }
     }
 
