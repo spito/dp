@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <chrono>
+#include <algorithm>
 
 #include "daemon.h"
 
@@ -13,6 +14,7 @@ Daemon::Daemon( const char *port, int (*main)( int, char ** ), std::string logFi
     _state( State::Free ),
     _childPid( NoChild ),
     _quit( false ),
+    _runMain( false ),
     _main( main )
 {
     Logger::file( std::move( logFile ) );
@@ -66,40 +68,10 @@ void Daemon::run() {
     if ( !daemonize() )
          return;
 
-    while ( !_quit ) {
-        std::vector< Channel > channels;
-        if ( _childPid != NoChild )
-            channels.push_back( _rope );
-
-        {
-            std::lock_guard< std::mutex > _( connections().mutex() );
-            channels.reserve( channels.size() + connections().size() );
-
-            for ( Line &line : connections().values() ) {
-                if ( line->masterChannel() )
-                    channels.push_back( line->master() );
-            }
-        }
-
-        try {
-            Communicator::probe(
-                channels,
-                [this]( Channel channel ) {
-                    this->consumeMessage( channel );
-                },
-                -1,
-                true
-             );
-        } catch ( brick::net::NetException &e ) {
-            Logger::log( std::string( "got a network exception: " ) + e.what() );
-            reset();
-        } catch ( std::exception &e ) {
-            Logger::log( std::string( "got an exception: " ) + e.what() );
-            reset();
-        } catch ( ... ) {
-            Logger::log( "got an unhandled exception" );
-            reset();
-        }
+    loop();
+    if ( _runMain ) {
+        runMain();
+        exit();
     }
 }
 
@@ -142,6 +114,65 @@ bool Daemon::daemonize() {
     }
 
     return true;
+}
+
+void Daemon::loop() {
+    while ( !_quit && !_runMain ) {
+        std::vector< Channel > channels;
+        if ( _childPid != NoChild )
+            channels.push_back( _rope );
+
+        {
+            std::lock_guard< std::mutex > _( connections().mutex() );
+            channels.reserve( channels.size() + connections().size() );
+
+            for ( Line &line : connections().values() ) {
+                if ( line->masterChannel() )
+                    channels.push_back( line->master() );
+            }
+        }
+
+        try {
+            Communicator::probe(
+                channels,
+                [this]( Channel channel ) {
+                    this->consumeMessage( channel );
+                },
+                -1,
+                true
+             );
+        } catch ( brick::net::NetException &e ) {
+            Logger::log( std::string( "got a network exception: " ) + e.what() );
+            reset();
+        } catch ( std::exception &e ) {
+            Logger::log( std::string( "got an exception: " ) + e.what() );
+            reset();
+        } catch ( ... ) {
+            Logger::log( "got an unhandled exception" );
+            reset();
+        }
+    }
+}
+
+void Daemon::runMain() {
+    std::vector< char * > args( _arguments.size() );
+    std::transform(
+        _arguments.begin(),
+        _arguments.end(),
+        args.begin(),
+        [] ( const std::unique_ptr< char[] > &ptr ) {
+            return ptr.get();
+        }
+    );
+
+    brick::net::Redirector stdOutput( STDOUT_FILENO, [this] ( char *s, size_t length ) {
+        this->redirectOutput( s, length, Output::Standard );
+    } );
+    brick::net::Redirector stdError( STDERR_FILENO, [this] ( char *s, size_t length ) {
+        this->redirectOutput( s, length, Output::Error );
+    } );
+
+    _main( args.size(), &args.front() );
 }
 
 bool Daemon::processControl( Channel channel ) {
@@ -212,7 +243,7 @@ bool Daemon::processControl( Channel channel ) {
         initData( message, std::move( channel ) );
         break;
     case Code::Run:
-        runMain( message, std::move( channel ) );
+        run( message, std::move( channel ) );
         break;
     default:
         cleanup();
@@ -600,11 +631,8 @@ void Daemon::initData( InputMessage &message, Channel channel ) {
     } );
 }
 
-void Daemon::runMain( InputMessage &message, Channel channel ) {
+void Daemon::run( InputMessage &message, Channel channel ) {
     NOTE();
-
-    std::vector< char * > arguments;
-    std::vector< std::unique_ptr< char[] > > argumentStorage;
 
     {
         OutputMessage response( MessageType::Control );
@@ -620,8 +648,7 @@ void Daemon::runMain( InputMessage &message, Channel channel ) {
 
         channel->receive( message, [&,this] ( size_t length ) {
             char *arg = new char[ length + 1 ]();
-            argumentStorage.emplace_back( arg );
-            arguments.emplace_back( arg );
+            _arguments.emplace_back( arg );
             return arg;
         } );
         message.clear();
@@ -632,18 +659,7 @@ void Daemon::runMain( InputMessage &message, Channel channel ) {
             throw ResponseException( { Code::Start }, message.tag< Code >() );
         }
     }
-    {
-        brick::net::Redirector stdOutput( STDOUT_FILENO, [this] ( char *s, size_t length ) {
-            this->redirectOutput( s, length, Output::Standard );
-        } );
-        brick::net::Redirector stdError( STDERR_FILENO, [this] ( char *s, size_t length ) {
-            this->redirectOutput( s, length, Output::Error );
-        } );
-
-        _main( arguments.size(), &arguments.front() );
-
-    }
-    exit();
+    _runMain = true;
 }
 
 void Daemon::reset() {

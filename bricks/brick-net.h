@@ -5,11 +5,9 @@
 #include <string>
 #include <cstring>
 #include <queue>
-#include <mutex>
-#include <thread>
-#include <future>
 #include <chrono>
 #include <tuple>
+#include <future>
 #include <algorithm>
 #include <type_traits>
 #include <numeric>
@@ -105,6 +103,10 @@ private:
 
 struct WouldBlock : NetException {
     const char *what() const noexcept override { return "would block"; }
+};
+
+struct BadMutex : NetException {
+    const char *what() const noexcept override { return "bad mutex"; }
 };
 
 template< typename It >
@@ -454,34 +456,6 @@ struct InputMessage : Message {
     }
 };
 
-struct Lock {
-    Lock( std::mutex &m ) :
-        _m{ &m }
-    {
-        _m->lock();
-    }
-    Lock( std::mutex &m, std::adopt_lock_t ) :
-        _m{ &m }
-    {}
-    Lock( const Lock & ) = delete;
-    Lock( Lock &&other ) :
-        _m{ other._m }
-    {
-        other._m = nullptr;
-    }
-
-    Lock &operator=( Lock other ) {
-        std::swap( _m, other._m );
-    }
-
-    ~Lock() {
-        if ( _m )
-            _m->unlock();
-    }
-private:
-    std::mutex *_m;
-};
-
 enum class Access : bool {
     Read,
     Write
@@ -517,65 +491,25 @@ struct Socket : common::Comparable, common::Orderable {
         return *this;
     }
 
-    Lock accessLock() const {
-        return { _mAccess };
-    }
-    Lock adoptAccessLock() const {
-        return { _mAccess, std::adopt_lock };
-    }
-    Lock readLock() const {
-        return { _mRead };
-    }
-    Lock adoptReadLock() const {
-        return Lock{ _mRead, std::adopt_lock };
-    }
-    Lock writeLock() const {
-        return { _mWrite };
-    }
-    Lock adoptWriteLock() const {
-        return { _mWrite, std::adopt_lock };
-    }
-
     void swap( Socket &other ) {
         using std::swap;
-
-        std::lock( _mAccess, _mRead, _mWrite, other._mAccess, other._mRead, other._mWrite );
-        auto _ = std::make_tuple(
-            adoptAccessLock(), other.adoptAccessLock(),
-            adoptReadLock(), other.adoptReadLock(),
-            adoptWriteLock(), other.adoptWriteLock()
-        );
 
         swap( _fd, other._fd );
     }
 
     int fd() const {
-        auto _ = accessLock();
         return _fd;
     }
 
     friend bool operator==( const Socket &lhs, const Socket &rhs ) {
-        std::lock( lhs._mAccess, rhs._mAccess );
-        auto _ = std::make_tuple(
-            lhs.adoptAccessLock(),
-            rhs.adoptAccessLock()
-        );
-
         return lhs._fd == rhs._fd;
     }
 
     friend bool operator<( const Socket &lhs, const Socket &rhs ) {
-        std::lock( lhs._mAccess, rhs._mAccess );
-        auto _ = std::make_tuple(
-            lhs.adoptAccessLock(),
-            rhs.adoptAccessLock()
-        );
-
         return lhs._fd < rhs._fd;
     }
 
     bool valid() const {
-        auto _ = accessLock();
         return _fd != Invalid;
     }
 
@@ -584,22 +518,13 @@ struct Socket : common::Comparable, common::Orderable {
     }
 
     bool closed() const {
-        auto _ = readLock();
         if ( _fd == Invalid )
             return true;
         char buf;
-        ssize_t r = ::recv( _fd, &buf, 1, MSG_PEEK );
-        return r != 1;
+        return 1 != ::recv( _fd, &buf, 1, MSG_PEEK );
     }
 
     void close() {
-        std::lock( _mAccess, _mRead, _mWrite );
-        auto _ = std::make_tuple(
-            adoptAccessLock(),
-            adoptReadLock(),
-            adoptWriteLock()
-        );
-
         if ( _fd != Invalid ) {
             ::close( _fd );
             _fd = Invalid;
@@ -607,31 +532,17 @@ struct Socket : common::Comparable, common::Orderable {
     }
 
     void shutdown( Shutdown how = Shutdown::Both ) {
-        std::lock( _mRead, _mWrite );
-        auto _ = std::make_tuple(
-            adoptReadLock(),
-            adoptWriteLock()
-        );
-
         if ( _fd != Invalid )
             ::shutdown( _fd, int( how ) );
     }
 
     void reset( int fd ) {
-        std::lock( _mAccess, _mRead, _mWrite );
-        auto _ = std::make_tuple(
-            adoptAccessLock(),
-            adoptReadLock(),
-            adoptWriteLock()
-        );
-
         if ( _fd != Invalid )
             ::close( _fd );
         _fd = fd;
     }
 
     void peek( InputMessage &message ) const {
-        auto _ = readLock();
         recv( &message.header(), message.header().size(), true );
     }
 
@@ -650,8 +561,6 @@ struct Socket : common::Comparable, common::Orderable {
     void receive( InputMessage &message, A allocator ) const {
         struct msghdr header;
         std::memset( &header, 0, sizeof( header ) );
-
-        auto _ = readLock();
 
         recv( &message.header(), message.header().head(), true ); // peek
         recv( &message.header(), message.header().size() );
@@ -680,7 +589,6 @@ struct Socket : common::Comparable, common::Orderable {
         header.msg_iov = message.vector();
         header.msg_iovlen = message.count() + 1;
 
-        auto _ = writeLock();
         size_t sent = sendmsg( header, noThrow );
 
         if ( !noThrow && message.bytes() != sent )
@@ -692,8 +600,6 @@ struct Socket : common::Comparable, common::Orderable {
     }
 
     ssize_t peek( void *buffer, size_t length ) const {
-        auto _ = readLock();
-
         ssize_t r = ::recv( _fd, buffer, length, MSG_PEEK | MSG_WAITALL );
         if ( r >= 0 )
             return r;
@@ -702,16 +608,13 @@ struct Socket : common::Comparable, common::Orderable {
     }
 
     size_t read( void *buffer, size_t length ) const {
-        auto _ = readLock();
         return recv( buffer, length );
     }
 
     size_t write( const void *buffer, size_t length ) const {
-        auto _ = writeLock();
         return send( buffer, length );
     }
 
-    // not thread safe
     void setNonblocking() {
         int flags;
         if ( ( flags = ::fcntl( _fd, F_GETFL ) ) < 0 )
@@ -721,7 +624,6 @@ struct Socket : common::Comparable, common::Orderable {
             throw SystemException( "fcntl" );
     }
 
-    // not thread safe
     void setBlocking() {
         int flags;
         if ( ( flags = ::fcntl( _fd, F_GETFL ) ) < 0 )
@@ -731,7 +633,6 @@ struct Socket : common::Comparable, common::Orderable {
             throw SystemException( "fcntl" );
     }
 
-    // not thread safe
     void setTimeout( int timeout ) {
         timeval time;
         time.tv_sec = timeout / 1000;
@@ -802,78 +703,11 @@ private:
     }
 
     int _fd;
-    mutable std::mutex _mAccess;
-    mutable std::mutex _mRead;
-    mutable std::mutex _mWrite;
 };
 
 inline void swap( Socket &lhs, Socket &rhs ) {
     lhs.swap( rhs );
 }
-
-template< typename SocketPtr >
-struct PollList {
-
-    //PollList( size_t size ) :
-
-private:
-    struct Item {
-
-        Item( SocketPtr ptr ) :
-            _ptr{ ptr },
-            _lock{ _ptr->readLock() }
-        {}
-        Item( const Item & ) = delete;
-        Item( Item && ) = default;
-
-        int fd() const {
-            return _ptr->fd();
-        }
-
-
-
-    private:
-        SocketPtr _ptr;
-        Lock _lock;
-    };
-
-    std::vector< Item > _sockets;
-};
-
-template< typename SocketPtr >
-struct Resolution {
-
-    enum _R {
-        Timeout,
-        Incoming,
-        Ready
-    };
-
-    Resolution() :
-        _r{ Timeout },
-        _sockets{}
-    {}
-    Resolution( _R r, std::vector< SocketPtr > s = std::vector< SocketPtr >() ) :
-        _r{ r },
-        _sockets{ std::move( s ) }
-    {}
-    Resolution( const Resolution & ) = default;
-    Resolution &operator=( const Resolution & ) = default;
-
-    _R resolution() const {
-        return _r;
-    }
-    std::vector< SocketPtr  > &sockets() {
-        return _sockets;
-    }
-    const std::vector< SocketPtr  > &sockets() const {
-        return _sockets;
-    }
-
-private:
-    _R _r;
-    std::vector< SocketPtr > _sockets;
-};
 
 struct Network {
     Network( const char *port, bool autobind = true ) :
@@ -883,12 +717,18 @@ struct Network {
             bind();
     }
 
-    template< typename SocketPtr >
-    Resolution< SocketPtr > poll( const std::vector< SocketPtr > &toWait, bool useEar, int timeout ) {
+
+    template<
+        typename S, // SocketPtr
+        typename I, // Incoming
+        typename P  // Process
+    >
+    int poll( const std::vector< S > &toWait, I incoming, P process, bool listen, int timeout ) {
         std::vector< PollFD > fds;
+
         fds.reserve( toWait.size() + 1 );
 
-        if ( useEar && _ear )
+        if ( listen && _ear )
             fds.emplace_back( _ear.fd(), POLLIN );
 
         for ( const auto &s : toWait )
@@ -899,50 +739,27 @@ struct Network {
         if ( r == -1 )
             throw SystemException( "poll" );
         if ( r == 0 )
-            return { Resolution< SocketPtr >::Timeout, {} };
+            return r;
 
-        std::vector< SocketPtr > ready;
-
-        if ( useEar && _ear && fds.front().revents ) {
-            _incoming.emplace( ::accept( _ear.fd(), nullptr, nullptr ) );
-            return { Resolution< SocketPtr >::Incoming, std::move( ready ) };
+        if ( listen && _ear && fds.front().revents ) {
+            Socket newSocket{ ::accept( _ear.fd(), nullptr, nullptr ) };
+            newSocket.setTimeout( settings::timeout );
+            incoming( std::move( newSocket ) );
         }
 
-        ready.reserve( toWait.size() );
         auto selected = fds.begin();
-        if ( useEar && _ear )
+        if ( listen && _ear )
             ++selected;
 
-        for ( const auto &source : toWait ) {
-            if ( selected->revents )
-                ready.push_back( source );
+        for ( const auto &s : toWait ) {
+            if ( selected->revents ) {
+                if ( !process( s ) )
+                    break;
+            }
             ++selected;
         }
-        return { Resolution< SocketPtr >::Ready, std::move( ready ) };
+        return r;
     }
-
-    template< typename Iterator >
-    Resolution< typename Iterator::value_type > poll( Iterator first, Iterator last, int timeout ) {
-        std::vector< typename Iterator::value_type > fds;
-        fds.reserve( std::distance( first, last ) );
-
-        std::copy( first, last, std::back_inserter( fds ) );
-
-        return poll( fds, timeout );
-    }
-
-    template< typename Iterator, typename L >
-    auto poll( Iterator first, Iterator last, L lambda, int timeout )
-        -> Resolution< typename std::result_of< L( typename Iterator::value_type ) >::type >
-    {
-        std::vector< typename std::result_of< L( typename Iterator::value_type ) >::type > fds;
-        fds.reserve( std::distance( first, last ) );
-
-        std::transform( first, last, std::back_inserter( fds ), lambda );
-
-        return poll( fds, timeout );
-    }
-
 
     Socket connect( const char *host, bool noThrow = false ) {
         int s;
@@ -1048,18 +865,6 @@ struct Network {
         return buf;
     }
 
-    Socket incoming( bool nonblocking = false ) {
-        if ( _incoming.empty() )
-            throw std::runtime_error( "no incoming connections" );
-        Socket r{ std::move( _incoming.front() ) };
-        if ( nonblocking )
-            r.setNonblocking();
-        else
-            r.setTimeout( settings::timeout );
-        _incoming.pop();
-        return r;
-    }
-
     const char *port() const {
         return _port;
     }
@@ -1122,6 +927,7 @@ private:
     Socket _ear;
     std::queue< Socket > _incoming;
 };
+
 
 struct Redirect {
     using FD = int;

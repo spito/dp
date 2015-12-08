@@ -14,11 +14,12 @@ struct Socket : brick::net::Socket {
     using Base = brick::net::Socket;
 
     Socket( int id, Base &&base ) :
-        Base( std::move( base ) ),
-        _id( id )
+        Base{ std::move( base ) },
+        _id{ id }
     {}
     Socket( Base &&base ) noexcept :
-        Base( std::move( base ) )
+        Base{ std::move( base ) },
+        _id{ 0 }
     {}
 
     int id() const {
@@ -29,8 +30,17 @@ struct Socket : brick::net::Socket {
         _id = i;
     }
 
+    std::mutex &readMutex() {
+        return _mRead;
+    }
+    std::mutex &writeMutex() {
+        return _mWrite;
+    }
+
 private:
     int _id;
+    std::mutex _mRead;
+    std::mutex _mWrite;
 };
 
 using Channel = std::shared_ptr< Socket >;

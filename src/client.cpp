@@ -224,7 +224,7 @@ bool Client::dissolve() {
         if ( response.tag< Code >() == Code::OK )
             continue;
         if ( response.tag< Code >() == Code::Refuse ) {
-            std::cout << "! slave " << info( slave ) << " refused to prepare" << std::endl;
+            std::cout << "! slave " << info( slave ) << " refused to prepare to leave" << std::endl;
             break;
         }
         throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );

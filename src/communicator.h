@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include <brick-net.h>
+#include <brick-types.h>
 #include <brick-unittest.h>
 
 #include "connections.h"
@@ -12,13 +13,17 @@
 #ifndef COMMUNICATOR_H_
 #define COMMUNICATOR_H_
 
-struct Communicator {
+struct CommunicatorBase {
+
+};
+
+
+struct Communicator : CommunicatorBase {
 protected:
 
     using Network = brick::net::Network;
     using OutputMessage = brick::net::OutputMessage;
     using InputMessage = brick::net::InputMessage;
-    using Resolution = brick::net::Resolution< Channel >;
 
     enum { ALL = 255 };
 public:
@@ -38,6 +43,7 @@ public:
             return false;
         message.from( _id );
         message.to( channel->id() );
+        std::lock_guard< std::mutex > _{ channel->writeMutex() };
         channel->send( message );
         return true;
     }
@@ -50,6 +56,7 @@ public:
     bool receive( Channel channel, InputMessage &message ) {
         if ( !channel )
             return false;
+        std::lock_guard< std::mutex > _{ channel->readMutex() };
         channel->receive( message );
         return true;
     }
@@ -63,11 +70,13 @@ public:
         InputMessage message;
         std::vector< typename std::result_of< Al( size_t ) >::type > handles;
 
-        channel->receive( message, [&] ( size_t size ) -> char * {
-            handles.emplace_back( allocator( size ) );
-            return convertor( handles.back() );
-        } );
-
+        {
+            std::lock_guard< std::mutex > _{ channel->readMutex() };
+            channel->receive( message, [&] ( size_t size ) -> char * {
+                handles.emplace_back( allocator( size ) );
+                return convertor( handles.back() );
+            } );
+        }
         for ( auto &h : handles )
             applicator( h );
 
@@ -103,7 +112,7 @@ public:
 protected:
 
     Channel findChannel( int id, ChannelID chID ) {
-        Line peer = connections().find( id );
+        Line peer = connections().lockedFind( id );
         Channel channel;
         if ( !peer )
             return channel;
@@ -144,7 +153,7 @@ protected:
     }
 
     Channel connect( const Address &address, bool noThrow = false ) {
-        Socket s = _net.connect( address.value(), noThrow );
+        auto s = _net.connect( address.value(), noThrow );
         if ( s )
             return std::make_shared< Socket >( std::move( s ) );
         return Channel{};
@@ -167,50 +176,63 @@ protected:
 
     template< typename Ap >
     void probe( std::vector< Channel > &channels, Ap applicator, int timeout, bool listen ) {
-        do {
-            Resolution r = _net.poll( channels, listen, timeout );
 
-            if ( r.resolution() == Resolution::Timeout )
-                return;
+        brick::types::Defer d( [&] {
+            for ( auto &channel : channels )
+                channel->readMutex().unlock();
+        } );
 
-            if ( listen && r.resolution() == Resolution::Incoming ) {
-                processIncoming( std::make_shared< Socket >( _net.incoming() ) );
-                continue;
-            }
+        for ( auto &channel : channels )
+            channel->readMutex().lock();
 
-            for ( Channel &channel : r.sockets() ) {
-                if ( channel->closed() ) {
-                    processDisconnected( std::move( channel ) );
-                    continue;
-                }
-                InputMessage message;
-                channel->peek( message );
-
-                bool performBreak = false;
-                switch ( message.category< MessageType >() ) {
-                case MessageType::Data:
-                    if ( !takeBool( applicator, std::move( channel ) ) )
-                        performBreak = true;
-                    break;
-                case MessageType::Control:
-                    if ( !processControl( std::move( channel ) ) )
-                        performBreak = true;
-                    break;
-                case MessageType::Output:
-                    processOutput( std::move( channel ) );
-                    break;
-                default:
-                    channel->receiveHeader( message );
-                    break;
-                }
-                if ( performBreak )
-                    break;
-            }
-        } while ( false );
+        _net.poll(
+            channels,
+            [this] ( brick::net::Socket s ) {
+                processIncoming( std::make_shared< Socket >( std::move( s ) ) );
+            },
+            [&,this] ( Channel channel ) {
+                return process( channel, applicator );
+            },
+            timeout,
+            listen
+        );
     }
 
 private:
 
+    template< typename Ap >
+    bool process( Channel channel, Ap applicator ) {
+        if ( channel->closed() ) {
+            processDisconnected( std::move( channel ) );
+            return true;
+        }
+        InputMessage message;
+        channel->peek( message );
+
+        switch ( message.category< MessageType >() ) {
+        case MessageType::Data:
+            if ( !takeBool( applicator, std::move( channel ) ) )
+                return false;
+            break;
+        case MessageType::Control:
+            if ( !processControl( std::move( channel ) ) )
+                return false;
+            break;
+        case MessageType::Output:
+            processOutput( std::move( channel ) );
+            break;
+        default:
+            channel->receiveHeader( message );
+            break;
+        }
+        return true;
+    }
+
+    virtual void processIncoming( Channel channel ) {
+        Logger::log( "unacceptable incoming connection from " + info( channel ) );
+        channel->close();
+        throw NetworkException{ "unexpected incoming connection" };
+    }
     virtual bool processControl( Channel ) = 0;
     virtual void processOutput( Channel channel ) {
         InputMessage message;
@@ -218,11 +240,6 @@ private:
     }
     virtual void processDisconnected( Channel channel ) {
         connections().lockedErase( channel->id() );
-    }
-    virtual void processIncoming( Channel channel ) {
-        Logger::log( "unacceptable incoming connection from " + info( channel ) );
-        channel->close();
-        throw NetworkException{ "unexpected incoming connection" };
     }
 
     template< typename Ap >

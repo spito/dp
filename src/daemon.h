@@ -46,6 +46,7 @@ public:
 
     void run();
 
+    // cannot be called during probe
     [[noreturn]]
     void exit( int = 0 );
 
@@ -65,6 +66,8 @@ public:
 
 private:
     bool daemonize();
+    void loop();
+    void runMain();
 
     bool processControl( Channel ) override;
     void processDisconnected( Channel ) override;
@@ -87,8 +90,7 @@ private:
     void renegade( InputMessage &, Channel );
     void status( Channel );
     void initData( InputMessage &, Channel );
-    void runMain( InputMessage &, Channel );
-
+    void run( InputMessage &, Channel );
 
     void reset();
     void reset( Address );
@@ -107,8 +109,10 @@ private:
     Channel _rope;
     int _childPid;
     bool _quit;
+    bool _runMain;
     int ( *_main )( int, char ** );
     std::unique_ptr< char[] > _initData;
+    std::vector< std::unique_ptr< char[] > > _arguments;
     size_t _initDataLength = 0;
 
     static std::unique_ptr< Daemon > _self;
