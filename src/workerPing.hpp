@@ -9,6 +9,7 @@
 #include <brick-shmem.h>
 
 #include "daemon.h"
+#include "worker.hpp"
 
 namespace ping {
 
@@ -60,29 +61,15 @@ private:
     long long _elapsed;
 };
 
-enum class DataType {
-    Request,
-    Response,
-    Done
-};
-
 template< typename Self >
-struct Worker {
-    Worker( int id, int workLoad, int selecting ) :
-        _id{ id },
-        _workLoad{ workLoad },
-        _selecting{ selecting },
+struct Worker : BaseWorker {
+
+    Worker( int id, Common &common ) :
+        BaseWorker{ id, common },
         _generator{ std::random_device{}() },
-        _distribution{ 1, Daemon::instance().worldSize() - 1 },
+        _distribution{ 1, common.worldSize() - 1 },
         _seed( std::random_device{}() )
     {}
-
-    int id() const {
-        return _id;
-    }
-    int workLoad() const {
-        return _workLoad;
-    }
 
     void start() {
         _handle = std::async( std::launch::async, [this] {
@@ -96,61 +83,92 @@ struct Worker {
     void wait() {
         _handle.get();
     }
+
+    static void notifyAll( Common &common ) {
+        common.progress();
+        brick::net::OutputMessage msg( MessageType::Data );
+        msg.tag( Tag::Done );
+
+        Daemon::instance().sendAll( msg );
+    }
+
+    static bool isMaster( Common &common ) {
+        return common.rank() == Daemon::MainSlave;
+    }
+
+    static void dispatcher( Common &common, std::vector< Self > &workers ) {
+        while ( common.processed() < common.worldSize() ) {
+            Daemon::instance().probe( [&]( Channel channel ) {
+                    Self::processDispatch( common, workers, channel );
+                },
+                ChannelType::Master,
+                10000
+            );
+        }
+    }
+    static int rank() {
+        return Daemon::instance().id();
+    }
+    static int worldSize() {
+        return Daemon::instance().worldSize();
+    }
 protected:
-    inline int recepient( int i ) {
-        auto _{ _tm.section() };
-        if ( _selecting == 1 ) {
-            return Daemon::instance().id() % Daemon::instance().worldSize() + 1;
-        }
-        if ( _selecting == 2 ) {
-            i %= Daemon::instance().worldSize() - 1;
-            ++i;
-            if ( i >= Daemon::instance().id() )
-                ++i;
-            return i;
+    inline int owner( Package p ) {
+        int o;
+        switch ( common().selection() ) {
+        default:
+        case 1:
+            o = p.hash() % ( common().worldSize() - 1 ) + 1;
+        case 2:
+            return common().rank() % common().worldSize() + 1;
+        case 3:
+            o = _distribution( _generator );
+            break;
+        case 4:
+            o = _generator() % ( common().worldSize() - 1 ) + 1;
+            break;
+        case 5:
+            o = ::rand_r( &_seed ) % ( common().worldSize() - 1 ) + 1;
+            break;
         }
 
-        int number;
-        if ( _selecting == 4 )
-            number = _generator() % ( Daemon::instance().worldSize() - 1 ) + 1;
-        else if ( _selecting == 5 )
-            number = ::rand_r( &_seed ) % ( Daemon::instance().worldSize() - 1 ) + 1;
-        else
-            number = _distribution( _generator );
-
-        if ( number >= Daemon::instance().id() )
-            ++number;
-        return number;
+        if ( o >= common().rank() )
+            ++o;
+        return o;
     }
 
-    void done( int i ) {
-//        if ( workLoad() >= 10 && (i + 1) % ( workLoad() / 10 ) == 0 )
-//            std::cout << "|" << std::flush;
-        if ( i + 1 == workLoad() )
-            std::cout << "[" << _tm.elapsed() << "]" << std::endl;
+    bool quit() const {
+        return processed() == common().worldSize();
     }
+
+    static void request( int from, Package p ) {
+        brick::net::OutputMessage o( MessageType::Data );
+        o.tag( Tag::Response );
+
+        p.first *= -1;
+
+        o << p;
+        Daemon::instance().sendTo( from, o, Self::channel( p.second ) );
+    }
+
 private:
 
     Self &self() {
         return *static_cast< Self * >( this );
     }
 
-    int _id;
-    int _workLoad;
-    int _selecting;
     std::ranlux24 _generator;
     std::uniform_int_distribution<> _distribution;
     unsigned _seed;
     std::future< void > _handle;
-    CumulativeTimer _tm;
 };
 
 
-struct Package {
+struct Box {
 
-    Package() = default;
-    Package( const Package & ) = delete;
-    Package( Package && ) = delete;
+    Box() = default;
+    Box( const Box & ) = delete;
+    Box( Box && ) = delete;
 
     void signal( int value ) {
         std::lock_guard< std::mutex > _{ _mutex };
@@ -178,16 +196,16 @@ private:
 
 struct Shared : Worker< Shared > {
 
-    Shared( int id, int workLoad, int selecting ) :
-        Worker< Shared >{ id, workLoad, selecting },
-        _package{ new Package }
+    Shared( int id, Common &common ) :
+        Worker< Shared >{ id, common },
+        _box{ new Box }
     {}
 
     Shared( const Shared & ) = delete;
     Shared( Shared && ) = default;
 
     void push( int v ) {
-        _package->signal( v );
+        _box->signal( v );
     }
 
     static ChannelID channel( int ) {
@@ -195,163 +213,101 @@ struct Shared : Worker< Shared > {
     }
 
     void main() {
-        for ( int i = 0; i < workLoad(); ++i ) {
+        for ( int i = 0; i < common().workLoad(); ++i ) {
             brick::net::OutputMessage msg( MessageType::Data );
-            int data = i + 13;
-            msg.tag( DataType::Request );
-            msg << id() << data;
-            int target = recepient( data );
+            Package p;
+            p.first = i + 13;
+            p.second = id();
 
-            // std::ostringstream out;
-            // out << Daemon::instance().id() << "."
-            //     << id() <<" --[" << data << "]--> "
-            //     << target << std::endl;
-            // std::cout << out.str() << std::flush;
-
+            msg.tag( Tag::Request );
+            msg << p;
+            int target = owner( p );
 
             if ( !Daemon::instance().sendTo( target, msg ) )
-                std::cout << "fail" << std::endl;
+                std::cout << target << "fail" << std::endl;
             else {
-                int response = _package->wait();
+                int response = _box->wait();
 
-                if ( response != -data )
-                    std::cout << response << " != " << -data << std::endl;
+                if ( response != -p.first )
+                    std::cout << response << " != " << -p.first << std::endl;
             }
-            done( i );
+        }
+    }
+
+    static void processDispatch( Common &common, std::vector< Shared > &workers, Channel channel ) {
+        Package p;
+        brick::net::InputMessage incoming;
+        incoming >> p;
+        channel->receive( incoming );
+
+        switch ( incoming.tag< Tag >() ) {
+        case Tag::Request:
+            request( incoming.from(), p );
+            break;
+        case Tag::Response:
+            workers[ p.second ].push( p.first );
+            break;
+        case Tag::Done:
+            common.progress();
+            break;
+        default:
+            break;
         }
     }
 private:
-    std::unique_ptr< Package > _package;
+    std::unique_ptr< Box > _box;
 };
 
 struct Dedicated : Worker< Dedicated > {
-    Dedicated( int id, int workLoad, int selecting ) :
-        Worker< Dedicated >{ id, workLoad, selecting }
+    Dedicated( int id, Common &common ) :
+        Worker{ id, common }
     {}
 
-    void push( int ) {
-        std::cout << "error" << std::endl;
-    }
     static ChannelID channel( int ch ) {
         return ch;
     }
 
     void main() {
-        for ( int i = 0; i < workLoad(); ++i ) {
+        for ( int i = 0; i < common().workLoad(); ++i ) {
             brick::net::OutputMessage msg( MessageType::Data );
-            int data = i + 13;
-            msg.tag( DataType::Request );
-            msg << id() << data;
+            Package p;
+            p.first = i + 13;
+            p.second = id();
 
-            int target = recepient( data );
+            msg.tag( Tag::Request );
+            msg << p;
+
+            int target = owner( p );
             Daemon::instance().sendTo( target, msg );
 
             brick::net::InputMessage input;
-            int response;
-            int ignore;
 
-            input >> ignore >> response;
+            Package incoming;
+            input >> incoming;
             Daemon::instance().receive( target, input, channel( id() ) );
 
-            if ( response != -data )
-                std::cout << response << " != " << -data << std::endl;
+            if ( incoming.first != -p.first )
+                std::cout << incoming.first << " != " << -p.first << std::endl;
 
-            done( i );
         }
     }
-
-};
-
-template< typename W >
-struct Workers {
-
-    Workers( int workers, int workLoad, int selecting ) :
-        _done( 0 )
-    {
-        _workers.reserve( workers );
-        for ( int i = 0; i < workers; ++i ) {
-            _workers.emplace_back( i, workLoad, selecting );
-        }
-
-    }
-
-    void run() {
-        for ( auto &w : _workers )
-            w.start();
-
-        std::future< void > d = std::async( std::launch::async, [this] {
-            this->dispatcher();
-        } );
-
-        for ( auto &w : _workers )
-            w.wait();
-
-        ++_done;
-        brick::net::OutputMessage msg( MessageType::Data );
-        msg.tag( DataType::Done );
-
-        Daemon::instance().sendAll( msg );
-        d.get();
-    }
-
-private:
-
-    void dispatcher() {
-        _done = 0;
-        int events = 0;
-        while ( _done < Daemon::instance().worldSize() ) {
-            Daemon::instance().probe( [&,this]( Channel channel ) {
-                    ++events;
-                    this->process( channel );
-                },
-                ChannelType::Master,
-                100
-            );
-        }
-        // std::ostringstream out;
-        // out << Daemon::instance().id() << ".dispatcher events: " << events << std::endl;
-        // std::cout << out.str() << std::flush;
-    }
-
-    void process( Channel channel ) {
-        int value;
-        int workerId;
+    static void processDispatch( Common &common, std::vector< Dedicated > &, Channel channel ) {
+        Package p;
         brick::net::InputMessage incoming;
-        incoming >> workerId >> value;
+        incoming >> p;
         channel->receive( incoming );
 
-        switch ( incoming.tag< DataType >() ) {
-        case DataType::Request:
-            request( incoming.from(), workerId, value );
+        switch ( incoming.tag< Tag >() ) {
+        case Tag::Request:
+            request( incoming.from(), p );
             break;
-        case DataType::Response:
-            _workers[ workerId ].push( value );
+        case Tag::Done:
+            common.progress();
             break;
-        case DataType::Done:
-            ++_done;
+        default:
             break;
         }
     }
-
-    void request( int from, int workerId, int value ) {
-        brick::net::OutputMessage o( MessageType::Data );
-        o.tag( DataType::Response );
-
-        value *= -1;
-
-        o << workerId << value;
-        // std::ostringstream out;
-        // out << Daemon::instance().id() << ".dispatcher --["
-        //     << value << "]--> " << from
-        //     << " (" << W::channel( workerId )
-        //     << ")" << std::endl;
-        // std::cout << out.str() << std::flush;
-        Daemon::instance().sendTo( from, o, W::channel( workerId ) );
-    }
-
-    int _final;
-    std::atomic< int > _done;
-    std::vector< W > _workers;
 };
 
 } // namespace ping

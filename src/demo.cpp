@@ -108,13 +108,9 @@ void forceShutdown( const Meta &meta ) {
     }
 }
 
-template<
-    template< typename > class W,
-    typename I,
-    typename... Args
->
-void startWorker( Args... args ) {
-    W< I > w( args... );
+template< typename W >
+void startWorker( const Meta &meta ) {
+    Workers< W > w( meta.threads, meta.workLoad, meta.selection );
     w.run();
 }
 
@@ -125,32 +121,16 @@ int mainD( int argc, char **argv ) {
 
     switch ( meta.algorithm ) {
     case Algorithm::LoadDedicated:
-        startWorker< load::Workers, load::Dedicated >(
-            meta.threads,
-            meta.workLoad,
-            meta.selection
-        );
+        startWorker< load::Dedicated >( meta );
         break;
     case Algorithm::LoadShared:
-        startWorker< load::Workers, load::Shared >(
-            meta.threads,
-            meta.workLoad,
-            meta.selection
-        );
+        startWorker< load::Shared >( meta );
         break;
     case Algorithm::PingDedicated:
-        startWorker< ping::Workers, ping::Dedicated >(
-            meta.threads,
-            meta.workLoad,
-            meta.selection
-        );
+        startWorker< ping::Dedicated >( meta );
         break;
     case Algorithm::PingShared:
-        startWorker< ping::Workers, ping::Shared >(
-            meta.threads,
-            meta.workLoad,
-            meta.selection
-        );
+        startWorker< ping::Shared >( meta );
         break;
     case Algorithm::Table:
         Daemon::instance().table();

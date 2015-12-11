@@ -3,119 +3,14 @@
 #include <brick-hashset.h>
 
 #include "daemon.h"
+#include "worker.hpp"
 
 namespace load {
 
-enum class Tag {
-    Data,
-    Done
-};
-
-struct Package {
-    unsigned first;
-    unsigned second;
-    unsigned result;
-
-    Package() :
-        first{ 0 },
-        second{ 0 }
-    {}
-
-    unsigned hash() const {
-        return (first + 7) * (second + 13);
-    }
-};
-
-using brick::hash::hash128_t;
-struct Hasher {
-    hash128_t hash( Package p ) const {
-        return { p.hash(), p.hash() };
-    }
-    bool valid( Package ) const {
-        return true;
-    }
-    bool equal( Package lhs, Package rhs ) const {
-        return
-            lhs.first == rhs.first &&
-            lhs.second == rhs.second;
-    }
-};
-
-using Set = brick::hashset::FastConcurrent< Package, Hasher >;
-
-struct Common {
-    Common( int workLoad, int selection ) :
-        _workLoad{ workLoad },
-        _selection{ selection },
-        _done{ false },
-        _processed{ 0u }
-    {
-        _set.setSize( 1024 );
-    }
-    void push( Package p ) {
-        std::lock_guard< std::mutex > _( _m );
-        _queue.push( p );
-    }
-    bool pop( Package &p ) {
-        std::lock_guard< std::mutex > _( _m );
-        if ( _queue.empty() )
-            return false;
-        p = _queue.front();
-        _queue.pop();
-        return true;
-    }
-    bool quit() const {
-        return _done;
-    }
-    void done() {
-        _done = true;
-    }
-    void process() {
-        ++_processed;
-    }
-    unsigned processed() const {
-        return _processed;
-    }
-
-    Set::WithTD withTD( Set::ThreadData &td ) {
-        return _set.withTD( td );
-    }
-
-    int F() {
-        return F( _selection );
-    }
-
-    int workLoad() const {
-        return _workLoad;
-    }
-
-private:
-
-    int F( int n ) {
-        if ( n == 0 )
-            return 0;
-        if ( n == 1 )
-            return 1;
-        return F( n - 1 ) + F( n - 2 );
-    }
-
-    int _workLoad;
-    int _selection;
-    std::mutex _m;
-    std::queue< Package > _queue;
-    std::atomic< bool > _done;
-    std::atomic< unsigned > _processed;
-    Set _set;
-};
-
-
 template< typename Self >
-struct BaseWorker {
+struct Worker : BaseWorker {
 
-    BaseWorker( int id, Common &common ) :
-        _id{ id },
-        _common{ common }
-    {}
+    using BaseWorker::BaseWorker;
 
     void start() {
         _handle = std::async( std::launch::async, [this] {
@@ -130,43 +25,60 @@ struct BaseWorker {
         _handle.get();
     }
 
-    int id() const {
-        return _id;
-    }
-    int workLoad() const {
-        return _common.workLoad();
-    }
-    static void notifyAll() {
+    static void notifyAll( Common & ) {
         brick::net::OutputMessage msg( MessageType::Data );
         msg.tag( Tag::Done );
 
         Daemon::instance().sendAll( msg );
     }
+
+    static bool isMaster( Common &common ) {
+        return common.rank() == Daemon::MainSlave;
+    }
+
+    static void dispatcher ( Common &common, const std::vector< Self > & ) {
+        while ( !common.quit() ) {
+            Daemon::instance().probe( [&]( Channel channel ) {
+                    Self::processDispatch( common, channel );
+                },
+                ChannelType::Master,
+                10000
+            );
+        }
+    }
+
+    static int rank() {
+        return Daemon::instance().id();
+    }
+    static int worldSize() {
+        return Daemon::instance().worldSize();
+    }
+
 protected:
     unsigned owner( Package p ) {
-        return p.hash() % Daemon::instance().worldSize() + 1;
+        return p.hash() % common().worldSize() + 1;
     }
 
     template< typename Yield >
     void successors( Package p, Yield yield ) {
-        if ( p.first < workLoad() ) {
+        if ( p.first < common().workLoad() ) {
             Package s = p;
-            s.result = _common.F();
+            s.result = F();
             s.first++;
             yield( s );
         }
-        if ( p.second < workLoad() ) {
+        if ( p.second < common().workLoad() ) {
             Package s = p;
-            s.result = _common.F();
+            s.result = F();
             s.second++;
             yield( s );
         }
     }
 
     void process( Package p, ChannelID chID ) {
-        _common.process();
+        progress();
 
-        if ( p.first == workLoad() && p.second == workLoad() ) {
+        if ( p.first == common().workLoad() && p.second == common().workLoad() ) {
             done();
             return;
         }
@@ -175,7 +87,7 @@ protected:
 
     void expand( Package p, ChannelID chID ) {
         unsigned o = owner( p );
-        if ( o == Daemon::instance().id() ) {
+        if ( o == common().rank() ) {
             if ( withTD().insert( p ).isnew() ) {
                 push( p );
             }
@@ -187,38 +99,17 @@ protected:
         Daemon::instance().sendTo( o, msg, chID );
     }
 
-    void push( Package p ) {
-        _common.push( p );
-    }
-    bool pop( Package &p ) {
-        return _common.pop( p );
-    }
-    bool quit() const {
-        return _common.quit();
-    }
-    void done() {
-        _common.done();
-    }
-    unsigned processed() const {
-        return _common.processed();
-    }
-    Set::WithTD withTD() {
-        return _common.withTD( _td );
-    }
 private:
     Self &self() {
         return *static_cast< Self * >( this );
     }
 
-    int _id;
     std::future< void > _handle;
-    Common &_common;
-    Set::ThreadData _td;
 };
 
 
-struct Shared : BaseWorker< Shared > {
-    using BaseWorker< Shared >::BaseWorker;
+struct Shared : Worker< Shared > {
+    using Worker< Shared >::Worker;
 
     void main() {
 
@@ -231,23 +122,6 @@ struct Shared : BaseWorker< Shared > {
             }
         }
         done();
-    }
-
-    static void dispatcher ( Common &common ) {
-        auto timePoint = std::chrono::steady_clock::now();
-        while ( !common.quit() ) {
-
-            Daemon::instance().probe( [&]( Channel channel ) {
-                    processDispatch( common, channel );
-                },
-                ChannelType::Master,
-                1000
-            );
-            auto now = std::chrono::steady_clock::now();
-            if ( std::chrono::duration< double >( now - timePoint ).count() >= 10.0 ) {
-                timePoint = now;
-            }
-        }
     }
 
     static void processDispatch( Common &common, Channel channel ) {
@@ -265,12 +139,14 @@ struct Shared : BaseWorker< Shared > {
         case Tag::Done:
             common.done();
             break;
+        default:
+            break;
         }
     }
 };
 
-struct Dedicated : BaseWorker< Dedicated > {
-    using BaseWorker< Dedicated >::BaseWorker;
+struct Dedicated : Worker< Dedicated > {
+    using Worker< Dedicated >::Worker;
 
     void main() {
 
@@ -298,21 +174,6 @@ struct Dedicated : BaseWorker< Dedicated > {
         expand( p, id() );
     }
 
-    static void dispatcher ( Common &common ) {
-        auto timePoint = std::chrono::steady_clock::now();
-        while ( !common.quit() ) {
-            Daemon::instance().probe( [&]( Channel channel ) {
-                    processDispatch( common, channel );
-                },
-                ChannelType::Master,
-                10000
-            );
-            auto now = std::chrono::steady_clock::now();
-            if ( std::chrono::duration< double >( now - timePoint ).count() >= 10.0 ) {
-                timePoint = now;
-            }
-        }
-    }
     static void processDispatch( Common &common, Channel channel ) {
         brick::net::InputMessage incoming;
         channel->receiveHeader( incoming );
@@ -321,41 +182,5 @@ struct Dedicated : BaseWorker< Dedicated > {
     }
 };
 
-template< typename W >
-struct Workers {
-    Workers( int workers, int workLoad, int selection ) :
-        _common{ workLoad, selection }
-    {
-        _workers.reserve( workers );
-        for ( int i = 0; i < workers; ++i ) {
-            _workers.emplace_back( i, _common );
-        }
-    }
-
-    void queueInitials() {
-        if ( Daemon::instance().id() == Daemon::MainSlave )
-            _common.push( {} );
-    }
-
-    void run() {
-        queueInitials();
-        for ( auto &w : _workers )
-            w.start();
-
-        std::future< void > d = std::async( std::launch::async, [this] {
-            W::dispatcher( _common );
-        } );
-
-        for ( auto &w : _workers )
-            w.wait();
-
-        //_common.done(); it is implied by finishing one of the threads
-        W::notifyAll();
-        d.get();
-    }
-private:
-    std::vector< W > _workers;
-    Common _common;
-};
 
 }
