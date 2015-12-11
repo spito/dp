@@ -214,7 +214,8 @@ void Meta::hostFile( char *path ) {
         throw std::runtime_error( "hostfile does not exists" );
     std::string line;
     while ( std::getline( f, line ).good() )
-        hosts.push_back( line );
+        if ( !line.empty() && line.front() != '#' )
+            hosts.push_back( line );
 }
 
 MetaBlock Meta::block() const {
