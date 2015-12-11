@@ -667,7 +667,7 @@ void Daemon::reset() {
     OutputMessage message( MessageType::Control );
     message.tag( Code::Error );
 
-    sendAll( message );
+    Communicator::sendAll( message );
     setDefault();
 }
 
@@ -678,7 +678,7 @@ void Daemon::reset( Address address ) {
     message
         << address;
 
-    sendAll( message );
+    Communicator::sendAll( message );
     setDefault();
 }
 
