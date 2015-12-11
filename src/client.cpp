@@ -169,7 +169,10 @@ std::string Client::status( const std::string &machine ) {
 
 void Client::run( int argc, char **argv, const void *initData, size_t initDataLength ) {
     try {
-        establish( argc, argv, initData, initDataLength );
+        if ( !establish( argc, argv, initData, initDataLength ) ) {
+            std::cerr << "could not establish the network" << std::endl;
+            return;
+        }
 
         _quit = false;
         refreshCache();
