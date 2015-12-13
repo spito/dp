@@ -95,7 +95,7 @@ elif args[ 1 ] == 'mpi':
         ('threads', [1, 2, 3, 4]),
         ('workLoad', [1000]),
         ('selection', [1, 25]),
-        ('runs', 10)
+        ('runs', 6)
     ])
 
 generator(
