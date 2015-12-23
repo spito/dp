@@ -29,11 +29,11 @@ Před volbou vhodného komunikačního rozhraní bylo potřeba definovat, v\ jak
 
 ### Vlastnosti
 
-## "Vlastní implementace"
+## BSD sockety
 
-Další možností je vlastní implementace komunikačního rozhraní pro DIVINE, které by\ používalo BSD sockety[odkaz na BSD sockety], které jsou v zahrnuty v [POSIX](http://pubs.opengroup.org/onlinepubs/9699919799/functions/contents.html) standardu. Vlastní implementace nepřidává žádnou závislost na externí knihovně a protože jsou BSD sockety v podstatě standardem pro síťovou komunikaci[dodat odkazy na pojednávající články], lze předpokládat, že výsledný kód bude možné bez větších změn použít i na operačních systémech, které nevycházejí z filozofie systému UNIX.
+Další možností je vlastní implementace komunikačního rozhraní pro DIVINE, které by\ používalo BSD sockety, které jsou v zahrnuty v [POSIX](http://pubs.opengroup.org/onlinepubs/9699919799/functions/contents.html) standardu. Vlastní implementace nepřidává žádnou závislost na externí knihovně a protože jsou BSD sockety v podstatě standardem pro síťovou komunikaci[dodat odkazy na pojednávající články], lze předpokládat, že výsledný kód bude možné bez větších změn použít i na operačních systémech, které nevycházejí z filozofie systému UNIX.
 
-Popis BSD socketů je abstrakce nad různými druhy spojení. V\ části POSIX standardu o [socketech](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_06) můžeme nalézt poměrně nemálo věcí, které jsou specifikovány. Stěžejní z\ pohledu nástroje DIVINE a\ výběru vhodného komunikačního rozhraní jsou především dvě pasáže, a to `Address Famillies` a `Socket Types`. První definuje, skrz které médium se\ budou sockety používat, zatímco druhá podstatná pasáž je o tom, jaké vlastnosti bude mít samotný přenos dat skrz sockety.
+Popis BSD socketů je abstrakce nad různými druhy spojení. V\ části POSIX standardu o [socketech](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_06) můžeme nalézt poměrně nemálo věcí, které jsou specifikovány. Stěžejní z\ pohledu nástroje DIVINE a\ výběru vhodného komunikačního rozhraní jsou především dvě pasáže, a\ to\ `Address Famillies` a\ `Socket Types`. První definuje, skrz které médium se\ budou sockety používat, zatímco druhá podstatná pasáž je\ o\ tom, jaké vlastnosti bude mít samotný přenos dat skrz sockety.
 
 Ačkoliv se\ v\ odkazované části POSIX standardu hovoří o\ "Address Families", dále ve\ standardu v\ části popisující funkce a\ jejich parametry se\ již hovoří o\ komunikační doméně. Budu tento termín nadále používat, neboť dle mého soudu lépe popisuje danou skutečnost.
 
@@ -212,7 +212,8 @@ Spojité sockety mají několik vlastností, ať\ už\ dobrých, či\ horších,
 *   udržování spojení
 *   možnost mít více spojení mezi výpočetními stroji
 *   garance doručení nepoškozených dat
-*   režije
+*   možnost poslat neomezeně dlouho zprávu
+*   režie spojená s\ udržováním spojení a\ garancemi
 
 #### Udržování spojení
 
@@ -222,7 +223,7 @@ Nevýhodou je\ nutnost pravidelné výměny zprávy, která říká, že\ spojen
 
 #### Více spojení
 
-Mezi dvěma komunikujícími stroji je\ v\ případě spojitých socketů navázat více než jedno spojení v\ rámci jednoho obslužného portu na\ straně serveru. Tento aspekt je\ možné vypozorovat z\ výše uvedené sekvence kroků, které vykonává server k\ přijímání a\ zpracování příchozách zpráv. Ustanovení více souběžných spojení může být\ potenciálně výhodné, neboť každé takové spojení můžeme chápat jako komunikační kanál a\ každý kanál použít pro\ jiný účel.
+Mezi dvěma komunikujícími stroji je\ v\ případě spojitých socketů možné navázat více než jedno spojení v\ rámci jednoho obslužného portu na\ straně serveru. Tento aspekt je\ možné vypozorovat ze\ sekvence kroků, které vykonává server k\ přijímání a\ zpracování příchozách zpráv, které byly prezentovány u\ příkladu použití. Ustanovení více souběžných spojení může být\ potenciálně výhodné, neboť každé takové spojení můžeme chápat jako komunikační kanál a\ každý kanál použít pro\ jiný účel.
 
 Lze tak například vytvořit jeden kanál pro\ posílání řídících zpráv, další kanály pak\ pro\ posílání dat. Výhodou navíc může být, že\ každé vlákno nástroje DIVINE bude obsluhovat svůj vlastní datový kanál bez nutnosti explicitního zamykání přístupu ke komunikačnímu zdroji.
 
@@ -230,17 +231,49 @@ Vzhledem k\ tomu, jak nástroj DIVINE pracuje v\ distribuovaném výpočtu s\ da
 
 #### Garance doručení nepoškozených dat
 
+Nástroj DIVINE potřebuje ke\ své práci korektní data. V\ případě běhu ve\ sdílené paměti je\ jednoduché zaručit, že\ se\ při manipulaci s\ daty nestane, aby byly nějak poškozeny. V\ distribuovaném prostředí, kdy je\ pro přenos dat mezi výpočetními uzly třeba použít síťové rozhraní, nastupuje mnoho hardwarových prvků, z\ nichž každý může ovlivnit konzistenci přenášených dat.
+
+Spojité sockety, konkrétně implementované pomocí TCP, tyto garance zajišťují pomocí kontrolních součtů dat při příjmu. Pokud je\ kontrolní součet dat odlišný od\ toho, který byl v\ hlavičce TCP paketu, dojde k\ opětovnému přenosu paketu. Použitím spojitých socketů tak odpadá potřeba implementovat vlastní mechanismy do\ nástroje DIVINE, které by\ zaručovaly nepoškozená data.
+
+TCP sockety mají navíc mechanismus, který zaručuje (v\ případě, že\ to\ je\ možné) doručení dat. Znamená to\ tedy, že\ pokud do\ určitého časového intervalu nedorazí odesílateli potvrzení o\ doručení, pošle odesílatel zprávu znovu.
+
+#### Možnost poslat neomezeně dlouhou zprávu
+
+TCP vytváří abstrakci, že\ přenášená data jsou souvislý proud dat. Protože TCP pakety mají omezenou maximální velikost, dochází při poslání velkého bloku dat k\ rozdělení záznamu do více paketů, které jsou samostatně poslány sítí a\ na\ straně přijemce opět poskládány. Na\ toto se také vztahuje garance nepoškozených dat, která je implementována tak, že jsou pakety tvořící jeden blok dat sekvenčně očíslovány, takže případně prohození pořadí paketů zachytí příjemce a\ dle čísel poskládá správné pořadí.
+
+Tato vlastnost TCP je\ z\ jedné strany výhodou, protože není třeba v\ samotné aplikaci řešit, zda se\ data vejdou do\ paketu, či\ zda je\ nutné je\ rozdělit a\ posléze spojit -- výhodou je, že\ není třeba implementovat vlastní mechanismus. Nevýhodou pak může být případně zdržení, neboť ztracený či\ poškozený paket zdržuje nejen celou zprávu, ale\ celý jeden směr komunikačního spojení, protože nemůže být přenesen jiný, bezproblémový, blok dat.
+
+#### Režie spojená s garancemi
+
+Předem zmíněné výhody vyvažuje na\ druhé straně režije spojená jak s\ udržováním spojení tak se\ zasíláním opravných paketů. Udržování spojení je\ realizováno periodicky se\ opakujícím posíláním krátkého TCP paketu mezi komunikujícími stranami. Tento vyměňování zpráv má nějakou nezanedbatelnou režii, ovšem posílání krátkých paketů je\ nutné pouze v\ případě, že\ ono spojení nebude řádně vytěžováno -- každý poslaný TCP paket je\ totiž známkou toho, že\ spojení je\ stále udržováno.
+
+Co\ se\ týká garancí na\ doručení, vyvstávají zde dva potenciální problémy. První z\ nich je, že\ operační systém si\ musí držet v\ paměti již odeslaná data, a\ to\ z\ důvodu případného opakování přenosu. Může se\ tedy docházet ke\ zbytečnému využívání paměti. Druhým problémem je\ nutnost potvrzení doručení paketu. Toto je opět možné realizovat samostatným krátkým paketem v\ případě zřídkavého datového provozu v\ opačném směru, nebo přidáním příznaku doručení do\ hlavičky paketu jdoucím po\ stejné lince zpět.
+
+Z\ krátké analýzy vyplývá, že\ v\ případě zřídkavého zasílání dat dochází k\ režii, která zatěžuje nejen oba komunikující subjekty, ale\ také veškerou síťovou infrastrukturu mezi nimi. U\ nástroje DIVINE se\ nicméně očekává, že\ datový provoz mezi všemi participanty výpočtu bude velmi vysoký, takže síť nebude zbytečně zaplavována krátkými pakety. Každopádně platí, že\ v\ porovnání s\ UDP paketem má TCP paket výrazně větší hlavičku a\ tedy množství dat přenesených po\ čas komunikace pomocí TCP mezi dvěma subjekty úměrně tomu vzrůstá oproti komunikaci přes UDP.
+
 ### Nespojité sockety
 
-#### Vlastnost 1
+Nespojité sockety také nabízejí zajímavé vlastnosti, které je\ vhodné rozebrat:
 
-#### Vlastnost 2
+*   žádné garance
+*   jednoduchý protokol
+*   vhodné implementovat protokol pro garance jako nadstavbu
+
+#### Žádné garance
+
+#### Jednoduchý protokol
+
+#### Nadstavba
 
 ### Sekvenční sockety
 
-#### Vlastnost 1
+Sekvenční sockety zde uvádím jen pro ilustraci. Jejich použití totiž nepřipadá v\ úvahu, neboť nejsou definovány pro síťovou komunikační vrstvu. Stále ale stojí za\ zmínku některé jejich vlastnosti.
 
-#### Vlastnost 2
+#### Garance
+
+Sekvenční sockety poskytují stejné garance jako spojité sockety.
+
+#### Explicitní stanovení hranic zpráv
 
 ## Bezpečnost
 
