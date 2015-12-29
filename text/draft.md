@@ -41,9 +41,11 @@ Ačkoliv se\ v\ odkazované části POSIX standardu hovoří o\ "Address Familie
 
 POSIX standard popisuje konkrétně tři možné komunikační domény -- lokální unixové sockety, sockety určené pro\ síťový protokol IPv4 [[RFC791]](https://tools.ietf.org/html/rfc791) a\ sockety pro síťový protokol IPv6 [[RFC2460]](https://tools.ietf.org/html/rfc2460). Standard se\ pak dále zabývá technickými detaily, jako které číselné konstanty jsou určeny pro kterou rodinu adres, či\ jak přesně jsou zápisy adres reprezentovány v\ paměti.
 
-Pro\ adresaci unixových socketů se\ používá cesta adresářovým stromem, (Zde je nejspíše nutné malou poznámkou zmínit, že\ v\ souborových systémech unixového typu není adresářový strom stromem z\ pohledu teoretické informatiky, neboť umožňuje vytvářet cykly.) s\ tím, že\ standard nedefinuje maximální délku cesty. Žádné další aspekty adresování nejsou při práci unixovými sockety zohledňovány.
+Pro\ adresaci unixových socketů se\ používá cesta adresářovým stromem,[^fs-tree] s\ tím, že\ standard nedefinuje maximální délku cesty. Žádné další aspekty adresování nejsou při práci unixovými sockety zohledňovány.
 
-V\ případě socketů pro\ síťový protokol je\ třeba rozlišovat mezi protokolem IPv4 a\ IPv6. První zmiňovaný používá k\ adresaci čtyři čísla v\ rozsahu 0 -- 255. Při textové reprezentaci se\ ony\ čtyři čísla zapíšou v\ desítkovém základu a\ oddělí se\ tečkami. Ve\ strojovém zápisu se\ pak jedná o\ 32bitové číslo. Protokol IPv6 [[RFC4291]](https://tools.ietf.org/html/rfc4291) reflektuje primárně nedostatek adres IPv4 [[ICANN zpráva]](https://www.icann.org/en/system/files/press-materials/release-03feb11-en.pdf), což bylo při návrhu zohledněno a\ pro adresaci se\ používá osm čísel v rozsahu 0 -- 65 535. Preferovaná textová reprezentace je\ zapsat oněch osm čísel v\ šestnáctkovém základu a\ oddělit je\ dvojtečkami. Ve\ strojovém zápisu se\ pak jedná o 128bitvé číslo.
+[^fs-tree]: Zde je nejspíše nutné malou poznámkou zmínit, že\ v\ souborových systémech unixového typu není adresářový strom stromem z\ pohledu teoretické informatiky, neboť umožňuje vytvářet cykly.
+
+V\ případě socketů pro\ síťový protokol je\ třeba rozlišovat mezi protokolem IPv4 a\ IPv6. První zmiňovaný používá k\ adresaci čtyři čísla v\ rozsahu 0 -- 255. Při textové reprezentaci se\ ony\ čtyři čísla zapíšou v\ desítkovém základu a\ oddělí se\ tečkami. Ve\ strojovém zápisu se\ pak jedná o\ 32bitové číslo. Protokol IPv6 [[RFC4291]](https://tools.ietf.org/html/rfc4291) reflektuje primárně nedostatek adres IPv4 [[ICANN zpráva]](https://www.icann.org/en/system/files/press-materials/release-03feb11-en.pdf), což bylo při návrhu zohledněno a\ pro adresaci se\ používá osm čísel v rozsahu 0 -- 65 535. Preferovaná textová reprezentace je\ zapsat oněch osm čísel v\ šestnáctkovém základu a\ oddělit je\ dvojtečkami. Ve\ strojovém zápisu se\ pak jedná o 128bitové číslo.
 
 Vzhledem k\ tomu, že\ v\ současné době oba protokoly koexistují vedle sebe a\ nelze bez podrobnějšího zkoumání rozhodnout, zda nějaká síť používá IPv4, či\ IPv6, je\ nutné v\ POSIXovém rozhraní nabídnout takovou funkcionalitu, která bude (pro běžné používáním) nezávislá na\ verzi protokolu IP. Touto funkcí je\ [`getaddrinfo`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html), která přeloží jméno cílového stroje a/nebo jméno služby a\ vrací seznam adres, lhostejno zda IPv4, či\ IPv6, které lze dále použít ve\ funkcích řešících otevření spojení, zaslání dat a\ jiných.
 
@@ -76,13 +78,15 @@ Zde je\ nutné zmínit se\ o\ portech. Pro úspěšné navázání komunikace je
 
 Klient musí dopředu vědět, na\ kterém portu chce na\ serveru navázat spojení, proto byl v\ počátcích internetu zveřejněn dokument [[RFC1700]](https://tools.ietf.org/html/rfc1700), který byl postupně aktualizován[^iana] a\ obsahoval původně seznam 256, posléze až\ 1024, obsazených portů pro\ specifikované účely, například porty 20 a\ 21 pro FTP [[RFC959]](https://tools.ietf.org/html/rfc959) nebo port 80 pro\ web a\ HTTP [[RFC7230]](https://tools.ietf.org/html/rfc7230). Číslo portu je\ v\ síťové doméně jméno služby a\ je\ předáváno jako parametr do\ funkce `getaddrinfo`.
 
-[^iana]: V roce 2002 bylo původní [[RFC1700]](https://tools.ietf.org/html/rfc1700) nahrazeno za [[RFC3232]](https://tools.ietf.org/html/rfc3232), které odkazuje na online databázi na adrese <http://www.iana.org>.
+[^iana]: V roce 2002 bylo původní [[RFC1700]](https://tools.ietf.org/html/rfc1700) nahrazeno za [[RFC3232]](https://tools.ietf.org/html/rfc3232), které odkazuje na online databázi na adrese <http://www.iana.org/assignments/protocol-numbers/>.
 
 **[obrázek hlavičky paketu]**
 
 ##### Unixová doména
 
-V\ unixové doméně lze\ spojité sockety chápat jako speciální soubory, které mohou být podobně jako soubory `FIFO` použity pro meziprocesovou komunikaci. Spojité sockety mají navíc od\ `FIFO` ty\ vlastnosti, že\ jsou obousměrné a\ že\ je\ možné je\ použít pro\ přenos zdrojů mezi procesy (například otevřené popisovače souborů).
+V\ unixové doméně lze\ spojité sockety chápat jako speciální soubory, které mohou být podobně jako soubory `FIFO`[^fifo] použity pro meziprocesovou komunikaci. Spojité sockety mají navíc od\ `FIFO` ty\ vlastnosti, že\ jsou obousměrné a\ že\ je\ možné je\ použít pro\ přenos zdrojů mezi procesy (například otevřené popisovače souborů).
+
+[^fifo]: `FIFO`, neboli také `pipe` -- trubky, roury -- jsou speciální soubory, které se\ chovají jako jednosměrný proud dat. Jsou typicky na\ jednom konci otevřeny pro zápis a\ na\ druhém konci pro čtení.
 
 Realizace garancí spojitých socketů je\ v\ případě unixové komunikační domény jednoduchá, za\ předpokladu korektní implementace a\ korektních prvků hardware, jako například pamětí, či\ pevných disků.
 
@@ -163,7 +167,7 @@ Vzhledem k\ minumu protokolových mechanismů je\ hlavička UDP paketu velmi kr�
 
 Zde je\ zajímavá položka kontrolního součtu dat. Dle RFC768 sice může hlavička paketu obsahovt kontrolní součet dat, ovšem nikde není specifikováno, co se\ má dít v\ okamžiku, kdy příjemce zjistí, že\ se\ kontrolní součet přijatých dat neshoduje se\ součtem uvedeným v\ hlavičce.
 
-Další zajímavou položkou z\ hlavičky UDP paketu je\ délka dat. Při znalosti této informace by\ bylo možné připravit přesně velkou paměť, do\ které by\ se data přijala. Rozhraní, které popisuje POSIX standard[^posix-recv] ale\ takovou možnost nenabízí, resp. tyto funkce vrací tuto hodnotu až\ poté, co došlo k\ přečtení zprávy. Je\ tedy nutné při navrhování protokolu, který bude používat UDP, zvážit nejvyšší možnou délku zprávy.
+Další zajímavou položkou z\ hlavičky UDP paketu je\ délka dat. Při znalosti této informace by\ bylo možné připravit přesně velkou paměť, do\ které by\ se data přijala. Rozhraní, které popisuje POSIX standard[^posix-recv] ale\ takovou možnost nenabízí, resp. funkce vrací tuto hodnotu až\ poté, co došlo k\ přečtení zprávy. Je\ tedy nutné při navrhování protokolu, který bude používat UDP, zvážit nejvyšší možnou délku zprávy.
 
 Vzhledem k\ tomu, že\ UDP nevytváří spojení, je\ nutné při každém zaslání zprávy specifikovat příjemce. Jedním z\ vedlejších důsledků této vlastnosti je, že\ je možné zprávu zaslat na\ speciální adresu, což způsobí, že\ se\ zpráva rozešle všem síťovým prvkům v\ lokální síti. V\ IPv4 se\ tento způsob doručování zpráv jmenuje *broadcast* a\ ona speciální adresa je\ `255.255.255.255`. V\ IPv6 se\ nehovoří o broadcastu, ale o\ *multicastu*[^multicast]. Multicast se\ od\ broadcastu liší tím, že\ zpráva nemusí být zaslána všem strojům v\ místní síti, ale\ pouze těm, kteří se\ nahlásí o\ její přijetí. Zpráva zaslaná pomocí multicastu navíc může být doručena i\ mimo lokální síť.
 
@@ -197,13 +201,22 @@ Ukázka použití v unixové komunikační doméně[^note-site]:
 
 Hrubé sockety[^raw-socket] jsou posledním typem socketů, které definuje POSIX standard. Sami o\ sobě nejsou samostatným typem (pokud by\ byly srovnávány s\ třemi předchozími), ale\ spíše je\ základem pro\ dříve jmenované. Žádostí o\ vytvoření hrubého socketu program žádá rozhraní operačního systému pro přímý přístup ke třetí vrstvě [ISO/OSI](http://www.ecma-international.org/activities/Communications/TG11/s020269e.pdf) modelu.
 
-Touto cestou je\ možné implementovat libovolný vlastní protokol na\ čtvrté vrstvě ISO/OSI modelu. Moderní operační systém z\ důvodu bezpečnosti nedovolují aplikacím s\ běžným oprávněním vytváření takovýchto typů socketů, proto se\ jimi nebudu v\ této práci dále zaobírat.
+Touto cestou je\ možné implementovat libovolný vlastní protokol na\ čtvrté vrstvě ISO/OSI modelu. Moderní operační systémy z\ důvodu bezpečnosti nedovolují aplikacím s\ běžným oprávněním vytváření takovýchto typů socketů, proto se\ jimi nebudu v\ této práci dále zaobírat.
 
 [^raw-socket]: V originálu *raw sockets*.
 
 # Nová implementace
 
+Na\ základě vlastností jednotlivých dříve uvedených přístupů jsem se\ rozhodl, že\ implementuji novou komunikační vrstvu za\ použití BSD socketů. Pro samotnou implementaci pak bude potřeba ze\ dříve uvedených typů socketů vybrat ten nejvhodnější. Nová implementace dále vyžaduje vytvořit jednoduchý komunikační protokol pro ustanovení sítě strojů kooperujících na\ distribuovaném výpočtu.
+Při návrhu nové implementace se\ navíc nemusím držet architektury distribuované aplikace, jak ji\ popisuje MPI, která má dle mého názoru některé vady, pročež jsem se\ rozhodl, že vytvořím architekturu s\ jinými vlastnostmi.
+
+Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura je [x86-64](http://www.amd.com/Documents/x86-64_wp.pdf) a\ jehož operační systém používá rozhraní definované POSIX standardem -- převážně počítám s\ operačním systémem [GNU/Linux](http://www.gnu.org/gnu/linux-and-gnu.html.en). Dále předpokládám, že\ všechny stroje participující na\ výpočtu mají stejnou endianitu[^endianity].
+
+[^endianity]: Způsob ukládání čísel do paměti.
+
 ## Analýza vlastností typů socketů
+
+Pro volbu správného typu socketů je\ třeba pečlivě zvážit vlastnosti jednotlivých typů, neboť následná implementace se\ může velmi lišit. Cílem je\ implementovat síťovou komunikační vrstvu do\ nástroje DIVINE, takže nebudu rozebírat vlastnosti socketů v\ unixové komunikační doméně.
 
 ### Spojité sockety
 
@@ -217,7 +230,7 @@ Spojité sockety mají několik vlastností, ať\ už\ dobrých, či\ horších,
 
 #### Udržování spojení
 
-Distribuované výpočty, které nástroj DIVINE provádí, vyžadují, aby\ žádný z\ participatů výpočtu nepřerušil kontakt s\ ostatními. To\ se\ může stát jednak chybou v\ síti -- rozpojením sítě --, druhak zastavením výpočtu na\ stroji, ke\ kterému může dojít například z\ důvodu chyby v\ programu. U\ spojitých socketů jsou při\ přerušení spojení notifikování oba\ participanti komunikace, tudíž může dojít k\ následnému korektnímu ukončení distribuovaného neukončeného výpočtu.
+Distribuované výpočty, které nástroj DIVINE provádí, vyžadují, aby\ žádný z\ participatů výpočtu nepřerušil kontakt s\ ostatními. To\ se\ může stát jednak chybou v\ síti -- rozpojením sítě --, jednak zastavením výpočtu na\ stroji, ke\ kterému může dojít například z\ důvodu chyby v\ programu. U\ spojitých socketů jsou při\ přerušení spojení notifikování oba\ participanti komunikace, tudíž může dojít k\ následnému korektnímu ukončení distribuovaného neukončeného výpočtu.
 
 Nevýhodou je\ nutnost pravidelné výměny zprávy, která říká, že\ spojení je\ stále aktivní, mezi participanty. Tato výměna je\ ale nezbytná pouze v\ případě, že\ v\ mezičase nebyla mezi participanty komunikace zaslána žádná zpráva. Vzhledem k\ předpokladu, že\ mezi výpočetními stroji bude docházet k\ čilé výměně dat, nepokládám tuto nevýhodu za\ kritickou.
 
@@ -257,13 +270,33 @@ Nespojité sockety také nabízejí zajímavé vlastnosti, které je\ vhodné ro
 
 *   žádné garance
 *   jednoduchý protokol
-*   vhodné implementovat protokol pro garance jako nadstavbu
+*   omezení na velikost zprávy
+*   neudržování spojení
 
-#### Žádné garance
+Ačkoliv mají nespojité sockety pokud možno vyvinout co\ největší úsilí k\ tomu, aby zpráva došla jejímu příjemci, nejsou dané žádné garance o\ tom, jestli data dojdou v\ pořádku, či\ zdali vůbec dojdou. Toto s\ sebou nese dva podstatné důsledky.
 
-#### Jednoduchý protokol
+Jednak to\ znamená, že\ se\ bude v\ síťové komunikaci posílat méně dat v\ hlavičkách, což znamená, že\ by\ za\ stejný časový interval bylo možné poslat více zpráv. To\ navíc souvisí s\ další vlastností nespojitých socketů, kterou je\ jednoduchý protokol.
 
-#### Nadstavba
+Pak to\ také znamená, že\ by bylo potřeba implementovat vlastní protokol nad UDP pro ověřování korektnosti dat a\ pro ověřování jejich doručení. Předpokládá se, že\ nástroj DIVINE bude provozován v\ uzavřených sítích, takže je\ zde silný předpoklad na\ to, že\ síťových prvků mezi dvěma komunikujícími stroji bude malý počet -- typicky jeden síťový rozbočovač. Případně implementovaný protokol by\ tedy měl být šetrný k\ běžnému provozu a\ až\ v\ případě chyby při přenosu by\ mělo dojít k vyšší režii.
+
+Další vlastností nespojitých socketů je\ maximální délka zprávy. Maximální délku UDP paketů POSIX standard [`link na konkrétní hodnotu`] se\ uvádí jako 64 KB minus několik bytů na\ určené pro hlavičky IP paketů a\ UDP paketů. Ačkoliv nástroj DIVINE posílá zprávy o\ maximální velikosti několik málo desítek kilobytů, mohlo by\ se\ stát, že\ je potřeba poslat delší zprávu, u\ které by\ pak bylo potřeba zajistit, aby\ ji\ příjemce správně poskládal dohromady.
+
+Poslední vlastností, kterou jsem výše uvedl, je\ neudržování spojení. Zde je\ namístě krátká polemika o\ tom, jak je\ síťová komunikace využívaná z\ pohledu nástroje DIVINE. Ačkoliv totiž od komunikační vrstvy DIVINE požaduje v\ podstatě pouze posílání zpráv, kde by\ se\ nespojité sockety hodily, potřebuje také udržovat znalost o\ tom, že\ jsou všechny stroje participující na\ distribuovaném výpočtu spojené. Danou funkcionalitu UDP nenabízí a\ bylo by\ tedy nutné ji\ taktéž implementovat.
+
+#### Požadavky pro protokol
+
+Z\ výše uvedených vlastností UDP a\ nespojitých socketů vyplývají některé vlastnosti, které by\ případně implementovaný protokol měl zajišťovat. Jsou jimi:
+
+1.  garance doručení zpráv
+2.  garance doručení nepoškozených dat
+3.  rozdělení dlouhé právy a její složení při příjmu
+4.  detekce, zda jsou stroje stále spojeny
+
+Složení příliš dlouhých zpráv z\ více UDP paketů v\ sobě ukrývá příjemnou vlastnost, kterou je\ nutnost použití další vrstvy vyrovnávacích pamětí a\ s\ tím spojenou režii ve\ formě kopírování bloků dat z\ a\ do\ těchto pamětí. Tato režie se\ navíc vyskytuje i\ na\ straně odesílatele -- zde ovšem z\ důvodu garantování zaslání nepoškozených dat. Každý odeslaný blok dat musí být na\ straně odesílatele uchován tak dlouho, dokud neobdrží potvrzení o\ přijetí.
+
+Při zamyšlením nad zapojením komunikační vrstvy do\ nástroje DIVINE bychom narazili na\ další problém, kterým je\ paralelní přístup k\ přichozím zprávám. Na\ jednom výpočetním stroji lze mít na\ jednom portu otevřenou pouze jednu komunikačním linku, což znamená mít buď jedno dedikované vlákno na\ veškerou obsluhu spojení, nebo implementovat synchronizaci pomocí zámků pro\ paralelní přístup k\ socketu.
+
+Spolu s\ nutností použít další vrstvu vyrovnávacích pamětí se\ pak dedikované vlákno jeví jako snadnější volba, neboť by bylo potřeba vhodně zvolit granularitu zámků pro paralelní přístup -- od\ jednoho globálního zámku, který je\ nevhodný z\ důvodu malé rychlosti a\ ztráty výhod paralelismu, až\ po\ paralelního zámku pro každý blok paměti a\ socket, kde hrozí problémy typu uváznutí či\ porušení dat.
 
 ### Sekvenční sockety
 
@@ -271,13 +304,116 @@ Sekvenční sockety zde uvádím jen pro ilustraci. Jejich použití totiž nep�
 
 #### Garance
 
-Sekvenční sockety poskytují stejné garance jako spojité sockety.
+Sekvenční sockety poskytují stejné garance jako spojité sockety. Vzhledem k\ rozborům uvedeným výše se\ jedná o\ klíčovou vlastnost,kterou nástroj DIVINE od komunikační vrstvy požaduje. Tudíž by\ byly z\ toho pohledu vhodnými kandidáty.
 
 #### Explicitní stanovení hranic zpráv
 
-## Bezpečnost
+Oproti spojitým socketům pevně ohraničují zprávy, takže se nemůže stát, že\ následkem chybného zpracování dojde k\ posunutí hranice konce zprávy. Nicméně tato vlastnost není klíčovou pro komunikační vrstvu -- jednalo by\ se\ pouze o\ přidání dalšího kontrolního mechanizmu.
+
+### Zvolené řešení
+
+Na\ výběr zůstaly spojité sockety implementované pomocí TCP a\ nespojité sockety, které jsou implementované pomocí UDP. Obě dvě implementace jsou jako standardní síťové protokolyy na\ strojích typicky implementovány na\ úrovni operačního systému. V\ případě TCP to\ přináší několik výhod:
+
+1.  Veškerá obsluha spojení, příchozích dat a\ režie je\ prováděna v\ rámci jedné úrovně bezpečnosti procesoru [[Paul A. Karger, Andrew J. Herbert, An Augmented Capability Architecture to Support Lattice Security and Traceability of Access, sp, p. 2, 1984 IEEE Symposium on Security and Privacy, 1984]](http://www.computer.org/csdl/proceedings/sp/1984/0532/00/06234805-abs.html) a\ nedochází tak k\ vícenásobnému přepínání kontextu z\ uživatelského prostoru (*ring 3*) do\ jádra operačního systému (*ring 0*).
+2.  Obsluha síťového rozhraní musí používat zámky pro paralelní přístup. Výhodou je, že\ u\ rozšířeného operačního systému, jakým GNU/Linux je, se\ očekává, že\ implementace nebude obsahovat problémy typu uváznutí a\ bude optimalizovaná.
+3.  Implementace TCP pracuje šetrně s\ pamětí. Znamená to, že\ obsahy příchozích paketů skládá do\ vyrovnávacích pamětí a\ až\ v\ případě, že\ přijde z\ uživatelského prostoru požadavek na\ přijetí dat, se\ zpráva zkopíruje do\ programem označené paměti. Příchozí zpráva je\ tedy dvakrát kopírována.
+4.  TCP je\ v\ provozu již více jak 30 let. Lze tedy očekávat, že\ případné chyby v\ protokolu a\ v\ implementacích operačních systémů již byly nalezeny a\ opraveny.
+
+Oproti tomu použití nespojitých socketů umožňuje využít malou režii a\ zároveň vyšší rychlost díky kratším hlavičkám UDP paketů. Nevýhodou je\ nutnost implementovat vlastní protokol pro udržování spojení, pro garanci korektnosti dat a\ pro další dříve zmíněné požadované vlastnosti. Tento vlastní protokol navíc obrací výhodu uvedené u\ TCP na\ nevýhody:
+
+1.  Obsluha spojení, příchozích dat a\ režije je\ prováděna v\ uživatelském prostoru. Každý dotaz na\ příchozí data nutně vyžaduje přepnutí kontextu z\ uživatelského do\ jádra opračního systému, což je\ drahá operace vzhledem k\ času [[X]](http://os.itec.kit.edu/65_1029.php).
+2.  V\ případě paralelního přístupu by\ bylo potřeba navíc použít zámky pro paralelní přístup v\ uživatelském prostoru. Další zámky mohou hypoteticky snížit rychlost zpracování dat. V\ případě použití dedikovaného vlákna pro zpracování příchozích spojení pak musíme řešit navíc mezivláknovou komunikaci, kde se\ pravděpodobně také použijí zámky. Povšimněte si, že\ k\ zamykání systémových zámků dochází i\ při tomto přístupu.
+3.  Další vrstva vyrovnávacích pamětí, kterou je\ potřeba použít, způsobí, že\ bloky dat nebudou před přijetím kopírovány dvakrát, ale třikrát.
+4.  U čerstvě vytvořeného protokolu hrozí vyšší riziko chyb -- jak návrhové chyby, tak implementační.
+
+**[obrázek práce s pamětí - TCP vs UDP+buffer]**
+
+Z\ tohoto shrnutí se\ mi jeví jako vhodné použít spojité sockety spolu s\ TCP. Druhá možnost by\ znamenala dle mého názoru vyvýjet již vynalezenou věc znovu s\ nejistým výsledkem, zda bude rychlejší (a\ zda bude korektní).
+
+## Architektura
+
+Stávající řešení, kdy se\ MPI agent[^mpi-agent] postupně přes `ssh` [[RFC4252]](https://tools.ietf.org/html/rfc4252) připojí ke\ všem strojům, kteří se\ mají účastnit distribuovaného výpočtu, provede se\ výpočet a\ jednotlivé instance na\ výpočetních strojích se\ ukončí, vypovídá o\ pohledu, jakým se\ díváme na\ nástroj DIVINE. Jako na\ program, který jednou spustíme, on\ nám dá výsledek a\ tím je\ vše hotovo.
+
+[^mpi-agent]: Jedná se\ o\ program, který spustí MPI aplikaci. Většinou se\ tento agent jmenuje `mpirun` nebo `mpiexec`.
+
+Na\ nástroj DIVINE se\ ale můžeme dívat i\ jinak. Jako na\ službu, která běží někde ve výpočetním clusteru a\ která je\ dostupná skrz nějaké rozhraní -- skrz grafickou aplikaci, příkazový řádek či\ webovou stránku. Pro tento nový pohled je\ ale potřeba provést změny v\ architektuře. Jedná se\ zejména o\ rozdělení programu na\ dvě části. První a\ podstatnější je\ serverová část, která je\ zodpovědná za\ samotné provedení výpočtu. Druhou částí je\ klientská část, která je\ v\ aktuálním návrhu zodpovědná za\ zadání práce vybraným serverům.
+
+### Server
+
+Server bude mít jeden hlavní proces, jehož primárním úkolem je\ příjem příchozích spojení a\ odpovídání na\ požadavky. V\ případě započetí výpočtu dojde k\ vytvoření dalšího procesu, který je\ zodpovědný za\ provedení přiděleného výpočtu -- tzv. výkonný proces. Tím hlavní proces změní svoji roli a\ stává se\ opatrovníkem výkonného procesu. V\ jeden okamžik může běžet nanejvýš jeden výkonný proces, neboť nástroj DIVINE má velké nároky na\ paměť i\ na\ procesorový čas.
+
+Primárním důvodem tohoto rozdělení je\ mít kontrolu nad\ kteroukoliv běžící instancí programu na\ vzdálených strojích. Tato funkcionalita je obzvláště vhodná v\ případě, že\ se\ distribuovaný výpočet zacyklí či\ dojde k\ uváznutí. Skrze hlavní proces lze pomocí funkce [`kill`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/kill.html) výpočet kdykoliv násilně ukončit. Dalším důvodem pak je\ zachování funkčního serveru i\ v\ případě, že\ dojde k\ fatální chybě a\ výkonný proces je\ ukončen operačním systémem.
+
+Při spuštění nástroje DIVINE jako server se\ provedou kroky vedoucí k\ démonizaci. To\ je\ stav, kdy program sice běží pod uživatelem, který ho\ spustil, ovšem uživatel nemusí být fyzicky připojen k\ danému stroji. V\ tomto stavu server vyčkává, dokud nepřijde nějaké spojení. Během čekání hlavní proces nespotřebovává žádný procesorový čas, pouze malé množství paměti potřebné k\ běhu. Stejná situace -- žádná spotřeba procesorového času a\ pouze málo paměti -- je i\ v\ případě, že\ hlavní proces dozoruje běh výkonného procesu.
+
+Výkonný proces poskytuje distribuovanému algoritmu možnost poslat zprávu nějakému stroji, přijmout zprávu od\ specifického stroje a\ poslat zprávu všem strojům. Pro větší podporu paralelního přístupu ke\ komunikačnímu rozhraní výkonný proces umožňuje mít víc kanálů mezi dvěma servery. Přijímat zprávy tak lze ze\ všech kanálů, či\ lze specifikovat jeden kanál, na\ kterém bude vlákno distribuovaného algoritmu přijímat zprávy.
+
+Pro zachování sémantiky výstupních operací s\ MPI je\ server koncipován tak, aby zachytával jakékoliv pokusy o\ zápis na\ výstup a\ přeposílal je klientovi, který je\ zobrazí. Toho je\ ve\ výkonném procesu dosaženo přesměrováním standardního výstupu a\ standardního chybového výstupu a\ nastartováním dvou dalších vláken -- jeden pro každý výstup -- které se\ starají o\ samotné přeposílání. Více je popsáno v podkapitole Protokol.
+
+### Klient
+
+Klient slouží k\ ovládání výpočetních serverů a\ nikterak se\ přímo nepodílí na\ výpočtu. Mezi základní funkce patří spuštění démonů na\ určených strojích, jejich ukončení, restart, dotázání se\ na\ aktuální stav (zda je\ server volný či\ zda na\ něm probíhá výpočet) a\ pak samozřejmě spuštění samotného výpočtu.
+
+Spuštění samotného výpočtu probíhá v\ několika krocích. Nejprve je\ potřeba ověřit, zda jsou všechny strojích běží server a\ že\ je server dostupný -- tj. neběží na něm aktuálně výpočet. Po\ vytvoření spojení ke\ každému stroji klient postupně požádá všechny servery, aby se\ spojily s\ ostatními na\ určeném počtu kanálů a\ vytvořily tak úplný graf. Následně klient může, pokud je\ to potřeba, doručit každému serveru blok dat, například obsah souboru. Poté nastává poslední fáze, která spočívá v\ přenesení argumentů z\ příkazové řádky a\ spuštění samotného výpočtu.
+
+V\ průběhu výpočtu klient vyčkává na\ příchozí zprávy, které mohou být několika druhů. Mohou to\ být zachycené výstupy, které klient vypíše do\ správného výstupního proudu. Mohou to být hromadné zprávy, či\ chybně zaslané zprávy na\ klienta, které jsou ignorovány. V\ neposlední řadě se\ může jednat o\ zprávu, že\ ten který server dokončil výpočet.
+
+Pro spuštění poslední fáze, rozpojení sítě, je\ potřeba, aby všechny servery zaslaly zprávu o\ ukončení výpočtu. Pak klient rozpustí síť serverů, což zapříčiní ukončení výkonných procesů a\ hlavní procesy se\ uvedou do\ původního stavu. Následně i\ klient ukončí svoji činnost.
 
 ## Protokol
+
+Pro komunikaci jsem zavedl jednoduchý protokol postavený na\ zprávách. Zprávy se\ posílají v\ binárním formátu, takže se\ vyžaduje, aby všechny servery i\ klient měli stejnou endianitu. To\ může být chápáno jako případné problematické místo, ovšem neočekávám, že\ bude nástroj DIVINE spouštěn na\ hybridních výpočetních clusterech. K\ binárnímu formátu jsem přistoupil také kvůli rychlosti serializace.
+
+### Formát zpráv
+
+Každá zpráva má\ hlavičku proměnlivé délky, která obsahuje následující informace:
+
+*   kategorie
+*   počet fragmentů
+*   identifikační číslo odesílatele
+*   identifikační číslo příjemce
+*   štítek
+*   velikosti fragmentů (více políček)
+
+Políčko *kategorie* slouží k\ rozeznání typů zpráv. Jinou hodnotu mají řídicí zprávy, které jsou součástí protokolu a\ jsou obsluhovány serverem nebo klientem, další hodnotu mají zprávy přeposílající obsah na\ standardní výstup a\ standardní chybový výstup a\ konečně datové zprávy, za\ jejichž zpracování je zodpovědný distribuovaný algoritmus. Políčko *kategorie* je 8bitové neznaménkové číslo -- typ `uint8_t`.
+
+Políčko *počet fragmentů* udává kolik datových fragmentů má\ zpráva. Toto políčko je 8bitové neznaménkové číslo -- typ `uint8_t`.
+
+*Indetifikační číslo odesílatele* je číslo serveru v\ rámci ustanovené sítě. Toto políčko je 8bitové neznaménkové číslo -- typ `uint8_t`.
+
+*Indetifikační číslo příjemce* je\ číslo serveru v\ rámci ustanovené sítě. Obsahuje buď konkrétní číslo, nebo konstantu `255`, která značí, že\ zpráva byla zaslána hromadně. Toto políčko je 8bitové neznaménkové číslo -- typ `uint8_t`.
+
+*Štítek* slouží k\ určení vlastnosti předávané zprávy. V\ případě datové zprávy je\ hodnota *štítku* plně v\ režii distribuovaného algoritmu. Protokol je\ používá k\ označení příkazů a\ odpovědí a\ v\ případě přeposílání obsahu na\ výstup se\ jím rozlišuje standardní výstup od\ standardního chybového výstupu. Toto políčko je 32bitové neznaménkové číslo -- typ `uint32_t`.
+
+*Velikosti fragmentů* je\ pole 32bitových čísel, které reprezentuje velikosti jednotlivých datových fragmentů zprávy. Počet fragmentů, tedy velikost pole *velikosti fragmentů* určuje hodnota *počet fragmentů*.
+
+Zpráva poskytuje metody pro manipulaci s\ hlavičkou zprávy a\ pro přidávání a\ čtení datových fragmentů do/ze\ zprávy. Pro\ omezení množství kopírovaných dat umožňuje zpráva při příjmu dat rovnou alokovat paměť pro\ datový fragment.
+
+### Seznam příkazů
+
+V\ případě, že\ *kategorie* poslané zprávy je\ řídicí zpráva, může *štítek* nabývat jedné z\ následujících hodnot:
+
+    NoOp, OK, Success, Refuse, Enslave, ID, ConnectTo, DataLine, Join, Disconnect
+    Peers, Leave, Grouped, PrepareToLeave, Shutdown, ForceShutdown, CutRope,
+    InitialData, Run, Start, Done, Error, Renegade, Status
+
+### Stavy serveru
+
+Server se\ může v\ průběhu svého běhu nacházet v\ jednom z\ následujích stavů:
+
+1.  *Volný*. Server je\ k\ dispozici.
+2.  *Zotročený*. Server byl osloven klientem a\ podřídil se\ mu.
+3.  *Formující skupinu*. Server je ve\ fázi vytváření spojení ke\ všem ostatním serverům ve\ skupině.
+4.  *Zformován*. Všechny servery jsou navzájem spojeny a\ došlo k\ vytvoření výkonného procesu.
+5.  *Dohlížející*. Hlavní proces začal dohlížet na\ výkonný proces.
+6.  *Běžící*. Výkonný server spustil distribuovaný algoritmus.
+7.  *Ukončující*. Výkonný server započal ukončující fázi.
+
+Některé stavy jsou vyhrazeny pouze pro hlavní proces (*volný*, *zotročený*, *formující skupinu*, *dohlížející*). Do zbývajících stavů se\ může dostat pouze výkonné vlákno. pokud se\ klient dotáže server na\ to, v\ jakém je\ stavu, jako odpověď dostane jeden ze\ stavů hlavního procesu. Zjistit stav výkonného procesu není možné.
+
+**[přechodový diagram stavů]**
+
+
 
 ### Ustanovení sítě
 
@@ -285,11 +421,9 @@ Sekvenční sockety poskytují stejné garance jako spojité sockety.
 
 ### Řešení chyb a problémových stavů
 
+###
 
-
-## Architektura
-
-
+### Bezpečnost
 
 ## Rozhraní pro distribuované procházení grafu
 
