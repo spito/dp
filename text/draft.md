@@ -348,11 +348,15 @@ Při spuštění nástroje DIVINE jako server se\ provedou kroky vedoucí k\ dé
 
 Výkonný proces poskytuje distribuovanému algoritmu možnost poslat zprávu nějakému stroji, přijmout zprávu od\ specifického stroje a\ poslat zprávu všem strojům. Pro větší podporu paralelního přístupu ke\ komunikačnímu rozhraní výkonný proces umožňuje mít víc kanálů mezi dvěma servery. Přijímat zprávy tak lze ze\ všech kanálů, či\ lze specifikovat jeden kanál, na\ kterém bude vlákno distribuovaného algoritmu přijímat zprávy.
 
+Je\ pravidlem, že\ výkonné procesy jsou navzájem propojeny stejným počtem kanálů, přičemž primární účel kanálů je\ přepravovat data distribuovaného algoritmu. Mimo to\ je\ mezi každým výkonným procesem udržováno jedno řídicí spojení. Výkonný proces je\ po\ čas výpočtu spojeno s\ klientem jedním řídicím spojením, žádné datové kanály mezi nimi nejsou otevřeny.
+
 Pro zachování sémantiky výstupních operací s\ MPI je\ server koncipován tak, aby zachytával jakékoliv pokusy o\ zápis na\ výstup a\ přeposílal je klientovi, který je\ zobrazí. Toho je\ ve\ výkonném procesu dosaženo přesměrováním standardního výstupu a\ standardního chybového výstupu a\ nastartováním dvou dalších vláken -- jeden pro každý výstup -- které se\ starají o\ samotné přeposílání. Více je popsáno v podkapitole Protokol.
 
 ### Klient
 
 Klient slouží k\ ovládání výpočetních serverů a\ nikterak se\ přímo nepodílí na\ výpočtu. Mezi základní funkce patří spuštění démonů na\ určených strojích, jejich ukončení, restart, dotázání se\ na\ aktuální stav (zda je\ server volný či\ zda na\ něm probíhá výpočet) a\ pak samozřejmě spuštění samotného výpočtu.
+
+Spuštění démonů na\ určených strojích je\ aktuálně provedeno pomocí `ssh` připojení, po\ kterém následuje spuštění stejného programu jako je\ klient, ale v\ režimu serveru. Toto řešení má několik problémů, je\ například vázané na\ operační systém GNU/Linux (z\ důvodu nalezení cesty ke\ spuštěnému klientovi).
 
 Spuštění samotného výpočtu probíhá v\ několika krocích. Nejprve je\ potřeba ověřit, zda jsou všechny strojích běží server a\ že\ je server dostupný -- tj. neběží na něm aktuálně výpočet. Po\ vytvoření spojení ke\ každému stroji klient postupně požádá všechny servery, aby se\ spojily s\ ostatními na\ určeném počtu kanálů a\ vytvořily tak úplný graf. Následně klient může, pokud je\ to potřeba, doručit každému serveru blok dat, například obsah souboru. Poté nastává poslední fáze, která spočívá v\ přenesení argumentů z\ příkazové řádky a\ spuštění samotného výpočtu.
 
@@ -363,6 +367,8 @@ Pro spuštění poslední fáze, rozpojení sítě, je\ potřeba, aby všechny s
 ## Protokol
 
 Pro komunikaci jsem zavedl jednoduchý protokol postavený na\ zprávách. Zprávy se\ posílají v\ binárním formátu, takže se\ vyžaduje, aby všechny servery i\ klient měli stejnou endianitu. To\ může být chápáno jako případné problematické místo, ovšem neočekávám, že\ bude nástroj DIVINE spouštěn na\ hybridních výpočetních clusterech. K\ binárnímu formátu jsem přistoupil také kvůli rychlosti serializace.
+
+Dále v\ popisu protokolu mluvím o\ seznamu strojů. Jedná se\ o\ seznam, který obsahuje síťové adresy strojů v\ lokální síti a\ který zároveň definuje stroje, které se\ budou podílet na\ distribuovaném výpočtu. Při adresaci není uvedené číslo portu, neboť to\ se\ nastavuje při startu klienta a\ musí být stejné s\ číslem portu, na\ kterých poslouchají servery uvedené v\ seznamu strojů.
 
 ### Formát zpráv
 
@@ -391,11 +397,49 @@ Zpráva poskytuje metody pro manipulaci s\ hlavičkou zprávy a\ pro přidáván
 
 ### Seznam příkazů
 
-V\ případě, že\ *kategorie* poslané zprávy je\ řídicí zpráva, může *štítek* nabývat jedné z\ následujících hodnot:
+Seznam příkazů, odpovědí a\ oznámení, které se\ používají v\ navrženém protokolu, je\ následující:
 
-    NoOp, OK, Success, Refuse, Enslave, ID, ConnectTo, DataLine, Join, Disconnect
-    Peers, Leave, Grouped, PrepareToLeave, Shutdown, ForceShutdown, CutRope,
-    InitialData, Run, Start, Done, Error, Renegade, Status
+    OK, Refuse, Enslave, Disconnect, Peers, ConnectTo, Join, DataLine,
+    Grouped, InitialData, Run, Start, Done, PrepareToLeave, CutRope,
+    Leave, Error, Renegade, Status, Shutdown, ForceShutdown
+
+Každý prvek z\ tohoto výčtu má\ svoji číselnou hodnotu, která je\ přiřazena do\ *štítku* zprávy.
+
+Odpověď `OK` je\ akceptující odpovědí na\ všechny příkazy. Oproti tomu je\ odpověď `Refuse` zamítajícím stanoviskem.
+
+Příkaz `Enslave` slouží k\ zotročení serveru klientem. Má tři parametry: *identifikační číslo stroje*, *síťové jméno stroje* a *počet kanálů*. *Identifikační číslo stroje* postupně nabývá hodnot v\ rozsahu 1 až\ počet strojů. Toto číslo je\ na\ serveru dostupné pod názvem rank. Oproti protokolu MPI zde platí, že\ jsou čísla o\ jedno posunuté; rank\ 0 je\ vyhrazen klientovi. *Síťové jméno stroje* si\ server uloží do\ tabulky spojení, přičemž jméno je\ případně posléze použito pro hlášení chyb. *Počet kanálů* označuje, kolik datových kanálů bude otevřeno mezi každou dvojcí strojů.
+
+Příkaz `Disconnect` použije klient v\ případě, že\ hodlá ukončit spojení se\ serverem.
+
+Příkaz `Peers` má jeden parametr: *velikost světa*. Ten označuje počet strojů ve\ skupině. Příkaz zasílá klient serverům.
+
+Příkazem `ConnectTo` klient požádá server **A** o\ vytvoření spojení s\ dalším serverem **B**. Příkaz má tři parametry: *identifikační číslo stroje*, *síťové jméno stroje* a\ *adresu*. První dva parametry jsou stejné jako u\ předchozího příkazu. *Adresu* použije server **A** pro připojení k\ serveru **B**.
+
+Příkaz `Join` použije server **A** pro otevření řídicího spojení k\ serveru **B**. Má dva parametry: *identifikační číslo* serveru **A** a\ *síťové jméno* serveru **A**.
+
+Příkaz `DataLine` použije server **A** pro otevření datového komunikačního kanálu k\ serveru **B**. Má dva parametry: *identifikační číslo* serveru **A** a\ *číslo kanálu*.
+
+Příkaz `Grouped` posílá klient serverům v\ okamžiku dokončení propojování serverů.
+
+Příkaz `InitialData` je volitelný a\ klient ho\ posílá spolu s\ blokem počátečních dat všem serverům.
+
+Příkazem `Run` pobídne klient servery, aby spustili distribuovaný výpočet. Jako parametry jsou argumenty, které budou předány spouštěné funkci.
+
+Příkaz `Start` slouží jako bariéra. Po\ přijetí server spouští distribuovaný výpočet.
+
+Oznámení `Done` posílají servery klientovi po\ dokončení distribuovaného algoritmu.
+
+Příkazem `PrepareToLeave` klient připraví výkonný proces na\ ukončení činnosti.
+
+Oznámením `CutRope` dává na\ serveru výkonný proces najevo hlavnímu procesu, že\ ukončuje svoji činnost.
+
+Po obdržení příkazu `Leave` ukončí výkonný proces svoji činnost.
+
+Příkazy `Error` a\ `Renegade` slouží k\ oznámení chyby všem propojeným strojům. Příkaz `Renegade` má jeden parametr: *adresu* stroje, kde došlo k\ chybě.
+
+Příkazem `Status` se\ klient ptá na\ stav serveru a\ stejným příkazem mu\ server odpovídá.
+
+Oba příkazy `Shutdown` a\ `ForceShutdown` slouží k\ ukončení činnosti serveru. `ForceShutdown` ukončí server vždy, `Shutdown` pouze tehdy, když se\ server neúčastní výpočtu.
 
 ### Stavy serveru
 
@@ -409,21 +453,71 @@ Server se\ může v\ průběhu svého běhu nacházet v\ jednom z\ následujích
 6.  *Běžící*. Výkonný server spustil distribuovaný algoritmus.
 7.  *Ukončující*. Výkonný server započal ukončující fázi.
 
-Některé stavy jsou vyhrazeny pouze pro hlavní proces (*volný*, *zotročený*, *formující skupinu*, *dohlížející*). Do zbývajících stavů se\ může dostat pouze výkonné vlákno. pokud se\ klient dotáže server na\ to, v\ jakém je\ stavu, jako odpověď dostane jeden ze\ stavů hlavního procesu. Zjistit stav výkonného procesu není možné.
+Některé stavy jsou vyhrazeny pouze pro hlavní proces (*volný*, *zotročený*, *formující skupinu*, *dohlížející*). Do zbývajících stavů se\ může dostat pouze výkonné vlákno. Pokud se\ klient dotáže serveru na\ to, v\ jakém je\ stavu, jako odpověď dostane jeden ze\ stavů hlavního procesu. Zjistit stav výkonného procesu není možné.
 
 **[přechodový diagram stavů]**
 
-
+Server může měnit svůj stav na\ základě příkazu od\ klienta. Na\ základě jakého příkazu, případně události, server změní svůj stav je\ popsáno na\ uvedeném přechodovém diagramu stavů. Dále zde platí to, že\ téměř všechny příkazy od\ klienta může server akceptovat, pouze pokud je\ ve\ správném stavu. Přechody mezi jednotlivými stavy jsou tak primárně kontrolní mechanismus.
 
 ### Ustanovení sítě
 
+Jak již bylo lehce zmíněno, ustanovení sítě probíhá ve\ třech fázích: navázání spojení, propojení a\ spuštění. Na\ ilustračním obrázku je\ zakreslen průběh úspěšného ustanovení sítě. Jednotlivé fáze jsou pak rozepsány níže.
+
+**[diagram ustanovení sítě]**
+
+#### Navázání spojení
+
+Klient postupně otevírá spojení na\ každý stroj ze\ seznamu strojů. Po každém úspěšném připojení klient zašle serveru příkaz `Enslave`, na\ nějž může server odpovědět třemi způsoby. Pokud je\ ve\ stavu *volný*, může příkaz akceptovat, čímž sám sebe přepne do\ stavu *zotročený*. Nebo může server zamítnout zotročení v\ případě, že se\ nachází v\ jiném stavu než *volný*. Pokud server odpoví jinak, je\ odpověď nahlášena jako chybná a\ řeší se\ jako chybový stav.
+
+Pokud se\ klient není schopný k\ některému stroji připojit, případně dostane zamítavou odpověď, rozešle všem již připojeným serverům zprávu `Disconnect`, počká na\ odpověď a\ ukončí všechna spojení. Zpráva `Disconnect` způsobí, že\ server pošle akceptující odpověď, přejde zpět ze\ stavu *zotročený* do\ stavu *volný* a\ smaže všechny nabyté znalosti. V\ opačném případě -- podařilo se\ vytvořit spojení se\ všemi stroji -- pokračuje klient druhou fází: propojením.
+
+#### Propojení
+
+V\ této fázi klient rozešle všem zotročeným serverům příkaz `Peers` spolu s\ jedním parametrem velikosti světa. Přijetím tohoto příkazu se\ server přepne ze\ stavu *zotročený* do\ *formující skupinu* a\ zapamatuje si\ velikost světa.
+
+Server neakceptuje příkaz `Peers` pouze v\ případě, že\ se\ nenachází ve\ stavu *zotročený*. Tato situace je\ řešena jako chybový stav, neboť k\ ní\ může dojít pouze chybou v\ protokolu samotném.
+
+Po\ obeznámení všech serverů s\ velikostí světa posílá klient postupně jednotlivým serverům žádosti o\ spojení s\ dalšími servery, což provádí příkazem `ConnectTo`. Na\ základě žádosti požádaný server **A** postupně pomocí příkazů `Join` a\ `DataLine` ustanoví spojení s\ cílovým serverem **B**. Počet zaslání příkazů `DataLine` zavisí na\ počtu požadovaných otevřených datových kanálů. Pokud se\ podaří navázat všechna spojení, pošle server **A** klienovi odpověď `OK`, v\ opačném případě odpoví `Refuse`.
+
+Pokud klient obdrží od\ některého serveru odpověď `Refuse`, řeší se\ nastalá situace jako chybový stav. Jinak klient zašle serverům příkaz `Grouped`, který způsobí, že\ na\ každém serveru hlavní proces vytvoří výkonný proces. Možnost přijímat příchozí spojení zůstane pouze hlavnímu procesu, naopak výkonný proces dostane na\ starost všechny již otevřená spojení. Výkonný a\ hlavní proces spolu zůstanou v\ kontaktu pomocí anonymního páru socketů vytvořených funkcí [`socketpair`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/kill.html). Hlavní proces se\ přepne do\ stavu *dohlížející*, zatímco výkonný proces se\ přepne do\ stavu *zformován*. Od\ tohoto okamžiku klient komunikuje pouze s\ výkonným procesem.
+
+#### Spuštění
+
+Poslední fází k\ započetí distribuovaného algoritmu je\ spuštění. Před samotným spuštění může klient rozeslat počáteční data všem výkonným procesům pomocí příkazu `InitialData`. Po něm již následuje zaslání příkazu `Run` spolu s\ parametry příkazové řádky, kterým se\ výkonný proces přepne ze\ stavu *zformován* do\ stavu *běžící*.
+
+Samotný start algoritmu v\ sobě implementuje bariéru,[^barrier] kdy je\ až\ příkazem `Start` od\ klienta každý výkonný proces zpraven o\ skutečném odstartování. Tento krok je\ v\ protokolu použit, aby nedocházelo na\ jednom stroji k\ započetí výpočtu, když se\ klient ještě stará o\ rozeslání dat zbylým strojům.
+
+[^barrier]: Bariéra je\ v\ oblasti paralelního a\ distribuovaného programování synchronizační primitivum, kterého musí všechny aktivní jednotky (vlákna či\ procesy) dosáhnout, než jim všem bude umožněno pokračovat dále ve\ výpočtu.
+
+Před samotným startem distribuovaného algoritmu se\ navíc spustí dvě vlákna, která mají na\ starost přesměrování standardního výstupu a\ standardního chybového výstupu na\ klienta. Klient se\ tak od\ tohoto okamžiku stará pouze o\ zobrazování přeposlaných výstupů a\ případné řešení chybových stavů.
+
 ### Rozpuštění sítě
+
+Rozpuštění sítě započne v\ okamžiku, kdy první stroj pošle oznámení `Done`, kterým informuje klienta o\ dokončení výpočtu. Až\ klient obdrží tato oznámení od\ všech strojů, přejde k\ samotnému ukončení. To\ zahrnuje rozeslání příkazu `PrepareToLeave` od\ klienta všem serverům, který způsobí, že\ se\ klient přepne ze\ stavu *běžící* do\ stavu *ukončující*. V\ tomto stavu přestává server hlásit případné výpadky spojení.
+
+Jakmile dostane klient odpověď od\ všech výkonných procesů, že\ přešly do\ stavu *ukončující*, rozešle jim příkaz `Leave`. Ten způsobí, že\ každý výkonný proces pošle oznámení `CutRope` svému hlavnímu procesu, po\ jehož přijetí se\ hlavní proces na\ každém serveru přepne ze\ stavu *dohlížející* do\ stavu *volný*. Souběžně s\ tím dojde na\ straně každého výkonného procesu k\ uzavření všech spojení a\ k\ ukončení činnosti.
+
+Na\ komunikaci mezi výkonným a\ dohlížejícím procesem je\ klíčové, aby si\ výkonný proces počkal na\ potvrzení přijetí oznámení `CutRope` od\ hlavního procesu. Vynecháním potvrzení totiž může docházet k\ situaci, kdy klient již ukončil svoji činnost, ale hlavní proces je\ stále ve\ stavu *dohlížející*, což může mít za\ následek, že\ další spuštění výpočtu za\ použití stejných serverů nebude možné provést.
 
 ### Řešení chyb a problémových stavů
 
-###
+XXX
+
+### Ostatní příkazy
+
+Klient může operovat s\ dalšími příkazy: `Status`, `Shutdown` a `ForceShutdown`.
+
+Pomocí dotazu `Status` může klient zjistit, v\ jakém stavu se\ nachází server. Běžně je\ pro zjištění stavu vytvořeno nové spojení na\ server. Ten po\ obdržení dotazu na\ svůj stav pošle zprávu s\ textovým popisem svého stavu. Server se\ nikterak nestará o\ nové spojení, které tím pádem zaniká. Server na\ dotaz na\ svůj stav odpoví vždy, ať\ už\ je v\ jakémkoliv stavu. Protože se\ ale klient dotazuje pouze hlavního procesu, může dostat jako odpověď pouze tyto stavy: *volný*, *zotročený*, *formující skupinu* a\ *dohlížející*.
+
+Příkaz `Shutdown` je\ zdvořilou žádostí o\ ukončení běhu serveru. Serveru tuto žádost akceptuje pouze v\ případě, že\ se\ nachází ve\ stavu *volný*.
+
+Příkaz `ForceShutdown` je\ silnější variantou předchozího příkazu, která zaručí, že\ server ukončí svoji činnost nezávisle na\ stavu, ve\ kterém se\ nachází. Navázaná spojení jsou ukončena bez zaslání jakékoliv zprávy a\ v\ případě, že\ je nastartován výkonný proces, je\ násilně ukončen.
 
 ### Bezpečnost
+
+Protokol jako takový byl koncipován na\ provoz v\ bezpečném prostředí, takže nepodporuje žádnou úroveň zabezpečení. Ze\ základních prvků zabezpečení zde chybí hlavně autentizace klienta vůči serveru a\ kontrola integrity dat.
+
+Žádná metoda zabezpečení nebyla nasazena ze\ dvou důvodů. První z\ nich byl již vyřčen -- očekávám, že\ nástroj DIVINE bude provozován v\ zabezpečené vnitřní síti. Druhým důvodem je\ velký důraz na\ rychlost. Ačkoliv by\ nasazení autentizace sice nešlo proti druhému důvodu, implementace integrity dat například pomocí SSL [[RFC6101]](https://tools.ietf.org/html/rfc6101) by\ již mohla způsobit snížení rychlosti toku dat. Protože však záměr práce nespočívá v\ nasazení zabezpečovacích prvků, je\ dle mého soudu zbytečné tyto mechanizmy do\ protokolu implementovat.
 
 ## Rozhraní pro distribuované procházení grafu
 
