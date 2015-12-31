@@ -342,7 +342,7 @@ Na\ nástroj DIVINE se\ ale můžeme dívat i\ jinak. Jako na\ službu, která b
 
 Server bude mít jeden hlavní proces, jehož primárním úkolem je\ příjem příchozích spojení a\ odpovídání na\ požadavky. V\ případě započetí výpočtu dojde k\ vytvoření dalšího procesu, který je\ zodpovědný za\ provedení přiděleného výpočtu -- tzv. výkonný proces. Tím hlavní proces změní svoji roli a\ stává se\ opatrovníkem výkonného procesu. V\ jeden okamžik může běžet nanejvýš jeden výkonný proces, neboť nástroj DIVINE má velké nároky na\ paměť i\ na\ procesorový čas.
 
-Primárním důvodem tohoto rozdělení je\ mít kontrolu nad\ kteroukoliv běžící instancí programu na\ vzdálených strojích. Tato funkcionalita je obzvláště vhodná v\ případě, že\ se\ distribuovaný výpočet zacyklí či\ dojde k\ uváznutí. Skrze hlavní proces lze pomocí funkce [`kill`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/kill.html) výpočet kdykoliv násilně ukončit. Dalším důvodem pak je\ zachování funkčního serveru i\ v\ případě, že\ dojde k\ fatální chybě a\ výkonný proces je\ ukončen operačním systémem.
+Primárním důvodem tohoto rozdělení je\ mít kontrolu nad\ kteroukoliv běžící instancí programu na\ vzdálených strojích. Tato funkcionalita je obzvláště vhodná v\ případě, že\ se\ distribuovaný výpočet zacyklí či\ dojde k\ uváznutí. Skrze hlavní proces lze pomocí funkce [`kill`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/kill.html) výpočet výkonného procesu kdykoliv násilně ukončit. Dalším důvodem pak je\ zachování funkčního serveru i\ v\ případě, že\ dojde k\ fatální chybě a\ výkonný proces je\ ukončen operačním systémem.
 
 Při spuštění nástroje DIVINE jako server se\ provedou kroky vedoucí k\ démonizaci. To\ je\ stav, kdy program sice běží pod uživatelem, který ho\ spustil, ovšem uživatel nemusí být fyzicky připojen k\ danému stroji. V\ tomto stavu server vyčkává, dokud nepřijde nějaké spojení. Během čekání hlavní proces nespotřebovává žádný procesorový čas, pouze malé množství paměti potřebné k\ běhu. Stejná situace -- žádná spotřeba procesorového času a\ pouze málo paměti -- je i\ v\ případě, že\ hlavní proces dozoruje běh výkonného procesu.
 
@@ -351,6 +351,8 @@ Výkonný proces poskytuje distribuovanému algoritmu možnost poslat zprávu n�
 Je\ pravidlem, že\ výkonné procesy jsou navzájem propojeny stejným počtem kanálů, přičemž primární účel kanálů je\ přepravovat data distribuovaného algoritmu. Mimo to\ je\ mezi každým výkonným procesem udržováno jedno řídicí spojení. Výkonný proces je\ po\ čas výpočtu spojeno s\ klientem jedním řídicím spojením, žádné datové kanály mezi nimi nejsou otevřeny.
 
 Pro zachování sémantiky výstupních operací s\ MPI je\ server koncipován tak, aby zachytával jakékoliv pokusy o\ zápis na\ výstup a\ přeposílal je klientovi, který je\ zobrazí. Toho je\ ve\ výkonném procesu dosaženo přesměrováním standardního výstupu a\ standardního chybového výstupu a\ nastartováním dvou dalších vláken -- jeden pro každý výstup -- které se\ starají o\ samotné přeposílání. Více je popsáno v podkapitole Protokol.
+
+Pro zjednodušení ladění chyb při vytváření nové implementace komunikační vrstvy, kdy se\ server fyzicky nachází na\ jiném stroji než spuštěný klient, jsem přidal do\ serveru možnost logovat jednotlivé prováděné operace. V\ demonstračním programu se\ jedná především o\ záznamy vstupů do\ funkcí, které obsluhují reakce na\ příkazy, a\ záznamy problematických situací (popsáno později).
 
 ### Klient
 
@@ -400,8 +402,8 @@ Zpráva poskytuje metody pro manipulaci s\ hlavičkou zprávy a\ pro přidáván
 Seznam příkazů, odpovědí a\ oznámení, které se\ používají v\ navrženém protokolu, je\ následující:
 
     OK, Refuse, Enslave, Disconnect, Peers, ConnectTo, Join, DataLine,
-    Grouped, InitialData, Run, Start, Done, PrepareToLeave, CutRope,
-    Leave, Error, Renegade, Status, Shutdown, ForceShutdown
+    Grouped, InitialData, Run, Start, Done, PrepareToLeave, Leave,
+    CutRope, Error, Renegade, Status, Shutdown, ForceShutdown, ForceReset
 
 Každý prvek z\ tohoto výčtu má\ svoji číselnou hodnotu, která je\ přiřazena do\ *štítku* zprávy.
 
@@ -440,6 +442,8 @@ Příkazy `Error` a\ `Renegade` slouží k\ oznámení chyby všem propojeným s
 Příkazem `Status` se\ klient ptá na\ stav serveru a\ stejným příkazem mu\ server odpovídá.
 
 Oba příkazy `Shutdown` a\ `ForceShutdown` slouží k\ ukončení činnosti serveru. `ForceShutdown` ukončí server vždy, `Shutdown` pouze tehdy, když se\ server neúčastní výpočtu.
+
+Příkaz `ForceReset` slouží k\ násilné obnově výchozího stavu serveru.
 
 ### Stavy serveru
 
@@ -499,10 +503,6 @@ Jakmile dostane klient odpověď od\ všech výkonných procesů, že\ přešly 
 
 Na\ komunikaci mezi výkonným a\ dohlížejícím procesem je\ klíčové, aby si\ výkonný proces počkal na\ potvrzení přijetí oznámení `CutRope` od\ hlavního procesu. Vynecháním potvrzení totiž může docházet k\ situaci, kdy klient již ukončil svoji činnost, ale hlavní proces je\ stále ve\ stavu *dohlížející*, což může mít za\ následek, že\ další spuštění výpočtu za\ použití stejných serverů nebude možné provést.
 
-### Řešení chyb a problémových stavů
-
-XXX
-
 ### Ostatní příkazy
 
 Klient může operovat s\ dalšími příkazy: `Status`, `Shutdown` a `ForceShutdown`.
@@ -512,6 +512,34 @@ Pomocí dotazu `Status` může klient zjistit, v\ jakém stavu se\ nachází ser
 Příkaz `Shutdown` je\ zdvořilou žádostí o\ ukončení běhu serveru. Serveru tuto žádost akceptuje pouze v\ případě, že\ se\ nachází ve\ stavu *volný*.
 
 Příkaz `ForceShutdown` je\ silnější variantou předchozího příkazu, která zaručí, že\ server ukončí svoji činnost nezávisle na\ stavu, ve\ kterém se\ nachází. Navázaná spojení jsou ukončena bez zaslání jakékoliv zprávy a\ v\ případě, že\ je nastartován výkonný proces, je\ násilně ukončen.
+
+Poslední příkaz -- `ForceReset` -- slouží k\ tomu, aby hlavní proces přešel do\ stavu *volný*, ať\ už\ byl předtím v\ kterémkoliv jiném stavu, což zahrnuje také násilné ukončení výkonného procesu, pokud je\ spuštěn. Tento příkaz kromě explicitního vyžádání od\ uživatele použije klient v\ případě, že\ obdržel [signál](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_04), který by\ způsobil ukočení klienta. Zejména se\ jedná o\ [signály](http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html) `SIGALRM`, `SIGINT`[^SIGINT] a\ `SIGTERM`.
+
+[^SIGINT]: Tento signál je\ na unixových systémech většinou generován prostřednictvím klávesové zkratky `Ctrl+C`.
+
+### Řešení chyb a problémových stavů
+
+Mnou navržený protokol je\ připraven řešit některé problémové situace, které mohou nastat. Problémové situace lze rozdělit do\ několika okruhů: selhání síťových komponent, vnitřní chyba protokolu a\ problém s\ distribuovaným algoritmem.
+
+Mnohé z\ potenciálně problematických operací jsou ošetřeny nastavením maximálního časového úseku, po\ který mohou operace blokovat provádění. Pokud ani po\ uplynutí časového úseku nebylo možné operaci dokončit, dojde ve\ většině případů k\ vyhození výjimky `WouldBlock`.
+
+Jakákoliv vyhozená výjimka je, pokud toto chování distribuovaný algoritmus neupraví, zachycena v\ nejvrchnější funkci, je\ reportována uživateli -- klient vypíše chybovou hlášku na\ obrazovku, server ji\ zaznamená do\ logů -- a\ program je\ ukončen. Odlišné chování má\ akorát hlavní serverový proces, který sice zachycenou výjimku zaznamená do\ logů, ovšem neukončí svoji činnost, ale uvolní veškeré alokované zdroje, případně násilně ukončí běh výkonného procesu, a\ přejde do\ stavu *volný*. Tento mechanizmus zpracování výjimek jsem zvolil, aby při nastalých problémech nedocházelo k\ uváznutí, ale aby byl naopak uživatel zpraven o\ nastalé chybě.
+
+Za\ chyby se\ v\ okruhu selhání síťových komponent považuje cokoliv od\ zamítnutí připojení až\ po\ rozpojení sítě během výpočtu. V\ mé implementaci protokolu většinu těchto problémů řeší objektová nadstavba nad POSIX rozhraním BSD socketů.
+
+Problémy vzniklé během vytváření spojení mezi dvěma stroji mohou mít několik příčin. Pokud se\ nepodaří přeložit název cílového stroje na\ IP adresu, ať již z\ důvodu nedostupnosti stroje, či\ protože je\ v\ názvu překlep, dojde k\ vyhození výjimky s\ relevantním popiskem. Jiná výjimka může být vyhozena, pokud se\ do\ určitého časového okamžiku nepodaří spojení navázat.
+
+Po\ úspěšném navázání spojení je\ každý nově otevřený socket poznačen jako blokující[^blocking-socket] a\ zároveň mu je\ nastaveno, jak nejdéle může trvat operace nad socketem. Časový limit v\ tomto případě ohraničuje především operace čtení a\ zápisu do\ socketu. Operace zápisu se\ může zdržet například proto, že\ cílový stroj si\ nevyzvedává příchozí zprávy a\ vyrovnávací paměť operačního systému pro příchozí data je\ již plná. U\ operace čtení může naopak dojít k\ tomu, že\ zdrojový stroj nepošle žádná data. Tímto se\ řeší především situace, kdy dojde k\ uváznutí na\ některém serveru z\ důvodu chybného distribuovaného algoritmu.
+
+[^blocking-socket]: Každý získaný socket je blokující. Explicitně tuto informaci uvádím, protože během připojení jsou sockety z\ důvodu prevence uváznutí označeny jako neblokující a\ ke změně na\ blokující dojde až\ po vytvoření spojení.
+
+Dalším problémovým místem pak může být ztráta spojení mezi dvěma stroji v\ průběhu výpočtu. Tato situace je\ opět zachycena objektovou nadstavbou, jejíž reakce je\ vyhození výjimky `ConnectionAbortedException`.
+
+Pro eliminaci chyb v\ samotném protokolu jsem přistoupil jednak k\ použití stavů u\ serverových procesů, jednak k\ posílání odpovědí na\ každý příkaz -- vyjma příkazů `ForceShutdown` a\ `ForceReset`. Server odmítne vykonat příkaz, pokud pro jeho splnění nejsou vhodné podmínky, například protože se\ jeho procesy nachází ve\ špatných stavech.
+
+Reakce na\ odmítnutí příkazu se\ může lišit dle závažnosti. Některá odmítnutí nemusí být závažná a\ mohou být ignorována či\ pouze ohlášena uživateli (forma závisí na\ tom, zda se\ jedná o\ klienta či server), některá ovšem mohou způsobit vyhození výjimky. Většina zamítnutí ovšem vyústí ve\ vyhození výjimky.
+
+Nevhodný návrh distribuovaného algoritmu spolu s\ chybnou implementací mohou vyústit v\ takové uváznutí, kdy některý výkonný proces nebude pracovat s\ otevřenými spojeními, což může i\ v\ případě ukončení klienta vést k\ tomu, že\ tento výkonný proces nebude ani po\ násilném rozpuštění sítě schopen zastavit výpočet. Z\ toho důvodu je\ v\ rámci klienta použito zachytávání některých signálů (zejména `SIGINT` a\ `SIGTERM`), které způsobí, že\ klient zašle všem uváznutým serverům (konkrétně hlavním procesům) příkaz `ForceReset`.
 
 ### Bezpečnost
 
