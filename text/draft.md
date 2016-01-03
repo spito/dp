@@ -378,8 +378,8 @@ Každá zpráva má\ hlavičku proměnlivé délky, která obsahuje následujíc
 
 *   kategorie
 *   počet fragmentů
-*   identifikační číslo odesílatele
-*   identifikační číslo příjemce
+*   rank odesílatele
+*   rank příjemce
 *   štítek
 *   velikosti fragmentů (více políček)
 
@@ -387,9 +387,9 @@ Políčko *kategorie* slouží k\ rozeznání typů zpráv. Jinou hodnotu mají 
 
 Políčko *počet fragmentů* udává kolik datových fragmentů má\ zpráva. Toto políčko je 8bitové neznaménkové číslo -- typ `uint8_t`.
 
-*Indetifikační číslo odesílatele* je číslo serveru v\ rámci ustanovené sítě. Toto políčko je 8bitové neznaménkové číslo -- typ `uint8_t`.
+*Rank odesílatele* je číslo serveru v\ rámci ustanovené sítě. Toto políčko je 8bitové neznaménkové číslo -- typ `uint8_t`.
 
-*Indetifikační číslo příjemce* je\ číslo serveru v\ rámci ustanovené sítě. Obsahuje buď konkrétní číslo, nebo konstantu `255`, která značí, že\ zpráva byla zaslána hromadně. Toto políčko je 8bitové neznaménkové číslo -- typ `uint8_t`.
+*Rank příjemce* je\ číslo serveru v\ rámci ustanovené sítě. Obsahuje buď konkrétní číslo, nebo konstantu `255`, která značí, že\ zpráva byla zaslána hromadně. Toto políčko je 8bitové neznaménkové číslo -- typ `uint8_t`.
 
 *Štítek* slouží k\ určení vlastnosti předávané zprávy. V\ případě datové zprávy je\ hodnota *štítku* plně v\ režii distribuovaného algoritmu. Protokol je\ používá k\ označení příkazů a\ odpovědí a\ v\ případě přeposílání obsahu na\ výstup se\ jím rozlišuje standardní výstup od\ standardního chybového výstupu. Toto políčko je 32bitové neznaménkové číslo -- typ `uint32_t`.
 
@@ -409,17 +409,17 @@ Každý prvek z\ tohoto výčtu má\ svoji číselnou hodnotu, která je\ přiř
 
 Odpověď `OK` je\ akceptující odpovědí na\ všechny příkazy. Oproti tomu je\ odpověď `Refuse` zamítajícím stanoviskem.
 
-Příkaz `Enslave` slouží k\ zotročení serveru klientem. Má tři parametry: *identifikační číslo stroje*, *síťové jméno stroje* a *počet kanálů*. *Identifikační číslo stroje* postupně nabývá hodnot v\ rozsahu 1 až\ počet strojů. Toto číslo je\ na\ serveru dostupné pod názvem rank. Oproti protokolu MPI zde platí, že\ jsou čísla o\ jedno posunuté; rank\ 0 je\ vyhrazen klientovi. *Síťové jméno stroje* si\ server uloží do\ tabulky spojení, přičemž jméno je\ případně posléze použito pro hlášení chyb. *Počet kanálů* označuje, kolik datových kanálů bude otevřeno mezi každou dvojcí strojů.
+Příkaz `Enslave` slouží k\ zotročení serveru klientem. Má tři parametry: *rank stroje*, *síťové jméno stroje* a *počet kanálů*. *Rank stroje* postupně nabývá hodnot v\ rozsahu 1 až\ počet strojů. Oproti protokolu MPI zde platí, že\ jsou čísla o\ jedno posunuté; rank\ 0 je\ vyhrazen klientovi. *Síťové jméno stroje* si\ server uloží do\ tabulky spojení, přičemž jméno je\ případně posléze použito pro hlášení chyb. *Počet kanálů* označuje, kolik datových kanálů bude otevřeno mezi každou dvojcí strojů.
 
 Příkaz `Disconnect` použije klient v\ případě, že\ hodlá ukončit spojení se\ serverem.
 
 Příkaz `Peers` má jeden parametr: *velikost světa*. Ten označuje počet strojů ve\ skupině. Příkaz zasílá klient serverům.
 
-Příkazem `ConnectTo` klient požádá server **A** o\ vytvoření spojení s\ dalším serverem **B**. Příkaz má tři parametry: *identifikační číslo stroje*, *síťové jméno stroje* a\ *adresu*. První dva parametry jsou stejné jako u\ předchozího příkazu. *Adresu* použije server **A** pro připojení k\ serveru **B**.
+Příkazem `ConnectTo` klient požádá server **A** o\ vytvoření spojení s\ dalším serverem **B**. Příkaz má tři parametry: *rank stroje*, *síťové jméno stroje* a\ *adresu*. První dva parametry jsou stejné jako u\ předchozího příkazu. *Adresu* použije server **A** pro připojení k\ serveru **B**.
 
-Příkaz `Join` použije server **A** pro otevření řídicího spojení k\ serveru **B**. Má dva parametry: *identifikační číslo* serveru **A** a\ *síťové jméno* serveru **A**.
+Příkaz `Join` použije server **A** pro otevření řídicího spojení k\ serveru **B**. Má dva parametry: *rank* serveru **A** a\ *síťové jméno* serveru **A**.
 
-Příkaz `DataLine` použije server **A** pro otevření datového komunikačního kanálu k\ serveru **B**. Má dva parametry: *identifikační číslo* serveru **A** a\ *číslo kanálu*.
+Příkaz `DataLine` použije server **A** pro otevření datového komunikačního kanálu k\ serveru **B**. Má dva parametry: *rank* serveru **A** a\ *číslo kanálu*.
 
 Příkaz `Grouped` posílá klient serverům v\ okamžiku dokončení propojování serverů.
 
@@ -548,6 +548,69 @@ Protokol jako takový byl koncipován na\ provoz v\ bezpečném prostředí, tak
 Žádná metoda zabezpečení nebyla nasazena ze\ dvou důvodů. První z\ nich byl již vyřčen -- očekávám, že\ nástroj DIVINE bude provozován v\ zabezpečené vnitřní síti. Druhým důvodem je\ velký důraz na\ rychlost. Ačkoliv by\ nasazení autentizace sice nešlo proti druhému důvodu, implementace integrity dat například pomocí SSL [[RFC6101]](https://tools.ietf.org/html/rfc6101) by\ již mohla způsobit snížení rychlosti toku dat. Protože však záměr práce nespočívá v\ nasazení zabezpečovacích prvků, je\ dle mého soudu zbytečné tyto mechanizmy do\ protokolu implementovat.
 
 ## Rozhraní pro distribuované procházení grafu
+
+Při návrhu rozhraní jsem vycházel převážně z\ požadavků nástroje DIVINE. Všechny aktuálně implementované distribuované algoritmy využívají z\ knihovny MPI pouze několik málo funkcí pro komunikaci. Funkce `MPI_Send`/`MPI_Isend` , `MPI_Probe`/`MPI_Iprobe` a\ `MPI_Recv`/`MPI_Irecv`. Ačkoliv některé algoritmy navíc zasílají zprávu všem spolupracujícím instancím, k\ tomu se\ ale nevyužívá funkce `MPI_Bcast`, nýbrž opakované volání funkce pro zaslání zprávy.
+
+Dalším požadavkem bylo, aby šla komunikační vrstva použít v\ paralelním kontextu bez nutnosti řešit zamykání uvnitř algoritmu a\ tím lépe využít paralelismu. Přestože jsem neměl k\ dispozici kompletní požadavky na\ rozhraní z\ důvodu souběžně vyvíjené nové verze nástroje DIVINE, snažil jsem se\ co\ nejvíc vyhovět požadavkům, které jsem dostal. Způsob komunikace -- zasílání zpráv -- zůstává nadále platný i\ pro novou verzi.
+
+### Zprávy
+
+Zprávy jsou v\ rozhraní reprezentovány dvěma třídami. Třída `InputMessage` reprezentuje příchozí zprávu, třída `OutputMessage` pak odchozí zprávu. Důvod pro dvě odlišné třídy je\ daný jiným očekávaným chováním každé z\ nich, především co\ se\ práce s\ pamětí týká.
+
+Do\ odchozí zprávy je možné přidat data buď pomocí metody `add` nebo pomocí operátoru `<<`. Druhý způsob umožňuje připojit ke\ zprávě i\ třídu `std::string` případně `std::vector`. Pro data připojené pomocí operátoru `<<` navíc platí, že\ typ dat musí splňovat koncept [`TriviallyCopyable`](http://en.cppreference.com/w/cpp/concept/TriviallyCopyable).
+
+Připojení konstantních dat způsobí vytvoření jejich kopie. K\ tomuto kroku jsem přistoupil, protože použitá funkce z\ rozhraní BSD socketů (`sendmsg`) neumožňuje předat ukazatel na\ konstantní data. Vzhledem ke\ stávajícímu způsobu práce s\ pamětí v\ nástroji DIVINE očekávám, že\ i\ nadále bude výskyt konstantních dat sporadický. Co\ je\ ovšem důležitější, je platnost nekonstantních dat, kdy tato data musí být validní dokud nedojde k\ odeslání zprávy.
+
+Příchozí zpráva také poskytuje více nástrojů pro práci s\ pamětí. Jednou možností je\ použít operátor `>>` a\ nastavit tak, do\ které proměnné se\ má nastavit fragment dat. V\ případě použití této možnosti je\ potřeba zaručit, aby nastavný počet a\ velikosti fragmentů odpovídaly fragmentům skutečně přijatým; v\ opačném případě dojde k\ vyhození výjimky.
+
+Druhou možností je\ nastavit při příjmu vlastní funkci, která bude alokovat paměť postupně pro každý datový fragment, čímž se\ programátor stává zodpovědný za\ to, že\ alokovaná paměť bude korektně uvolněna.
+
+### Služby komunikačního rozhraní
+
+Ačkoliv lze chápat služby komunikačního rozhraní jako funkce, případně jako statické metody, implementoval jsem je\ z\ důvodů přehlednosti jako metody třídy `Daemon`, případně předka `Communicator`. Tato třída má vytvořenou jednu globální instanci, která je dostupná krze statickou metodu `instance`.
+
+Rozhraní poskytuje tyto několik metod, které by\ bylo možné rozdělit na\ dvě kategorie: komunikační a\ servisní. Komunikační, jak již název evokuje, slouží k\ zasílání a\ přijímání zpráv. Servisní sdružují metody, pomocí kterých lze získávat informace o\ prostředí.
+
+
+#### Servisní metody
+
+`int Communicator::rank() const`
+
+:   Metoda vrací rank procesu.
+
+`bool Daemon::master() const`
+
+:   Metoda vrací `true`, pokud je\ rank procesu roven 1.
+
+`int Communicator::worldSize() const`
+
+:   Metoda vrací počet procesů ve\ skupině.
+
+`int Communicator::channels() const`
+
+:   Metoda vrací počet dostupných datových kanálů mezi procesy.
+
+`const std::string &Communicator::name() const`
+
+:   Metoda vrací název stroje, na\ kterém běží proces.
+
+`char *Daemon::data() const`
+
+:   Metoda vrací ukazatel na\ počáteční data.
+
+`size_t Daemon::dataSize() const`
+
+:   Metoda vrací velikost počátečních dat v\ bytech.
+
+`void Daemon::exit( int returnCode )`
+
+:   Metoda zahlásí vedoucímu procesu ukončení činnosti a\ následně program. Parametr *returnCode* slouží jako návratový kód procesu. Slouží jako náhrada za\ knihovní funkci `void exit( int returnCode )`, která ovšem neukončí korektně komunikaci s\ ostatním procesy.
+
+    Metoda nesmí být volána v\ průběhu provádění metody `probe`, pokud je\ metoda `probe` volána nad\ hlavním komunikačním kanálem, neboť by mohlo dojít k\ uváznutí.
+
+#### Komunikační metody
+
+XXX
 
 # Experimentální porovnání
 
