@@ -1,3 +1,9 @@
+---
+header-includes:
+    - \usepackage{text/custom}
+    - \usepackage{listings}
+---
+
 # Úvod
 
 ## DIVINE
@@ -9,25 +15,21 @@
 
 Program DIVINE dokáže zpracovávat stavový prostor ve\ dvou režimech paralelizace. První z\ nich je paralelizace ve sdílené paměti, která je\ v\ aktuální verzi programu (DIVINE 3.x) upřednostňována. Některé důvody jako například možnost komprese stavového prostoru -- a\ tudíž efektivnější využívání paměti -- nebo rovnoměrnější rozvržení pracovní zátěže jednotlivých vláken -- což vede k\ rychlejšímu prohledávání stavového prostoru -- jsou popsány v\ [Vláďova bakalářka] a\ v\ [moje bakalářka].
 
-Druhý režim paralelizace je\ hybridní a\ zahrnuje práci v\ distribuované i\ ve\ sdílené paměti. Tento režim pochází ze\ starší verze programu (DIVINE 2.x) a\ oproti původní verzi nebyl nikterak vylepšován (až\ na\ malou optimalizační změnu). Hybridní paralelizmus je\ realizován tak, že\ každý stav ze\ zpracovávaného stavového prostoru je\ staticky přiřazen některému vláknu na\ některé samostatné výpočetní jednotce pomocí hašování [odkaz na hash]; v\ nástroji DIVINE se používá konkrétně Spooky Hash[odkaz na Spookyhash]. Jako komunikační vrstva je\ použit standard MPI[odkaz na MPI], konkrétně implementace OpenMPI[odkaz na OpenMPI].
+Druhý režim paralelizace je\ hybridní a\ zahrnuje práci v\ distribuované i\ ve\ sdílené paměti. Tento režim pochází ze\ starší verze programu (DIVINE 2.x) a\ oproti původní verzi nebyl nikterak vylepšován (až\ na\ malé optimalizační změny). Hybridní paralelizmus je\ realizován tak, že\ každý stav ze\ zpracovávaného stavového prostoru je\ staticky přiřazen některému vláknu na\ některé samostatné výpočetní jednotce pomocí hašování [odkaz na hash]; v\ nástroji DIVINE se používá konkrétně Spooky Hash[odkaz na Spookyhash]. Jako komunikační vrstva je\ použit standard MPI[odkaz na MPI], konkrétně implementace OpenMPI[odkaz na OpenMPI].
 
 Hlavní nevýhodou původní implementace hybridního paralelizmu bylo statické rozdělení stavů nejen mezi jednotlivé výpočtní stroje ale\ i\ mezi jednotlivá vlákna. Toto rozdělení má\ kromě nevýhody v\ potenciálně nerovnoměrném rozložení práce mezi jednotlivá vlákna i\ nevýhodu v\ nemožnosti použít aktuální implementaci komprese paměti.
 
 Již\ v\ průběhu vytváření režimu paralelizace ve\ sdílené paměti bylo zřejmé, že\ by\ bylo možné upravit stávající hybridní režim tak, aby\ v\ rámci jednotlivých výpočetních jednotek byl\ použit režim paralelizace ve\ sdílené paměti, kdežto pro\ rozdělení práce mezi výpočetní jednotky by\ nadále používalo statické rozdělování stavů na\ základě haše. Tento režim, pracovně nazvaný dvouvrstvá architektura, ovšem z\ důvodu upřednostnění jiných úkolů nebyl nikdy realizována.
 
-V současné době se\ pracuje na\ nové verzi programu DIVINE, přičemž součástí změn je\ i\ úprava modelu paralelního zpracování stavového prostoru a\ zavedení jednotného režimu paralelizace pomocí dvouvrstvé architektury. Z\ tohoto důvodu bylo zvažováno, jestli by\ jiná komunikační vrstva nebyla jednodušší na\ použití a\ jestli by\ nebyla efektivnější při\ práci s\ pamětí. Další věc, kterou jsme zvažovali, byla co\ nejmenší závislost na\ externích knihovnách.
+V současné době se\ pracuje na\ nové verzi programu DIVINE, přičemž součástí změn je\ i\ úprava modelu paralelního zpracování stavového prostoru a\ zavedení jednotného režimu paralelizace pomocí dvouvrstvé architektury. Z\ tohoto důvodu bylo zvažováno, jestli by\ jiná komunikační vrstva nebyla jednodušší na\ použití a\ jestli by\ nebyla efektivnější při\ práci s\ pamětí. Další věc, kterou jsem zvažoval, byla co\ nejmenší závislost na\ externích knihovnách.
 
-Před volbou vhodného komunikačního rozhraní bylo potřeba definovat, v\ jakém prostředí bude program DIVINE spouštěn, a\ tedy jaká jsou hlavní krutéria výběru. Očekáváme, že [`TBA`]
+Před volbou vhodného komunikačního rozhraní bylo potřeba definovat, v\ jakém prostředí bude program DIVINE spouštěn, a\ tedy jaká jsou hlavní kritéria výběru. Očekáváme, že [`TBA`]
 
 ## MPI
 
 ### Vlastnosti
 
 ### Rozhraní v DIVINE
-
-## Boost - asio
-
-### Vlastnosti
 
 ## BSD sockety
 
@@ -205,12 +207,36 @@ Touto cestou je\ možné implementovat libovolný vlastní protokol na\ čtvrté
 
 [^raw-socket]: V originálu *raw sockets*.
 
+## Boost
+
+[Boost](http://www.boost.org) je\ seskupení C++ knihoven, které pokrývají mnoho témat, od\ základních věcí jako časovače, přes statistické funkce, až\ po\ práci s\ obrázky či\ regulární výrazy. Celkově tak Boost obsahuje několik desítek takových khihoven. Některé knihovny navíc mohou existovat ve\ dvou formách -- jednou jako součást seskupení Boost, podruhé jako samostatná knihovna.
+
+Mnohé knihovny z\ Boostu, obdobně jako nemalé části Standardní C++ knihovny[^STD] (dále jako STD), nabízejí sjednocené rozhraní k\ systémovému rozhraní, které se\ může lišit na\ základě operačního systému. Jako příklad co\ nejrozdílnějšího systémového rozhraní lze uvést operační systémy [Microsoft Windows](https://www.microsoft.com/cs-cz/windows) a\ UNIX-like[^unix-like] systémy. Knihovny z\ Boostu, na\ rozdíl od\ STD, navíc mohou poskytovat specifická rozšíření pro některé architektury a\ operační systémy.
+
+[^STD]: Standardní C++ knihovna je\ kolekce tříd a\ funkcí, které jsou napsány převážně v\ jazyce C++ (některé části, například Knihovna jazyka C, jsou psány v\ jazyce C). Standardní C++ knihovna je\ součástí ISO C++ standardu, který tak definuje rozhraní a\ další vlastnosti knihovních tříd a\ funkcí. Více o\ standardní knihovně lze nalézt na <http://en.cppreference.com/w/cpp/links> a\ v\ odkazech uvedených na\ stránce.
+
+[^unix-like]: Jedná se\ o\ operační systémy, které vycházejí z\ filozofie systému [UNIX](https://en.wikipedia.org/wiki/Unix#cite_note-Ritchie-3), poskytují obdobné rozhraní, ale neprošly procesem standardizace. Jako příklad lze uvést operační systémy jako BSD, či\ System\ V.
+
+Vztah knihoven obsažených v\ Boostu a\ STD je\ v\ některých případech velmi těsný. Důvod je\ ten, že spousta tříd a\ funkcí, které jsou standardizovány a\ tedy jsou součástí STD, mají svůj původ v\ některé knihovně v\ Boostu. V\ novějších verzích standardu jazyka C++ pak těchto knihoven přibývá.
+
+### Asio
+
+[Asio](http://www.boost.org/doc/libs/1_60_0/doc/html/boost_asio.html) je\ knihovna z\ Boostu, která nabízí asynchronní vstupně-výstupní operace. Je\ také jednou z\ knihoven, které mohou být použity i\ [samostatně](http://think-async.com).
+
+Hlavním přínosem knihovny Asio je její pojetí asynchronních volání. Asynchronní volání se\ v\ posledních několika letech stávají populární, především možností použití v\ rozšířených programovacích jazycích, jako je\ [Java](https://docs.oracle.com/javase/6/docs/api/java/util/concurrent/FutureTask.html) nebo [C#](https://msdn.microsoft.com/en-us/library/hh873175%28v=vs.110%29.aspx). V\ poslední velké revizi jazyka C++ se\ asynchronní volání objevily také v\ podobě funkce `std::async`. Asynchronní volání ve\ zkratce znamená, že\ namísto běžného volání funkce poznačíme, že\ požadujeme provedené té které funkce, a\ až v\ místě, kde potřebujeme znát výsledek, si\ o\ něho požádáme. Je\ pak na\ možnostech jazyka a\ běhového prostředí, aby se\ postaralo o\ vyhodnocení asynchronně volané funkce. Možností je\ zde více, namátkou například spuštění asynchronní funkce v\ samostatném vlákně, nebo prolnutí funkcí během překladu do\ strojového kódu či\ mezikódu.
+
+Další neméně důležitou součástí jsou vstupně-výstupní operace. STD poskytuje rozhraní pro práci se\ standardním vstupem a\ výstupem a\ také rozhraní pro práci se\ soubory. Co\ už\ ale STD knihovna nenabízí je\ práce se\ sítí, kterou naopak knihovna Asio poskytuje. Poskytnuté funkce a\ třídy jsou navíc psány v\ obdobných konvencích jako STD.
+
+Rozhraní pro síťovou komunikaci implementuje knihovna Asio nad BSD sockety. Samozřejmě poskytuje podporu pro použití obou verzí IP, taktéž pro TCP i\ UDP. Navíc, protože je\ v\ současné době často nutnost použít zabezpečené spojení, umožňuje knihovna Asio použít SSL [[RFC6101]](https://tools.ietf.org/html/rfc6101), ke\ kterému je\ ale potřeba další knihovna -- [OpenSSL](https://www.openssl.org/).
+
+
 # Nová implementace
 
-Na\ základě vlastností jednotlivých dříve uvedených přístupů jsem se\ rozhodl, že\ implementuji novou komunikační vrstvu za\ použití BSD socketů. Pro samotnou implementaci pak bude potřeba ze\ dříve uvedených typů socketů vybrat ten nejvhodnější. Nová implementace dále vyžaduje vytvořit jednoduchý komunikační protokol pro ustanovení sítě strojů kooperujících na\ distribuovaném výpočtu.
-Při návrhu nové implementace se\ navíc nemusím držet architektury distribuované aplikace, jak ji\ popisuje MPI, která má dle mého názoru některé vady, pročež jsem se\ rozhodl, že vytvořím architekturu s\ jinými vlastnostmi.
+Na\ základě vlastností jednotlivých dříve uvedených přístupů jsem se\ rozhodl, že\ implementuji novou komunikační vrstvu za\ použití BSD socketů. Pro samotnou implementaci pak bude potřeba ze\ dříve uvedených typů socketů vybrat ten nejvhodnější. Nová implementace dále vyžaduje vytvořit jednoduchý komunikační protokol pro ustanovení sítě strojů kooperujících na\ distribuovaném výpočtu. Při návrhu nové implementace se\ navíc nemusím držet architektury distribuované aplikace, jak ji\ popisuje MPI, která má dle mého názoru některé vady, pročež jsem se\ rozhodl, že vytvořím architekturu s\ jinými vlastnostmi.
 
-Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura je [x86-64](http://www.amd.com/Documents/x86-64_wp.pdf) a\ jehož operační systém používá rozhraní definované POSIX standardem -- převážně počítám s\ operačním systémem [GNU/Linux](http://www.gnu.org/gnu/linux-and-gnu.html.en). Dále předpokládám, že\ všechny stroje participující na\ výpočtu mají stejnou endianitu[^endianity].
+Při zvažování, zda implementovat vlastní zjednodušenou nadstavbu nad BSD sockety, nebo zda použít knihovnu Asio, jsem zvolil první možnost. Jako důvod uvádím, že\ použití knihovny Asio by\ zavedlo do\ projektu další závislost -- buď ve\ formě správné verze knihovny Boost na\ straně uživatele, nebo ve\ formě nutnosti dodávat zdrojové soubory knihovny Asio spolu se\ zdrojovými soubory nástroje DIVINE, přičemž obojí přináší režii do\ správy projektu, který je\ limitován lidskými zdroji. Druhým důvodem pak může být, že\ z\ možností knihovny Asio by\ byla v\ nástroji DIVINE využito jen malá část.
+
+Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura je [x86-64](http://www.amd.com/Documents/x86-64_wp.pdf) a\ jehož operační systém používá rozhraní definované POSIX standardem -- převážně počítám s\ operačním systémem [GNU/Linux](http://www.gnu.org/gnu/linux-and-gnu.html.en). Dále předpokládám, že\ endianita[^endianity] všech strojů participující na\ výpočtu je\ stejná.
 
 [^endianity]: Způsob ukládání čísel do paměti.
 
@@ -529,11 +555,10 @@ Za\ chyby se\ v\ okruhu selhání síťových komponent považuje cokoliv od\ za
 
 Problémy vzniklé během vytváření spojení mezi dvěma stroji mohou mít několik příčin. Pokud se\ nepodaří přeložit název cílového stroje na\ IP adresu, ať již z\ důvodu nedostupnosti stroje, či\ protože je\ v\ názvu překlep, dojde k\ vyhození výjimky s\ relevantním popiskem. Jiná výjimka může být vyhozena, pokud se\ do\ určitého časového okamžiku nepodaří spojení navázat.
 
-Po\ úspěšném navázání spojení je\ každý nově otevřený socket poznačen jako blokující[^blocking-socket] a\ zároveň mu je\ nastaveno, jak nejdéle může trvat operace nad socketem. Časový limit v\ tomto případě ohraničuje především operace čtení a\ zápisu do\ socketu. Operace zápisu se\ může zdržet například proto, že\ cílový stroj si\ nevyzvedává příchozí zprávy a\ vyrovnávací paměť operačního systému pro příchozí data je\ již plná. U\ operace čtení může naopak dojít k\ tomu, že\ zdrojový stroj nepošle žádná data. Tímto se\ řeší především situace, kdy dojde k\ uváznutí na\ některém serveru z\ důvodu chybného distribuovaného algoritmu.
+Po\ úspěšném navázání spojení je\ každý nově otevřený socket poznačen jako blokující[^blocking-socket] a\ zároveň mu je\ nastaveno, jak nejdéle může trvat operace nad socketem. Časový limit v\ tomto případě ohraničuje především operace čtení a\ zápisu do\ socketu. Operace zápisu se\ může zdržet například proto, že\ cílový stroj si\ nevyzvedává příchozí zprávy a\ vyrovnávací paměť operačního systému pro příchozí data je\ již plná. U\ operace čtení může naopak dojít k\ tomu, že\ zdrojový stroj nepošle žádná data. Tímto se\ řeší především situace, kdy dojde k\ uváznutí na\ některém serveru z\ důvodu chybného distribuovaného algoritmu. Dalším problémovým místem pak může být ztráta spojení mezi dvěma stroji v\ průběhu výpočtu. Tato situace je\ opět zachycena objektovou nadstavbou, jejíž reakce je\ vyhození výjimky `ConnectionAbortedException`.
+
 
 [^blocking-socket]: Každý získaný socket je blokující. Explicitně tuto informaci uvádím, protože během připojení jsou sockety z\ důvodu prevence uváznutí označeny jako neblokující a\ ke změně na\ blokující dojde až\ po vytvoření spojení.
-
-Dalším problémovým místem pak může být ztráta spojení mezi dvěma stroji v\ průběhu výpočtu. Tato situace je\ opět zachycena objektovou nadstavbou, jejíž reakce je\ vyhození výjimky `ConnectionAbortedException`.
 
 Pro eliminaci chyb v\ samotném protokolu jsem přistoupil jednak k\ použití stavů u\ serverových procesů, jednak k\ posílání odpovědí na\ každý příkaz -- vyjma příkazů `ForceShutdown` a\ `ForceReset`. Server odmítne vykonat příkaz, pokud pro jeho splnění nejsou vhodné podmínky, například protože se\ jeho procesy nachází ve\ špatných stavech.
 
@@ -571,46 +596,104 @@ Ačkoliv lze chápat služby komunikačního rozhraní jako funkce, případně 
 
 Rozhraní poskytuje tyto několik metod, které by\ bylo možné rozdělit na\ dvě kategorie: komunikační a\ servisní. Komunikační, jak již název evokuje, slouží k\ zasílání a\ přijímání zpráv. Servisní sdružují metody, pomocí kterých lze získávat informace o\ prostředí.
 
-
 #### Servisní metody
 
-`int Communicator::rank() const`
+`int Communicator::rank() const;`
 
-:   Metoda vrací rank procesu.
+:   \ \
+    Metoda vrací rank procesu.
 
-`bool Daemon::master() const`
+`bool Daemon::master() const;`
 
-:   Metoda vrací `true`, pokud je\ rank procesu roven 1.
+:   \ \
+    Metoda vrací `true`, pokud je\ rank procesu roven 1.
 
-`int Communicator::worldSize() const`
+`int Communicator::worldSize() const;`
 
-:   Metoda vrací počet procesů ve\ skupině.
+:   \ \
+    Metoda vrací počet procesů ve\ skupině.
 
-`int Communicator::channels() const`
+`int Communicator::channels() const;`
 
-:   Metoda vrací počet dostupných datových kanálů mezi procesy.
+:   \ \
+    Metoda vrací počet dostupných datových kanálů mezi procesy.
 
-`const std::string &Communicator::name() const`
+`const std::string &Communicator::name() const;`
 
-:   Metoda vrací název stroje, na\ kterém běží proces.
+:   \ \
+    Metoda vrací název stroje, na\ kterém běží proces.
 
-`char *Daemon::data() const`
+`char *Daemon::data() const;`
 
-:   Metoda vrací ukazatel na\ počáteční data.
+:   \ \
+    Metoda vrací ukazatel na\ počáteční data.
 
-`size_t Daemon::dataSize() const`
+`size_t Daemon::dataSize() const;`
 
-:   Metoda vrací velikost počátečních dat v\ bytech.
+:   \ \
+    Metoda vrací velikost počátečních dat v\ bytech.
 
-`void Daemon::exit( int returnCode )`
+`void Daemon::exit(int returnCode);`
 
-:   Metoda zahlásí vedoucímu procesu ukončení činnosti a\ následně program. Parametr *returnCode* slouží jako návratový kód procesu. Slouží jako náhrada za\ knihovní funkci `void exit( int returnCode )`, která ovšem neukončí korektně komunikaci s\ ostatním procesy.
+:   \ \
+    Metoda zahlásí vedoucímu procesu ukončení činnosti a\ následně program. Parametr *returnCode* slouží jako návratový kód procesu. Slouží jako náhrada za\ knihovní funkci `exit`, která ovšem neukončí korektně komunikaci s\ ostatním procesy.
 
     Metoda nesmí být volána v\ průběhu provádění metody `probe`, pokud je\ metoda `probe` volána nad\ hlavním komunikačním kanálem, neboť by mohlo dojít k\ uváznutí.
 
 #### Komunikační metody
 
-XXX
+Většina komunikačních metod může při problémech v\ síti vyhazovat různé výjimky. Pro všechny výjimky platí, že\ jsou třídami odvezenými ze\ třídy `brick::net::NetException`, která je\ sama odvozena ze\ třídy `std::exception`.
+
+\defmultiline{bool Daemon::sendTo(int rank, OutputMessage \&msg, ChannelID chID);\\ bool Daemon::sendTo(Channel channel, OutputMessage \&msg);}
+
+:   \ \
+    Základní metody sloužící k\ zaslání zprávy *msg*. První z\ uvedených funkcí přeloží *rank* a\ *chID* na\ kanál *channel*, kterým se pošle zpráva, a\ zavolá se\ druhá uvedená metoda. Pokud není parametr *chID* uveden, použije se\ řídicí kanál. Sémantika odeslání je\ vzhledem k\ použití systémového volání `sendmsg` blokující bafrovaná operace.
+
+    Funkce vrací `true`, pokud byla operace úspěšně provedena. Vrací `false` v\ případě chybného parametru *rank* nebo *chID* -- neexistující rank nebo neexistující kanál. Metody mohou vyhodit tyto výjimky:
+
+    *   `WouldBlock` -- Použitý socket má příznak neblokující a\ očekávaný přenos by\ způsobil blokování, případně došlo k\ dosažení časového limitu odesílací operace. Proměnná `errno` má hodnotu `EAGAIN` nebo `EWOULDBLOCK`.
+    *   `ConnectionAbortedException` -- Došlo k\ chybě ve\ spojení. Proměnná `errno` má hodnotu `EPIPE`, `ENOTCONN`, nebo `ECONNREFUSED`.
+    *   `SystemException` -- Došlo k\ chybě při přenosu a\ hodnota proměnné `errno` je\ odlišná od\ již uvedených.
+    *   `DataTransferException` -- Došlo sice k\ úspěšnému přenosu, ale byla přenesena pouze část zprávy.
+
+\defmultiline{bool Daemon::receive(int rank, InputMessage \&msg, ChannelID chID);\\bool Daemon::receive(Channel channel, InputMessage \&msg);}
+
+:   \ \
+    Základní metody sloužící k\ příjmu zprávy *msg* z\ konkrétního komunikačního kanálu. Obdobně jako u\ metod u\ první `sendTo` zde platí, že\ parametry *rank* a\ *chID* se\ přeloží na\ kanál *channel* a\ použije se\ druhá uvedená metoda `receive`. Pokud není parametr *chID* uveden, použije se\ řídicí kanál. Sémantika přijetí zprávy je\ blokující nebafrovaná operace.
+
+    Funkce vrací `true`, pokud byla operace úspěšně provedena. Vrací `false` v\ případě chybného parametru *rank* nebo *chID* -- neexistující rank nebo neexistující kanál. Metody mohou vyhodit tyto výjimky:
+
+    *   `WouldBlock` -- Použitý socket má příznak neblokující a\ očekávaný přenos by\ způsobil blokování, případně došlo k\ dosažení časového limitu přijímací operace. Proměnná `errno` má hodnotu `EAGAIN` nebo `EWOULDBLOCK`.
+    *   `ConnectionAbortedException` -- Došlo k\ chybě ve\ spojení. Proměnná `errno` má hodnotu `ENOTCONN`, nebo `ECONNREFUSED`.
+    *   `SystemException` -- Došlo k\ chybě při přenosu a\ hodnota proměnné `errno` je\ odlišná od\ již uvedených.
+    *   `DataTransferException` -- Došlo sice k\ úspěšnému přenosu, ale byla přijata pouze část zprávy.
+
+`bool Daemon::sendAll(OutputMessage &msg, ChannelID chID);`
+
+:   \ \
+    Metoda sloužící k\ zaslání dané zprávy *msg* všem procesům ve\ skupině pomocí kanálu *chID*. Pokud se\ neuvede parametr *chID*, bude jako komunikační kanál zvolen řídicí kanál.
+
+    Aktuální implementace této metody je\ taková, že\ dojde k\ vytvoření $N - 1$ vláken, které každé pošle zprávu jednomu procesu. Po skončení odesílání se\ zkontroluje, zda se\ podařilo zprávu poslat všem. Pokud ano,vrátí metoda hodnotu `true`, jinak `false`. Metoda nevyhazuje žádné výjimky.
+
+    Vzhledem k\ tomu, že\ je\ metoda málo používaná, zvolil jsem řešení s\ paralelním odesíláním. Pokud by\ v\ budoucnu začala metoda být více používaná, bylo by\ vhodné změnit implementaci odesílání z\ paralelní na\ hyperkubickou [W. Danny Hillis (1986). The Connection Machine. MIT Press. ISBN 0262081571.].
+
+`int Daemon::probe(Ap applicator, ChannelID chID, int timeout);`
+
+:   \ \
+    Metoda, která zkouší přijímat příchozí spojení od\ všech procesů na\ kanálu *chID*. Na\ kanálech, ze\ kterých lze přijímat zprávy, se\ postupně volá funkce *applicator*.
+
+    Funkce *applicator* může mít dvojí signaturu:
+
+    *   `void applicator(Channel channel);` -- Základní varianta funkce *applicator* může skrze parametr *channel* zpracovat příchozí zprávu, případně také skrze stejný kanál odpovědět.
+    *   `bool applicator(Channel channel);` -- Rozšířená varianta funkce *applicator* může navíc v\ návratové hodnotě sdělit, jestli se\ má pokračovat v\ aplikování funkce *applicator* na\ kanály. Pro pokračování je\ třeba vrátit `true`, pro ukončení zpracování `false`.
+
+    Parametr *timeout* udává ve\ vteřinách, jak dlouho má\ metoda `probe` čekat. Pokud je *timeout* roven $0$, nebude `probe` čekat vůbec, naopak pokud bude hodnota parametru $-1$, bude čekat, dokud nebude některé spojení připraveno na\ příjem zprávy. Implicitní hodnota parametru *timeout* je $-1$.
+
+    Metoda `probe` vrací číselnou hodnotu kolikrát byla na\ příchozí spojení zavolána funkce *applicator*. Počet zpracovaných příchozích spojení se\ ale může lišit, neboť metoda `probe` zpracovává veškeré zprávy, ale jenom zprávy kategorie `Data` předává ke\ zpracování funkci *applicator*.
+
+    Každý proces by\ měl v\ jednom vlákně pomocí metody `probe` pravidelně kontrolovat řídicí kanály, neboť uvnitř metody dochází k\ obsluze protokolu.
+
+    **Poznámka:** Metoda `probe` by\ se měla volat periodicky v\ cyklu, neboť se\ může vrátit aniž by\ zavolala funkci *applicator* -- buď z\ důvodu vypršení časového limitu, nebo z\ důvodu zpracování zprávy jiné kategorie než datové.
 
 # Experimentální porovnání
 
