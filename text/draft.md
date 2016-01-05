@@ -1,21 +1,45 @@
 ---
 header-includes:
     - \usepackage{text/custom}
-    - \usepackage{listings}
 ---
 
 # Úvod
 
+XXX
+
+# Uvedení do problematiky
+
+## Modelchecking
+
+## Paralelizmus
+
+Pojem paralelizmus lze přeložit jako souběžnost. V\ informatice tento pojem znamená, že\ nějaká aplikace provádí (zdánlivě) současně dvě nebo více nezávislých výpočtů. Paralelizmus můžeme dále rozdělit na\ dva druhy -- paralelizmus ve\ sdílené paměti a\ v\ distribuované paměti. V\ případě paralelizmu ve\ sdílené paměti hovoříme o\ vlákně jako o\ základním funkčním prvku. U\ paralelizmu v\ distribuované paměti je\ základním prvkem proces.
+
+Ačkoliv téměř každý člověk, který se\ pohybuje v\ oblasti informatiky, intuitivně tuší, co\ znamenají pojmy proces a\ vlákno, uvedu zde popis, který dle mého názoru je\ dostačující.
+
+> Proces je\ instance počítačového programu, který je\ právě vykonáván. Proces si\ žádá od\ operačního systému zdroje jako například paměť. Proces nemá přímou možnost komunikovat s\ dalšími procesy a\ pro komunikaci je\ třeba využít služeb operačního systému.
+
+> Vlákno nejmenší sekvence příkazů, které mohou být nezávisle spravovány plánovačem úloh operačního systému. Vlákno je\ vždy součástí procesu a\ jako takové nevlastní žádné zdroje; ty\ náleží procesu. Protože spolu vlákna sdílí paměť, komunikace mezi nimi probíhá bez přímé interakce s\ operačním systémem za\ použití synchronizačních primitiv dostupných na\ dané architektuře.
+
+Důvod, proč není dostupná formální definice procesu, je\ ten, že\ pojem proces uvedli v\ 60.\ letech návrháři systému Multics[[X]](http://www.cim.mcgill.ca/~franco/OpSys-304-427/lecture-notes/node4.html) jako něco víc obecného než úkol, to\ v\ kontextu více programové jednotky. Význam slova proces tak byl určen spíše implementací systému než zavedením formálního popisu, u\ čehož v\ současné době, kdy existuje několik operačních systémů s\ různou filozofií, zůstalo [[X]](https://msdn.microsoft.com/en-us/library/windows/desktop/ms684841%28v=vs.85%29.aspx)[[X]](http://www.linfo.org/process.html). Obdobná situace je\ v\ případě definice pojmu vlákno, třebaže lze dohledat uvedení pojmu [[X]](https://en.wikipedia.org/wiki/Thread_%28computing%29#cite_note-1). Nicméně zde platí stejně jako u\ procesu, že\ přesný popis, co\ vlákno je, se\ liší na základě operačního systému, případně běhovém prostředí[^run-environment]
+
+[^run-environment]: Běhové prostředí je\ sada knihoven a\ nástrojů, které bývají součástí vyšších programovacích jazyků jako třeba Java nebo C#. Běhové prostředí může definovat jinou sémantiku především pro vlákna, které může být rozdílné od\ sémantiky, kterou popisuje operační systém.
+
+V\ případě paralelizmu ve\ sdílené paměti programátor očekává, že\ po\ startu programu má k\ dispozici jedno hlavní vlákno, ze\ kterého následně v\ případě potřeby pouští další vlákna, na\ která většinou na\ konci programu hlavní vlákno zase počká. V\ průběhu výpočtu používají vlákna synchronizační primitiva pro vzájemnou komunikaci. Navíc platí, že\ programátor má volnou ruku v\ tom, zda spustí jednu a\ tu\ samou funkcí vícekrát ve\ více vláknech nebo spustí v\ některých vláknech jiné funkce.
+
+V\ případě distribuovaného výpočtu je\ situace zcela opačná. Jeden program je\ s\ pomocí služeb operačního systému nebo nějaké knihovny spuštěn na\ různých výpočetních strojích, přičemž počet strojů -- a\ tedy počet procesů -- se\ během algoritmu zpravidla nemění. V\ průběhu výpočtu spolu mohou procesy komunikovat pomocí rozhraní, které jim poskytují podpůrné nástroje. Většinou je\ komunikace vedena formou zasílání zpráv. Je\ možné, že\ operační systém nebo knihovna umožňuje mezi procesy sdílet i\ části paměti, z\ důvodů výrazného zpomalení a\ problematické synchronizace nebývá její použití časté.
+
+Z\ předchozích odstavců vyplývá, že\ přístup obou druhů paralelizmu je\ odlišný. Nejedná se\ tedy o\ konkurující, ale naopak doplňující nástroje, které je\ možné využít při návrhu aplikace. Liší se i\ nástroje, pomocí kterými se\ oba druhy paralelizmu řídí. Pro paralelizmus ve\ sdílené paměti se\ používají nástroje jako [POSIX vlákna](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_09) nebo [OpenMP](http://openmp.org). Paralelizmus v\ distribuované paměti zase využívají knihovny jako [MPI](http://www.mpi-forum.org) nebo [PVM](http://www.csm.ornl.gov/pvm/). Není proto nezvyklé, že\ jsou v\ rámci jedné aplikace použity oba druhy paralelizace.
+
 ## DIVINE
 
-## "Cíl práce"
-
+## Cíl práce
 
 # Komunikační vrstva
 
-Program DIVINE dokáže zpracovávat stavový prostor ve\ dvou režimech paralelizace. První z\ nich je paralelizace ve sdílené paměti, která je\ v\ aktuální verzi programu (DIVINE 3.x) upřednostňována. Některé důvody jako například možnost komprese stavového prostoru -- a\ tudíž efektivnější využívání paměti -- nebo rovnoměrnější rozvržení pracovní zátěže jednotlivých vláken -- což vede k\ rychlejšímu prohledávání stavového prostoru -- jsou popsány v\ [Vláďova bakalářka] a\ v\ [moje bakalářka].
+Program DIVINE dokáže zpracovávat stavový prostor s\ použitím obou druhů paralelizace, z\ nichž je\ v\ aktuální verzi programu (DIVINE 3.x) upřednostňován režim paralelizace pouze ve\ sdílené paměti. Některé důvody jako například možnost komprese stavového prostoru -- a\ tudíž efektivnější využívání paměti -- nebo rovnoměrnější rozvržení pracovní zátěže jednotlivých vláken -- což vede k\ rychlejšímu prohledávání stavového prostoru -- jsou popsány v\ [Vláďova bakalářka] a\ v\ [moje bakalářka].
 
-Druhý režim paralelizace je\ hybridní a\ zahrnuje práci v\ distribuované i\ ve\ sdílené paměti. Tento režim pochází ze\ starší verze programu (DIVINE 2.x) a\ oproti původní verzi nebyl nikterak vylepšován (až\ na\ malé optimalizační změny). Hybridní paralelizmus je\ realizován tak, že\ každý stav ze\ zpracovávaného stavového prostoru je\ staticky přiřazen některému vláknu na\ některé samostatné výpočetní jednotce pomocí hašování [odkaz na hash]; v\ nástroji DIVINE se používá konkrétně Spooky Hash[odkaz na Spookyhash]. Jako komunikační vrstva je\ použit standard MPI[odkaz na MPI], konkrétně implementace OpenMPI[odkaz na OpenMPI].
+Druhý režim paralelizace je\ hybridní a\ zahrnuje oba dva druhy paralizace. Tento režim pochází ze\ starší verze programu (DIVINE 2.x) a\ oproti původní verzi nebyl nikterak vylepšován (až\ na\ malé optimalizační změny). Hybridní paralelizmus je\ realizován tak, že\ každý stav ze\ zpracovávaného stavového prostoru je\ staticky přiřazen některému vláknu na\ některé samostatné výpočetní jednotce pomocí hašování [odkaz na hash]. Jako komunikační vrstva je\ použit [standard MPI](http://www.mpi-forum.org/), konkrétně implementace [Open MPI](https://www.open-mpi.org).
 
 Hlavní nevýhodou původní implementace hybridního paralelizmu bylo statické rozdělení stavů nejen mezi jednotlivé výpočtní stroje ale\ i\ mezi jednotlivá vlákna. Toto rozdělení má\ kromě nevýhody v\ potenciálně nerovnoměrném rozložení práce mezi jednotlivá vlákna i\ nevýhodu v\ nemožnosti použít aktuální implementaci komprese paměti.
 
@@ -23,13 +47,130 @@ Již\ v\ průběhu vytváření režimu paralelizace ve\ sdílené paměti bylo 
 
 V současné době se\ pracuje na\ nové verzi programu DIVINE, přičemž součástí změn je\ i\ úprava modelu paralelního zpracování stavového prostoru a\ zavedení jednotného režimu paralelizace pomocí dvouvrstvé architektury. Z\ tohoto důvodu bylo zvažováno, jestli by\ jiná komunikační vrstva nebyla jednodušší na\ použití a\ jestli by\ nebyla efektivnější při\ práci s\ pamětí. Další věc, kterou jsem zvažoval, byla co\ nejmenší závislost na\ externích knihovnách.
 
-Před volbou vhodného komunikačního rozhraní bylo potřeba definovat, v\ jakém prostředí bude program DIVINE spouštěn, a\ tedy jaká jsou hlavní kritéria výběru. Očekáváme, že [`TBA`]
+
+**Removed:**
+> Před volbou vhodného komunikačního rozhraní bylo potřeba definovat, v\ jakém prostředí bude program DIVINE spouštěn, a\ tedy jaká jsou hlavní kritéria výběru. Očekáváme, že [`TBA`]
 
 ## MPI
 
-### Vlastnosti
+*Message Passing Interface*, zkráceně [MPI](http://www.mpi-forum.org/), je\ standardizovaný systém pro distribuované výpočty, což zahrnuje pro zasílání zpráv mezi procesy a\ prvky kolektivní komunikace. Ačkoliv se\ většinou mluví o\ systému, MPI jako takové je\ standard[^mpi-standard] a\ pro použití je\ potřeba použít některou z\ implementací.
 
-### Rozhraní v DIVINE
+[^mpi-standard]: Ačkoliv má MPI standard již  několik verzí, stále nedošlo ke\ standardizačnímu řízení u\ některé ze\ známých standardizačních autorit, jako je například [ISO](http://www.iso.org/) nebo [IEEE](https://www.ieee.org/).
+
+Samotný standard MPI se\ zmiňuje o\ rozhraní pouze pro jazyky\ C a\ Fortran. Ve\ 2. verzi standardu MPI byla přidána podpora pro jazyk C++, která byla hned ve verzi 3 odstraněna. Implementace standardu MPI tak musí nabízet rozhraní v\ jazycích\ C a\ Fortran. Z\ těch základních jmenujme alespoň [MPICH](http://www.mpich.org/)[^mpich], [Open MPI](https://www.open-mpi.org), či\ LAM/MPI, jehož vývoj byl zastaven ve prospěch Open MPI. Pro jiné programovací jazyky existují moduly^[dle názvosloví daného jazyka také knihovny, balíčky, ...], které používají rozhraní pro jazyk\ C z\ dostupné implementace standardu MPI. Jde mimo jiné o\ programovací jazyky jako Java [[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-16)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-17)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-18), Python[[X]](http://sourceforge.net/projects/pympi/)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-10)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-12), jazyk R[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-21), nebo o\ knihovny dostupné pro framework .NET[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-22)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-23).
+
+[^mpich]: MPICH byl vůbec první implementací MPI standardu, konkrétně MPI-1.1.
+
+MPI je\ navržen jako multiplatformní systém, což umožňuje z\ pohledu aplikace nezohledňovat detaily architektury, jako jsou například endianita[^endianity] nebo rozsahy čísel. Kvůli tomu například zavádí MPI vlastní datové typy. Z\ pohledu výpočetních strojů nabízí MPI možnost dodat vlastní implementaci -- tzv. poskytovatele -- pro specifický hardware a\ dosáhnout tím lepšího výkonu distribuovaného výpočtu. Na\ běžných strojích v\ lokální síti běžně MPI používá jako poskytovatele síťovou infrastrukturu, v\ případě, že je distribuovaný výpočet spuštěn v\ rámci jednoho stroje, pak může využít možností operačního systému a\ mít poskytovatele pro sdílenou paměť.
+
+[^endianity]: Způsob ukládání čísel do paměti.
+
+### Princip používání MPI
+
+Jako knihovna pro podporu paralelizmu v\ distribuované paměti poskytuje MPI několik nástrojů. Jsou jimi knihovna a\ hlavičkové soubory, které exportují deklarace funkcí a\ definice struktur, vlastní překladač, který způsobí připojení knihoven MPI k\ programu, a\ speciální zaváděcí program, pomocí které lze distribuovaný výpočet spustit.
+
+Jakýkoliv program, který má být spuštěn pomocí MPI jako distribuovaný výpočet,musí nejprve inicializovat MPI knihovnu voláním funkce [`MPI_Init`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Init.3.php). Následně je\ vhodné zjistit, co\ je\ každý proces zač, k\ čemuž slouží funkce [`MPI_Comm_rank`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Comm_rank.3.php) a\ [`MPI_Comm_size`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Comm_size.3.php). První z\ nich vrací rank procesu a\ druhá počet procesů. Rank je\ číslo, které udává pořadí procesu, je\ číslované od\ $0$ až\ po\ $N - 1$, kdy $N$ je\ počet procesů. Dále pokračuje běh výpočtu, který se\ obvykle řídí zasíláním zpráv. Před ukončením musí každý proces zavolat funkci [`MPI_Finalize`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Finalize.3.php), která korektně ukončí spojení s\ ostatními procesy.
+
+Pro spuštění programu je\ nejprve potřeba přeložit zdrojový kód a\ připojit k\ výslednému programu právě knihovnu MPI. To\ je\ možné udělat buď přeložením zdrojového kódu pomocí `mpicc` nebo `mpic++`, překladače dodaného implementací MPI standardu, nebo svému překladači nastavit vhodné systémové cesty právě ke knihovně MPI, aby ji\ mohl připojit k\ výslednému programu^[Což je\ ostatně přesně to\ samé, co\ provede překladač dodaný implementací MPI.].
+
+Následné spuštění distribuovaného algoritmu se\ provede spuštěním zaváděcí program `mpirun` nebo `mpiexec`^[Jsou totožné.]. V\ rámci spuštění je\ potřeba definovat některé parametry, z\ nichž nejpodstatnější je\ seznam strojů, na\ kterých mají běžet procesy. Další parametry pak bývají volitelné a\ je\ možné jimi nastavit mnoho vlastností běhu.
+
+### Koncepty MPI
+
+MPI poskytuje různorodou schopnosti a\ nástroje pro řízení a\ běh distribuovaného výpočtu. Uvádím zde čtyři základní koncepty MPI, které byly uvedeny již v první verzi standardu. Ve\ verzi 2 přibylo dalších několik konceptů jako například sdílení paměti mezi procesy, dynamické vytváření procesů nebo podpora paralelních vstupně-výstupních operací. Protože ale patří tyto koncepty mezi pokročilé a\ obtížnější, nebudu je\ zde uvádět.
+
+#### Komunikátor
+
+Komunikátor ustanovuje skupinu procesů. Po\ spuštění programu jsou všechny procesy součástí skupiny `MPI_COMM_WORLD`. V\ průběhu výpočtu mohou procesy zakládat a\ rušit další skupiny, což může vést k\ dynamickému vytváření topologie v\ komunikaci. Každý proces připojením ke\ komunikátoru dostane další rank, který určuje jeho pořadí v\ rámci skupiny.
+
+#### Jeden na jednoho
+
+Jde o\ důležitý mechanizmus, který umožňuje posílat zprávy od\ jednoho procesu ke\ druhému. Komunikace jeden na\ jednoho je\ vhodná zvláště v\ případech nahodilé komunikace, kdy nelze dopředu říct, který proces zašle data kterému, nebo v\ případě, že\ je\ uskupení procesů do\ rolí pána a\ otroka -- jeden proces řídí část výpočtu nebo celý výpočet a\ jeden nebo více procesů přijímá příkazy a\ provádí výpočet. Zasílané zprávy je\ možné třídit pomocí štítku zprávy -- příjemce může definovat, zda ho\ zajímají zprávy s\ nějakým konkrétním štítkem, nebo všechny zprávy.
+
+MPI nabízí několik variant zasílání zpráv, které se\ liší především svým vztahem k\ paměti a\ k\ blokování výpočtu. Jsou dvě základní rozdělení. První dělí operace na\ blokující a\ neblokující, druhé je\ dělí na\ přímé (nebafrované) a\ na\ ty s\ vyrovnávací pamětí (bafrované).
+
+[`MPI_Send`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Send.3.php) -- blokující nebafrované
+
+:   \ \
+    Funkce odešle zprávu a\ blokuje až\ do\ okamžiku, když přijímající proces započal příjem zprávy a\ zpráva byla úspěšně odeslána. Po\ skončení funkce jsou odkazovaná plně k\ dispozici.
+
+[`MPI_Bsend`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Bsend.3.php) -- blokující bafrované
+
+:   \ \
+    Funkce nakopíruje zprávu do\ vyrovnávací paměti, zahájí přenos zprávy a\ skončí. Po\ dokončení přenosu je potřeba obsah vyrovnávací paměti zlikvidovat.
+
+[`MPI_Isend`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Isend.3.php) -- neblokující nebafrované
+
+:   \ \
+    Funkce zahájí přenos zprávy a\ skončí. Zprávu nesmí odesílatel modifikovat, dokud si\ neověřil, že\ bylo odeslání dokončeno. To\ je\ možné provést voláním funkcí [`MPI_Test`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Test.3.php) nebo [`MPI_Wait`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Wait.3.php).
+
+[`MPI_Ibsend`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Ibsend.3.php) -- neblokující bafrované
+
+:   \ \
+    Funkce zahájí kopírování zprávy do\ vyrovnávací paměti, zahájí přenos zprávy a\ skončí. Zprávu nesmí odesílatel modifikovat, dokud si\ neověřil, že\ bylo odeslání dokončeno. To\ je\ možné provést voláním funkcí [`MPI_Test`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Test.3.php) nebo [`MPI_Wait`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Wait.3.php).
+
+Pro příjem zprávy slouží primárně dvě funkce, opět dělené na\ blokující a\ neblokující.
+
+[`MPI_Recv`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Recv.3.php) -- blokující
+
+:   \ \
+    Funkce čeká na\ zprávu, dokud není zpráva doručena. Příchozí zpráva musí mít správného odesílatele a\ správnou hodnotu štítku, aby byla přijata, ale je možné ignorovat jak rank odesílatele, tak hodnotu štítku zprávy. Je\ třeba dopředu nastavit dostatečně velkou paměť pro příjem zprávy.
+
+[`MPI_Irecv`](https://www.open-mpi.org/doc/v1.8/man3/MPI_IRecv.3.php) -- neblokující
+
+:   \ \
+    Funkce zahájí příjem zprávy, předá zpátky kontrolní strukturu a\ skončí. Příchozí zpráva musí mít správného odesílatele a\ správnou hodnotu štítku, aby byla přijata, ale je možné ignorovat jak rank odesílatele, tak hodnotu štítku zprávy. Příjem zprávy je\ potřeba ověřit voláním [`MPI_Test`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Test.3.php) nebo [`MPI_Wait`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Wait.3.php) s\ kontrolní strukturou jako parametrem. Je\ třeba dopředu nastavit dostatečně velkou paměť pro příjem zprávy. Pokud je\ iniciován příjem zprávy, je\ nutné tuto zprávu přijmout před ukončením výpočtu.
+
+Pokud není dopředu známe, zda vůbec nějaká zpráva dojde, případně není známá její velikost, nabízí se\ použít dvou funkcí na\ zjištění příchozí zprávy. Funkce jsou opět dělené na\ blokující a\ neblokující.
+
+[`MPI_Probe`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Probe.3.php) -- blokující
+
+:   \ \
+    Funkce čeká, dokud nepřijde nějaká zpráva. Příchozí zpráva musí mít správného odesílatele a\ správnou hodnotu štítku, aby byla přijata, ale je možné ignorovat jak rank odesílatele, tak hodnotu štítku zprávy. Poté vrátí vlastnosti zprávy -- rank odesílajícího procesu, štítek zprávy a\ velikost zprávy v\ bytech.
+
+[`MPI_Iprobe`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Iprobe.3.php) -- neblokující
+
+:   \ \
+    Funkce zjistí, zda na\ příjem nečeká nějaká zpráva od\ správného odesílatele a\ se\ správnou hodnotu štítku. Je možné ignorovat jak rank odesílatele, tak hodnotu štítku zprávy. Pokud funkce zjistí příchozí zprávu, je\ možné zjistit její vlastnosti -- rank odesílajícího procesu, štítek zprávy a\ velikost zprávy v\ bytech.
+
+#### Kolektivní komunikace
+
+Kolektivní komunikace znamená, že\ všechny procesy začnou společně provádět nějakou operaci nad daty. Počet procesů je\ možné omezit vytvořením nového komunikátoru a\ provedením operace v\ něm. Ačkoliv je\ možné všechny kolektivní operace simulovat pomocí operací jeden na\ jednoho, je\ výhodnější použít přímo funkce pro kolektivní komunikaci, protože jejich použitím může MPI knihovna využít znalosti o\ topologii procesů a\ realizovat přenos dat efektivněji.
+
+Mezi základní kolektivní operace patří jeden-všem, kdy jeden proces prošle stejná data všem ostatním procesům, všichni-jednomu, kdy všechny procesy až\ na\ jeden zašlou data jednomu procesu, přičemž data jsou před přijetím podrobeny redukční operaci, a\ bariéra, což je\ synchronizační primitivum, kterého musí všechny procesy ve\ skupině dosáhnout, než jim všem bude umožněno pokračovat dále ve\ výpočtu. Obdobně jako u\ komunikace jeden na\ jednoho i\ operace kolektivní komunikace mají varianty v\ podobě neblokujících volání; ověření dokončení operací se\ řeší také stejně.
+
+[`MPI_Bcast`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Bcast.3.php)
+
+:   \ \
+    Funkce realizující broadcast -- rozeslání balíku dat všem ostatním procesům ve\ skupině.
+
+[`MPI_Reduce`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Reduce.3.php)
+
+:   \ \
+    Funkce realizující redukci dat -- pošle data jednomu procesu od\ všech ostatních ze\ skupiny. Pro redukční operaci je\ možné využít buď jednu z\ předdefinovaných operací jako je\ součet, maximum, či\ logický součet, nebo si\ může uživatel definovat pomoc funkce [`MPI_Op_create`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Op_create.3.php) vlastní operaci.
+
+[`MPI_Barrier`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Barrier.3.php)
+
+:   \ \
+    Funkce realizující bariéru.
+
+Pokročilější kolektivní operace zahrnují rozesílání a\ sbírání různých dat od\ procesů ve\ skupině. Další operace jako [`MPI_Allgather`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Allgather.3.php) nebo [`MPI_Allreduce`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Allreduce.3.php) kombinují více kolektivních operací do\ jedné.
+
+[`MPI_Scatter`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Scatter.3.php)
+
+:   \ \
+    Funkce rozešle balíky dat všem procesům ve\ skupině. Rozdíl oproti funkci [`MPI_Bcast`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Bcast.3.php) je\ v\ tom, že\ odesílající proces sestaví různá data pro každý přijímající proces.
+
+[`MPI_Gather`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Gather.3.php)
+
+:   \ \
+    Funkce přijme data od všech ostatních procesů ve\ skupině. Je\ podobná funkci [`MPI_Reduce`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Reduce.3.php) s\ rozdílem, že\ není definována redukční operace, ale přijímající proces má k\ dispozici všechna data.
+
+#### Vlastní datové typy
+
+Standard MPI zavádí vlastní datové typy, které jsou schopné reprezentovat většinu základních datových typů v\ jazycích C, C++ a\ Fortran. Naopak některé MPI datové typy nemají reprezentaci ve\ jmenovaných programovacích jazycích. Jedním z\ důvodů zavedení vlastních datových typů je\ nezávislost na\ architektuře -- především na\ endianitě. Dalším důvodem je\ možnost používat předdefinované operace pro kolektivní komunikaci.
+
+Kromě vlastních datových typů umožňuje MPI definovat i\ vlastní datové typy, což zahrnuje vytváření jak homogenních (pole), tak i\ heterogenních (struktury) datových typů. Spolu s\ uživatelsky definovanými operacemi je možné využít vlastní datové typy při redukcích během kolektivní komunikace.
 
 ## BSD sockety
 
@@ -37,7 +178,7 @@ Další možností je vlastní implementace komunikačního rozhraní pro DIVINE
 
 Popis BSD socketů je abstrakce nad různými druhy spojení. V\ části POSIX standardu o [socketech](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_06) můžeme nalézt poměrně nemálo věcí, které jsou specifikovány. Stěžejní z\ pohledu nástroje DIVINE a\ výběru vhodného komunikačního rozhraní jsou především dvě pasáže, a\ to\ `Address Famillies` a\ `Socket Types`. První definuje, skrz které médium se\ budou sockety používat, zatímco druhá podstatná pasáž je\ o\ tom, jaké vlastnosti bude mít samotný přenos dat skrz sockety.
 
-Ačkoliv se\ v\ odkazované části POSIX standardu hovoří o\ "Address Families", dále ve\ standardu v\ části popisující funkce a\ jejich parametry se\ již hovoří o\ komunikační doméně. Budu tento termín nadále používat, neboť dle mého soudu lépe popisuje danou skutečnost.
+Ačkoliv se\ v\ odkazované části POSIX standardu hovoří o\ ``Address Families'', dále ve\ standardu v\ části popisující funkce a\ jejich parametry se\ již hovoří o\ komunikační doméně. Budu tento termín nadále používat, neboť dle mého soudu lépe popisuje danou skutečnost.
 
 ### Komunikační doména
 
@@ -207,38 +348,49 @@ Touto cestou je\ možné implementovat libovolný vlastní protokol na\ čtvrté
 
 [^raw-socket]: V originálu *raw sockets*.
 
-## Boost
+## Asio
 
-[Boost](http://www.boost.org) je\ seskupení C++ knihoven, které pokrývají mnoho témat, od\ základních věcí jako časovače, přes statistické funkce, až\ po\ práci s\ obrázky či\ regulární výrazy. Celkově tak Boost obsahuje několik desítek takových khihoven. Některé knihovny navíc mohou existovat ve\ dvou formách -- jednou jako součást seskupení Boost, podruhé jako samostatná knihovna.
+[Asio](http://www.boost.org/doc/libs/1_60_0/doc/html/boost_asio.html) je\ knihovna z\ Boostu, která nabízí asynchronní vstupně-výstupní operace. Je\ také jednou z\ knihoven, které mohou být použity i\ [samostatně](http://think-async.com).
 
-Mnohé knihovny z\ Boostu, obdobně jako nemalé části Standardní C++ knihovny[^STD] (dále jako STD), nabízejí sjednocené rozhraní k\ systémovému rozhraní, které se\ může lišit na\ základě operačního systému. Jako příklad co\ nejrozdílnějšího systémového rozhraní lze uvést operační systémy [Microsoft Windows](https://www.microsoft.com/cs-cz/windows) a\ UNIX-like[^unix-like] systémy. Knihovny z\ Boostu, na\ rozdíl od\ STD, navíc mohou poskytovat specifická rozšíření pro některé architektury a\ operační systémy.
+### Boost
+
+[Boost](http://www.boost.org) je\ seskupení C++ knihoven, které pokrývají mnoho témat, od\ základních věcí jako časovače, přes statistické funkce, až\ po\ práci s\ obrázky či\ regulárními výrazy. Celkově tak Boost obsahuje několik desítek takových khihoven. Některé knihovny navíc mohou existovat ve\ dvou formách -- jednou jako součást Boostu, podruhé jako samostatná knihovna.
+
+Mnohé knihovny z\ Boostu, obdobně jako nemalé části Standardní C++ knihovny[^STD] (dále jako STD), nabízejí sjednocené rozhraní k\ systémovému rozhraní, které se\ může lišit na\ základě operačního systému. Jako příklad co\ nejrozdílnějšího systémového rozhraní lze uvést operační systémy [Microsoft Windows](https://www.microsoft.com/cs-cz/windows) a\ UNIX-like[^unix-like] systémy. Knihovny z\ Boostu, na\ rozdíl od\ STD, mnohdy poskytují specifická rozšíření pro některé architektury a\ operační systémy.
 
 [^STD]: Standardní C++ knihovna je\ kolekce tříd a\ funkcí, které jsou napsány převážně v\ jazyce C++ (některé části, například Knihovna jazyka C, jsou psány v\ jazyce C). Standardní C++ knihovna je\ součástí ISO C++ standardu, který tak definuje rozhraní a\ další vlastnosti knihovních tříd a\ funkcí. Více o\ standardní knihovně lze nalézt na <http://en.cppreference.com/w/cpp/links> a\ v\ odkazech uvedených na\ stránce.
 
 [^unix-like]: Jedná se\ o\ operační systémy, které vycházejí z\ filozofie systému [UNIX](https://en.wikipedia.org/wiki/Unix#cite_note-Ritchie-3), poskytují obdobné rozhraní, ale neprošly procesem standardizace. Jako příklad lze uvést operační systémy jako BSD, či\ System\ V.
 
-Vztah knihoven obsažených v\ Boostu a\ STD je\ v\ některých případech velmi těsný. Důvod je\ ten, že spousta tříd a\ funkcí, které jsou standardizovány a\ tedy jsou součástí STD, mají svůj původ v\ některé knihovně v\ Boostu. V\ novějších verzích standardu jazyka C++ pak těchto knihoven přibývá.
+Vztah knihoven obsažených v\ Boostu a\ STD je\ v\ některých případech velmi těsný. Důvod je\ ten, že spousta tříd a\ funkcí, které jsou standardizovány a\ tedy jsou součástí STD, mají svůj původ v\ některé knihovně v\ Boostu [[X]](http://www.boost.org/doc/libs/?view=filtered_std-proposal)[[X]](http://www.boost.org/doc/libs/?view=filtered_std-tr1). V\ novějších verzích standardu jazyka C++ pak těchto knihoven přibývá.
 
-### Asio
+### Knihovna Asio
 
-[Asio](http://www.boost.org/doc/libs/1_60_0/doc/html/boost_asio.html) je\ knihovna z\ Boostu, která nabízí asynchronní vstupně-výstupní operace. Je\ také jednou z\ knihoven, které mohou být použity i\ [samostatně](http://think-async.com).
-
-Hlavním přínosem knihovny Asio je její pojetí asynchronních volání. Asynchronní volání se\ v\ posledních několika letech stávají populární, především možností použití v\ rozšířených programovacích jazycích, jako je\ [Java](https://docs.oracle.com/javase/6/docs/api/java/util/concurrent/FutureTask.html) nebo [C#](https://msdn.microsoft.com/en-us/library/hh873175%28v=vs.110%29.aspx). V\ poslední velké revizi jazyka C++ se\ asynchronní volání objevily také v\ podobě funkce `std::async`. Asynchronní volání ve\ zkratce znamená, že\ namísto běžného volání funkce poznačíme, že\ požadujeme provedené té které funkce, a\ až v\ místě, kde potřebujeme znát výsledek, si\ o\ něho požádáme. Je\ pak na\ možnostech jazyka a\ běhového prostředí, aby se\ postaralo o\ vyhodnocení asynchronně volané funkce. Možností je\ zde více, namátkou například spuštění asynchronní funkce v\ samostatném vlákně, nebo prolnutí funkcí během překladu do\ strojového kódu či\ mezikódu.
+ Hlavním přínosem knihovny Asio je její pojetí asynchronních volání. Asynchronní volání se\ v\ posledních několika letech stávají populární především možností použít ho v\ rozšířených programovacích jazycích, jako je\ například  [Java](https://docs.oracle.com/javase/6/docs/api/java/util/concurrent/FutureTask.html) nebo [C#](https://msdn.microsoft.com/en-us/library/hh873175%28v=vs.110%29.aspx). V\ poslední velké revizi jazyka C++ se\ asynchronní volání objevily také v\ podobě funkce `std::async`. Asynchronní volání ve\ zkratce znamená, že\ namísto běžného volání funkce poznačíme, že\ požadujeme provedené té které funkce, a\ až v\ místě, kde potřebujeme znát výsledek, si\ o\ něho požádáme. Je\ pak na\ možnostech jazyka a\ běhového prostředí, aby se\ postaralo o\ vyhodnocení asynchronně volané funkce. Možností je\ zde více, namátkou například spuštění asynchronní funkce v\ samostatném vlákně, nebo prolnutí funkcí během překladu do\ strojového kódu či\ mezikódu.
 
 Další neméně důležitou součástí jsou vstupně-výstupní operace. STD poskytuje rozhraní pro práci se\ standardním vstupem a\ výstupem a\ také rozhraní pro práci se\ soubory. Co\ už\ ale STD knihovna nenabízí je\ práce se\ sítí, kterou naopak knihovna Asio poskytuje. Poskytnuté funkce a\ třídy jsou navíc psány v\ obdobných konvencích jako STD.
 
 Rozhraní pro síťovou komunikaci implementuje knihovna Asio nad BSD sockety. Samozřejmě poskytuje podporu pro použití obou verzí IP, taktéž pro TCP i\ UDP. Navíc, protože je\ v\ současné době často nutnost použít zabezpečené spojení, umožňuje knihovna Asio použít SSL [[RFC6101]](https://tools.ietf.org/html/rfc6101), ke\ kterému je\ ale potřeba další knihovna -- [OpenSSL](https://www.openssl.org/).
 
+### Princip používání Asio
 
-# Nová implementace
+Knihovna Asio je\ postavena na\ návrhovém vzoru Proaktor[D. Schmidt et al, Pattern Oriented Software Architecture, Volume 2. Wiley, 2000.]. Základem pro veškeré asynchronní operace je\ objekt třídy `asio::io_service`, která zároveň plní úlohu proaktora. Další třídy, které reprezentují například sockety, mají roli inicializátorů. Poslední rolí, která stojí za\ zmínku, je\ oznamovač, což je\ funkce, která je\ spuštěna proaktorem po\ dokončení asynronní operace.
+
+Asynchronní režim se\ za\ podpory knihovny Asio používá poměrně jednoduše. Po\ vytvoření instance třídy `asio::io_service` program zaregistruje různé události, které ho zajímají. Může to\ být impulz z\ časovače, příchozí spojení nebo třeba dokončený zápis dat do\ souboru. Současně s\ registrací program upřesňuje, jaké funkce se\ mají zavolat v\ okamžiku, kdy událost nastane. Jediné, na\ co\ je\ třeba dávat pozor, je\ opětovná registrace na\ nastalou událost. Po\ zaregistrování všech požadovaných událostí stačí spustit metodu `run` na\ proaktoru.
+
+Třídy z\ knihovny je\ možné použít i\ pro synchronní vstupně-výstupní operace, pokud budou jejich metody volat přímo a\ nikoliv skrze proaktora. Protože ale spousta tříd ke\ svému vytvoření vyžaduje objekt třídy `asio::io_service`, jejímu vytvoření se\ nevyhneme.
+
+## Stávající komunikační rozhraní
+
+XXX
+
+# Návrh a implementace nového komunikačního rozhraní
 
 Na\ základě vlastností jednotlivých dříve uvedených přístupů jsem se\ rozhodl, že\ implementuji novou komunikační vrstvu za\ použití BSD socketů. Pro samotnou implementaci pak bude potřeba ze\ dříve uvedených typů socketů vybrat ten nejvhodnější. Nová implementace dále vyžaduje vytvořit jednoduchý komunikační protokol pro ustanovení sítě strojů kooperujících na\ distribuovaném výpočtu. Při návrhu nové implementace se\ navíc nemusím držet architektury distribuované aplikace, jak ji\ popisuje MPI, která má dle mého názoru některé vady, pročež jsem se\ rozhodl, že vytvořím architekturu s\ jinými vlastnostmi.
 
 Při zvažování, zda implementovat vlastní zjednodušenou nadstavbu nad BSD sockety, nebo zda použít knihovnu Asio, jsem zvolil první možnost. Jako důvod uvádím, že\ použití knihovny Asio by\ zavedlo do\ projektu další závislost -- buď ve\ formě správné verze knihovny Boost na\ straně uživatele, nebo ve\ formě nutnosti dodávat zdrojové soubory knihovny Asio spolu se\ zdrojovými soubory nástroje DIVINE, přičemž obojí přináší režii do\ správy projektu, který je\ limitován lidskými zdroji. Druhým důvodem pak může být, že\ z\ možností knihovny Asio by\ byla v\ nástroji DIVINE využito jen malá část.
 
-Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura je [x86-64](http://www.amd.com/Documents/x86-64_wp.pdf) a\ jehož operační systém používá rozhraní definované POSIX standardem -- převážně počítám s\ operačním systémem [GNU/Linux](http://www.gnu.org/gnu/linux-and-gnu.html.en). Dále předpokládám, že\ endianita[^endianity] všech strojů participující na\ výpočtu je\ stejná.
-
-[^endianity]: Způsob ukládání čísel do paměti.
+Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura je [x86-64](http://www.amd.com/Documents/x86-64_wp.pdf) a\ jehož operační systém používá rozhraní definované POSIX standardem -- převážně počítám s\ operačním systémem [GNU/Linux](http://www.gnu.org/gnu/linux-and-gnu.html.en). Dále předpokládám, že\ endianita všech strojů participující na\ výpočtu je\ stejná.
 
 ## Analýza vlastností typů socketů
 
@@ -305,7 +457,7 @@ Jednak to\ znamená, že\ se\ bude v\ síťové komunikaci posílat méně dat v
 
 Pak to\ také znamená, že\ by bylo potřeba implementovat vlastní protokol nad UDP pro ověřování korektnosti dat a\ pro ověřování jejich doručení. Předpokládá se, že\ nástroj DIVINE bude provozován v\ uzavřených sítích, takže je\ zde silný předpoklad na\ to, že\ síťových prvků mezi dvěma komunikujícími stroji bude malý počet -- typicky jeden síťový rozbočovač. Případně implementovaný protokol by\ tedy měl být šetrný k\ běžnému provozu a\ až\ v\ případě chyby při přenosu by\ mělo dojít k vyšší režii.
 
-Další vlastností nespojitých socketů je\ maximální délka zprávy. Maximální délku UDP paketů POSIX standard [`link na konkrétní hodnotu`] se\ uvádí jako 64 KB minus několik bytů na\ určené pro hlavičky IP paketů a\ UDP paketů. Ačkoliv nástroj DIVINE posílá zprávy o\ maximální velikosti několik málo desítek kilobytů, mohlo by\ se\ stát, že\ je potřeba poslat delší zprávu, u\ které by\ pak bylo potřeba zajistit, aby\ ji\ příjemce správně poskládal dohromady.
+Další vlastností nespojitých socketů je\ maximální délka zprávy. Maximální délku UDP paketů POSIX standard [`link na konkrétní hodnotu`] se\ uvádí jako 64\ KB minus několik bytů na\ určené pro hlavičky IP paketů a\ UDP paketů. Ačkoliv nástroj DIVINE posílá zprávy o\ maximální velikosti několik málo desítek kilobytů, mohlo by\ se\ stát, že\ je potřeba poslat delší zprávu, u\ které by\ pak bylo potřeba zajistit, aby\ ji\ příjemce správně poskládal dohromady.
 
 Poslední vlastností, kterou jsem výše uvedl, je\ neudržování spojení. Zde je\ namístě krátká polemika o\ tom, jak je\ síťová komunikace využívaná z\ pohledu nástroje DIVINE. Ačkoliv totiž od komunikační vrstvy DIVINE požaduje v\ podstatě pouze posílání zpráv, kde by\ se\ nespojité sockety hodily, potřebuje také udržovat znalost o\ tom, že\ jsou všechny stroje participující na\ distribuovaném výpočtu spojené. Danou funkcionalitu UDP nenabízí a\ bylo by\ tedy nutné ji\ taktéž implementovat.
 
@@ -322,7 +474,7 @@ Složení příliš dlouhých zpráv z\ více UDP paketů v\ sobě ukrývá př�
 
 Při zamyšlením nad zapojením komunikační vrstvy do\ nástroje DIVINE bychom narazili na\ další problém, kterým je\ paralelní přístup k\ přichozím zprávám. Na\ jednom výpočetním stroji lze mít na\ jednom portu otevřenou pouze jednu komunikačním linku, což znamená mít buď jedno dedikované vlákno na\ veškerou obsluhu spojení, nebo implementovat synchronizaci pomocí zámků pro\ paralelní přístup k\ socketu.
 
-Spolu s\ nutností použít další vrstvu vyrovnávacích pamětí se\ pak dedikované vlákno jeví jako snadnější volba, neboť by bylo potřeba vhodně zvolit granularitu zámků pro paralelní přístup -- od\ jednoho globálního zámku, který je\ nevhodný z\ důvodu malé rychlosti a\ ztráty výhod paralelismu, až\ po\ paralelního zámku pro každý blok paměti a\ socket, kde hrozí problémy typu uváznutí či\ porušení dat.
+Spolu s\ nutností použít další vrstvu vyrovnávacích pamětí se\ pak dedikované vlákno jeví jako snadnější volba, neboť by bylo potřeba vhodně zvolit granularitu zámků pro paralelní přístup -- od\ jednoho globálního zámku, který je\ nevhodný z\ důvodu malé rychlosti a\ ztráty výhod paralelizmu, až\ po\ paralelního zámku pro každý blok paměti a\ socket, kde hrozí problémy typu uváznutí či\ porušení dat.
 
 ### Sekvenční sockety
 
@@ -515,9 +667,7 @@ Pokud klient obdrží od\ některého serveru odpověď `Refuse`, řeší se\ na
 
 Poslední fází k\ započetí distribuovaného algoritmu je\ spuštění. Před samotným spuštění může klient rozeslat počáteční data všem výkonným procesům pomocí příkazu `InitialData`. Po něm již následuje zaslání příkazu `Run` spolu s\ parametry příkazové řádky, kterým se\ výkonný proces přepne ze\ stavu *zformován* do\ stavu *běžící*.
 
-Samotný start algoritmu v\ sobě implementuje bariéru,[^barrier] kdy je\ až\ příkazem `Start` od\ klienta každý výkonný proces zpraven o\ skutečném odstartování. Tento krok je\ v\ protokolu použit, aby nedocházelo na\ jednom stroji k\ započetí výpočtu, když se\ klient ještě stará o\ rozeslání dat zbylým strojům.
-
-[^barrier]: Bariéra je\ v\ oblasti paralelního a\ distribuovaného programování synchronizační primitivum, kterého musí všechny aktivní jednotky (vlákna či\ procesy) dosáhnout, než jim všem bude umožněno pokračovat dále ve\ výpočtu.
+Samotný start algoritmu v\ sobě implementuje bariéru, kdy je\ až\ příkazem `Start` od\ klienta každý výkonný proces zpraven o\ skutečném odstartování. Tento krok je\ v\ protokolu použit, aby nedocházelo na\ jednom stroji k\ započetí výpočtu, když se\ klient ještě stará o\ rozeslání dat zbylým strojům.
 
 Před samotným startem distribuovaného algoritmu se\ navíc spustí dvě vlákna, která mají na\ starost přesměrování standardního výstupu a\ standardního chybového výstupu na\ klienta. Klient se\ tak od\ tohoto okamžiku stará pouze o\ zobrazování přeposlaných výstupů a\ případné řešení chybových stavů.
 
@@ -576,7 +726,7 @@ Protokol jako takový byl koncipován na\ provoz v\ bezpečném prostředí, tak
 
 Při návrhu rozhraní jsem vycházel převážně z\ požadavků nástroje DIVINE. Všechny aktuálně implementované distribuované algoritmy využívají z\ knihovny MPI pouze několik málo funkcí pro komunikaci. Funkce `MPI_Send`/`MPI_Isend` , `MPI_Probe`/`MPI_Iprobe` a\ `MPI_Recv`/`MPI_Irecv`. Ačkoliv některé algoritmy navíc zasílají zprávu všem spolupracujícím instancím, k\ tomu se\ ale nevyužívá funkce `MPI_Bcast`, nýbrž opakované volání funkce pro zaslání zprávy.
 
-Dalším požadavkem bylo, aby šla komunikační vrstva použít v\ paralelním kontextu bez nutnosti řešit zamykání uvnitř algoritmu a\ tím lépe využít paralelismu. Přestože jsem neměl k\ dispozici kompletní požadavky na\ rozhraní z\ důvodu souběžně vyvíjené nové verze nástroje DIVINE, snažil jsem se\ co\ nejvíc vyhovět požadavkům, které jsem dostal. Způsob komunikace -- zasílání zpráv -- zůstává nadále platný i\ pro novou verzi.
+Dalším požadavkem bylo, aby šla komunikační vrstva použít v\ paralelním kontextu bez nutnosti řešit zamykání uvnitř algoritmu a\ tím lépe využít paralelizmu. Přestože jsem neměl k\ dispozici kompletní požadavky na\ rozhraní z\ důvodu souběžně vyvíjené nové verze nástroje DIVINE, snažil jsem se\ co\ nejvíc vyhovět požadavkům, které jsem dostal. Způsob komunikace -- zasílání zpráv -- zůstává nadále platný i\ pro novou verzi.
 
 ### Zprávy
 
@@ -697,11 +847,34 @@ Většina komunikačních metod může při problémech v\ síti vyhazovat různ
 
 # Experimentální porovnání
 
+Nová implementace poskytuje nástroji DIVINE několik způsoby použití, z\ nichž jsem vybral dva relevantní scénáře. První z\ nich je, že\ bude v\ rámci každého procesu jedno dedikované vlákno, které bude komunikovat s\ ostatními procesy, přičemž stejná situace je\ u\ stávající komunikační vrstvy, která používá MPI.
+
+Druhý možný scénář použití nového komunikačního rozhraní je, že\ každý proces bude spojen s\ ostatními procesy tolika datovými kanály, kolik pracovních vláken bude v\ rámci každého procesu spuštěno.^[To\ mimo jiné implikuje, že\ všechny procesy budou mít spuštěný stejný počet vláken.] Každé pracovní vlákno bude mít identifikační číslo v\ rámci procesu a\ sadu kanálů, které ho\ budou spojovat s\ vlákny stejného identifikačního čísla v\ jiných procesech. Vlákna tak spolu budou komunikovat jednak pomocí sdílené paměti v\ rámci jednoho procesu a\ každé vlákno může kontaktovat jedno vlákno z\ každého dalšího procesu, k\ němuž bude mít samostatný kanál.
+
+Tyto způsoby použití nového komunikačního rozhraní se\ spolu s\ MPI podrobí experimentálnímu porovnání a\ na\ základě časového měření zhodnotím jejich chování. Pozornost budu zaměřovat kromě absolutních časových hodnot na\ schopnost škálovat, a\ to jak v\ počtu vláken na\ proces, tak v\ počtu procesů samých.
+
+Měřeny budou celkem tři testy: test latence, test posílání krátkých zpráv a\ test posílání dlouhých zpráv. Všechny testy mají simulovat chování nástroje DIVINE, test latence spíše cílí na\ možný scénář komunikace v\ nové verzi nástroje DIVINE, zatímco zbylé dva simulují běh stávající verze DIVINE. Měření probíhala na\ strojích `pheme01` až\ `pheme16`.
+
 ## Test latence
 
-## Test škálovatelnosti -- krátké zprávy
+Test latence probíhá tak, že\ každé vlákno postupně vygeneruje čísla od\ $1$ až\ po\ stanovené $N$, a\ posílá je\ na\ zpracování jinému procesu, které ho\ obratem vrátí zpátky, akorát vynásobené $-1$. Určení jiného procesu je\ dvojí -- buď je\ určeno na\ základě vygenerovaného čísla, nebo je\ určeno náhodně.
 
-## Test škálovatelnosti -- dlouhé zprávy
+## Testy škálovatelnosti
+
+Testy škálovatelnosti simulují průchod orientovaným grafem v\ obdobném duchu, jakým ho\ prochází nástroj DIVINE. Vrchol grafu je\ reprezentován dvěma čísly. V\ jednom z\ procesů dojde k\ vytvoření počátečního vrcholu grafu s\ nulovými hodnotami, který je\ poslán na\ zpracování. Zpracování probíhá tak, že\ je\ postupně jedno a\ druhé číslo z\ reprezentace vrcholu navýšeno o\ 1 a\ následně odesláno k\ dalšímu zpracování. Každý vrchol je\ na\ základě hashe jednoznačně přidělený procesu s\ určitým rankem.
+
+V\ rámci testu je\ ukončení výpočtu zaručeno nejvyšší možnou hodnotou obou čísel reprezentující, po\ jejichž dosažení nedochází dále k\ předávání nově vytvořených vrcholů ke\ zpracování. V\ testu je\ použita hodnota $1000$, z\ čehož vyplývá, že simulace prohledá graf o\ $10^{6}$ vrcholech. Pro realističtější výsledky je\ ke\ každému vygenerování nového vrcholu připojen rekurzivní výpočet 25. fibonacciho čísla [[X]](https://oeis.org/A000045).
+
+Oba testy probíhají stejně, jediné, v\ čem se\ liší, je\ velikost vrcholu v\ grafu. V\ případě krátké zprávy vrchol obsahuje pouze 3\ čísla, kdežto dlouhé zprávy mají velikost přes 1\ KB.
+
+### Krátké zprávy
+
+### Dlouhé zprávy
+
+
+
+## Vyhodnocení
 
 # Závěr
 
+XXX
