@@ -5,11 +5,31 @@ header-includes:
 
 # Úvod
 
-XXX
+Název mé\ diplomové práce, která zní ``TCP vrstva pro verifikační nástroj DIVINE'' by\ mohla mnohým připadat jako tajemná, možná i\ nic neříkající. Proto se\ v\ první kapitole pokusím neznalému čtenáři přiblížit problematiku své diplomové práce, objasnit motivaci, která za\ tématem stojí, a\ nakonec popsat řešení. Druhá kapitola je\ zasvěcena víceméně technickému popisu. Ve\ třetí kapitole čtenář nalezne řešení -- gró diplomové práce. Ve\ čtvrté kapitole jsou prezentuji výsledky měření a\ vyhodnocuji dosažené výsledky a\ práci zakončuje pátá kapitola, v\ níž je\ shrnutí.
 
-# Uvedení do problematiky
+Než se\ dostanu k\ tomu, co\ je\ nástroj DIVINE nebo co\ znamená ``verifikační'', považuji za\ podstatné nejprve vysvětlit některé pojmy, kterými se\ ve\ zbytku práce oháním. Platí zde, že\ pokud je\ čtenáři trapné tyto části číst, může je\ směle přeskočit.
 
-## Modelchecking
+## Graf
+
+Pojem graf jistě evokuje v\ mnoha lidech sloupcové nebo koláčové grafy, které se\ na\ ně\ hrnou z\ médií, od\ pojišťovacích agentů nebo na\ manažerských schůzkách. Těmto grafům se\ říká diagramy[[X]](https://cs.wikipedia.org/wiki/Diagram#cite_note-1) a\ ve\ své diplomové práci se\ jimi nebudu zabývat.
+
+Další nápad, který může čtenáři přijít na\ mysl, jsou grafy průběhů funkcí, jak si\ je\ jistě pamatuje ze\ školy. Ani těmto grafům se\ nehodlám ve\ své práci věnovat, přestože se\ jich několik objeví ve\ čtvrté kapitole, kde pomocí nich prezentuji výsledky.
+
+A\ konečně se\ dostáváme k\ významu pojmu graf. V\ pojetí, se\ kterým dále operuji,se\ jedná o\ množinu objektů -- dále označované jako vrcholy --, jejichž vztahy jsou vyjádřeny hranami mezi nimi. Velmi neformálně a\ zjednodušeně je\ možné si\ graf představit jako mapu, kde města a\ vesnice představují vrcholy grafu a\ silniční síť mezi obcemi jsou hrany. Nekdy je\ potřeba, aby hrany měly směr -- tedy byly orientované -- asi jako když je\ některá ulice jednosměrná. Formálnější definice (neorientovaného) grafu by\ mohla vypadat nějak takto:
+
+> Neorientovaný graf je\ dvojce $G = (V, E)$, kde $V$ je\ neprázdná množina vrcholů a\ $E$ je\ množina hran, pro kterou platí $E \subseteq \left\{\left\{u, v\right\}| u,v \in V, u \neq v \right\}$.
+
+Orientovaný graf se\ liší tím, že\ hrany mají směr a\ že\ je\ možné graf procházet po\ hranách jenom ve správném směru. Definice se\ liší jen v\ popisu množiny $E$:
+
+> Orientovaný graf je\ dvojce $G = (V, E)$, kde $V$ je\ neprázdná množina vrcholů a\ $E$ je\ množina hran, pro kterou platí $E \subseteq V \times V$.
+
+Tolik znalostí čtenáři postačí, aby se\ v\ dále v\ textu neztrácel, takže oblast grafů prozatím opustíme. Detailnějšímu rozboru problematiky grafů se\ věnuje obor matematické informatiky, jehož název je\ [teorie grafů](https://cs.wikipedia.org/wiki/Teorie_graf%C5%AF).
+
+## Formální verifikace
+
+Ve\ světě počítačů a\ programů se\ pojem formální verifikace užívá ve\ spojitosti se\ zjištěním, jestli nějaký program, který se\ stal obětí formální verifikace, obsahuje chybu, či\ nikoliv. Přesnější definice je, že\ pomocí metod formální verifikace se\ dokazuje či\ vyvrací správnost systému. Obvykle nelze ověřovat správnost systému tak nějak obecně, takže ověření bývá vztaženo na\ nějakou vlastnost systému, která je\ daná nějakým formálním popisem.
+
+Existuje několik konkrétních metod, které spadají pod formální verifikaci, jako třeba theorem proving [[X]](https://en.wikipedia.org/wiki/Automated_theorem_proving#cite_note-9) nebo abstraktní interpretace[[X]](https://en.wikipedia.org/wiki/Abstract_interpretation#cite_note-1)[[X]](https://en.wikipedia.org/wiki/Abstract_interpretation#cite_note-2). Pro nás je\ ale podstatný model checking, nebo také ověřování modelů.
 
 ## Paralelizmus
 
@@ -19,7 +39,7 @@ Ačkoliv téměř každý člověk, který se\ pohybuje v\ oblasti informatiky, 
 
 > Proces je\ instance počítačového programu, který je\ právě vykonáván. Proces si\ žádá od\ operačního systému zdroje jako například paměť. Proces nemá přímou možnost komunikovat s\ dalšími procesy a\ pro komunikaci je\ třeba využít služeb operačního systému.
 
-> Vlákno nejmenší sekvence příkazů, které mohou být nezávisle spravovány plánovačem úloh operačního systému. Vlákno je\ vždy součástí procesu a\ jako takové nevlastní žádné zdroje; ty\ náleží procesu. Protože spolu vlákna sdílí paměť, komunikace mezi nimi probíhá bez přímé interakce s\ operačním systémem za\ použití synchronizačních primitiv dostupných na\ dané architektuře.
+> Vlákno je\ nejmenší sekvence příkazů, které mohou být nezávisle spravovány plánovačem úloh operačního systému. Vlákno je\ vždy součástí procesu a\ jako takové nevlastní žádné zdroje; ty\ náleží procesu. Protože spolu vlákna sdílí paměť, komunikace mezi nimi probíhá bez přímé interakce s\ operačním systémem za\ použití synchronizačních primitiv dostupných na\ dané architektuře.
 
 Důvod, proč není dostupná formální definice procesu, je\ ten, že\ pojem proces uvedli v\ 60.\ letech návrháři systému Multics[[X]](http://www.cim.mcgill.ca/~franco/OpSys-304-427/lecture-notes/node4.html) jako něco víc obecného než úkol, to\ v\ kontextu více programové jednotky. Význam slova proces tak byl určen spíše implementací systému než zavedením formálního popisu, u\ čehož v\ současné době, kdy existuje několik operačních systémů s\ různou filozofií, zůstalo [[X]](https://msdn.microsoft.com/en-us/library/windows/desktop/ms684841%28v=vs.85%29.aspx)[[X]](http://www.linfo.org/process.html). Obdobná situace je\ v\ případě definice pojmu vlákno, třebaže lze dohledat uvedení pojmu [[X]](https://en.wikipedia.org/wiki/Thread_%28computing%29#cite_note-1). Nicméně zde platí stejně jako u\ procesu, že\ přesný popis, co\ vlákno je, se\ liší na základě operačního systému, případně běhovém prostředí[^run-environment]
 
@@ -33,7 +53,11 @@ Z\ předchozích odstavců vyplývá, že\ přístup obou druhů paralelizmu je\
 
 ## DIVINE
 
+XXX
+
 ## Cíl práce
+
+XXX
 
 # Komunikační vrstva
 
@@ -378,9 +402,11 @@ Knihovna Asio je\ postavena na\ návrhovém vzoru Proaktor[D. Schmidt et al, Pat
 
 Asynchronní režim se\ za\ podpory knihovny Asio používá poměrně jednoduše. Po\ vytvoření instance třídy `asio::io_service` program zaregistruje různé události, které ho zajímají. Může to\ být impulz z\ časovače, příchozí spojení nebo třeba dokončený zápis dat do\ souboru. Současně s\ registrací program upřesňuje, jaké funkce se\ mají zavolat v\ okamžiku, kdy událost nastane. Jediné, na\ co\ je\ třeba dávat pozor, je\ opětovná registrace na\ nastalou událost. Po\ zaregistrování všech požadovaných událostí stačí spustit metodu `run` na\ proaktoru.
 
-Třídy z\ knihovny je\ možné použít i\ pro synchronní vstupně-výstupní operace, pokud budou jejich metody volat přímo a\ nikoliv skrze proaktora. Protože ale spousta tříd ke\ svému vytvoření vyžaduje objekt třídy `asio::io_service`, jejímu vytvoření se\ nevyhneme.
+Třídy z\ knihovny je\ možné použít i\ pro synchronní vstupně-výstupní operace, pokud budou jejich metody volat přímo a\ nikoliv skrze proaktora. Protože ale spousta tříd ke\ svému vytvoření vyžaduje objekt třídy `asio::io_service`, jejímu vytvoření se\ není možné nevyhnout.
 
 ## Stávající komunikační rozhraní
+
+Pro uvedení do\ stávající rozhraní nástroje DIVINE je\ nejprve
 
 XXX
 
@@ -863,17 +889,21 @@ Test latence probíhá tak, že\ každé vlákno postupně vygeneruje čísla od
 
 Testy škálovatelnosti simulují průchod orientovaným grafem v\ obdobném duchu, jakým ho\ prochází nástroj DIVINE. Vrchol grafu je\ reprezentován dvěma čísly. V\ jednom z\ procesů dojde k\ vytvoření počátečního vrcholu grafu s\ nulovými hodnotami, který je\ poslán na\ zpracování. Zpracování probíhá tak, že\ je\ postupně jedno a\ druhé číslo z\ reprezentace vrcholu navýšeno o\ 1 a\ následně odesláno k\ dalšímu zpracování. Každý vrchol je\ na\ základě hashe jednoznačně přidělený procesu s\ určitým rankem.
 
-V\ rámci testu je\ ukončení výpočtu zaručeno nejvyšší možnou hodnotou obou čísel reprezentující, po\ jejichž dosažení nedochází dále k\ předávání nově vytvořených vrcholů ke\ zpracování. V\ testu je\ použita hodnota $1000$, z\ čehož vyplývá, že simulace prohledá graf o\ $10^{6}$ vrcholech. Pro realističtější výsledky je\ ke\ každému vygenerování nového vrcholu připojen rekurzivní výpočet 25. fibonacciho čísla [[X]](https://oeis.org/A000045).
+V\ rámci testu je\ ukončení výpočtu zaručeno nejvyšší možnou hodnotou obou čísel reprezentující, po\ jejichž dosažení nedochází dále k\ předávání nově vytvořených vrcholů ke\ zpracování. V\ testu je\ použita hodnota $1000$, z\ čehož vyplývá, že simulace prohledá graf o\ $10^{6}$ vrcholech. Pro realističtější výsledky je\ ke\ každému vygenerování nového vrcholu připojen rekurzivní výpočet 25. fibonacciho čísla [[X]](https://oeis.org/A000045), což způsobí podobnou časovou režii jako generování nového vrcholu v\ grafu nástrojem DIVINE.
 
 Oba testy probíhají stejně, jediné, v\ čem se\ liší, je\ velikost vrcholu v\ grafu. V\ případě krátké zprávy vrchol obsahuje pouze 3\ čísla, kdežto dlouhé zprávy mají velikost přes 1\ KB.
 
 ### Krátké zprávy
 
+XXX
+
 ### Dlouhé zprávy
 
-
+XXX
 
 ## Vyhodnocení
+
+XXX
 
 # Závěr
 
