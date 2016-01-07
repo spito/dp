@@ -7,7 +7,7 @@ header-includes:
 
 Název mé\ diplomové práce, která zní ``TCP vrstva pro verifikační nástroj DIVINE'' by\ mohla mnohým připadat jako tajemná, možná i\ nic neříkající. Proto se\ v\ první kapitole pokusím neznalému čtenáři přiblížit problematiku své diplomové práce, objasnit motivaci, která za\ tématem stojí, a\ nakonec popsat řešení. Druhá kapitola je\ zasvěcena víceméně technickému popisu. Ve\ třetí kapitole čtenář nalezne řešení -- gró diplomové práce. Ve\ čtvrté kapitole jsou prezentuji výsledky měření a\ vyhodnocuji dosažené výsledky a\ práci zakončuje pátá kapitola, v\ níž je\ shrnutí.
 
-Než se\ dostanu k\ tomu, co\ je\ nástroj DIVINE nebo co\ znamená ``verifikační'', považuji za\ podstatné nejprve vysvětlit některé pojmy, kterými se\ ve\ zbytku práce oháním. Platí zde, že\ pokud je\ čtenáři trapné tyto části číst, může je\ směle přeskočit.
+Než se\ dostanu k\ tomu, co\ je\ nástroj DIVINE nebo co\ znamená ``verifikační'', považuji za\ podstatné nejprve objasnit některé pojmy, kterými se\ ve\ zbytku práce oháním. Znalého čtenáře by\ mohly mé poněkud vágní definice vyděsit, proto mu\ doporučuji pasáže první kapitoly, pokud ho\ děsí, přeskočit. Cílem první kapitoly je\ spíše přiblížit pojmy neznalému čtenáři než je\ formálně definovat.
 
 ## Graf
 
@@ -15,7 +15,7 @@ Pojem graf jistě evokuje v\ mnoha lidech sloupcové nebo koláčové grafy, kte
 
 Další nápad, který může čtenáři přijít na\ mysl, jsou grafy průběhů funkcí, jak si\ je\ jistě pamatuje ze\ školy. Ani těmto grafům se\ nehodlám ve\ své práci věnovat, přestože se\ jich několik objeví ve\ čtvrté kapitole, kde pomocí nich prezentuji výsledky.
 
-A\ konečně se\ dostáváme k\ významu pojmu graf. V\ pojetí, se\ kterým dále operuji,se\ jedná o\ množinu objektů -- dále označované jako vrcholy --, jejichž vztahy jsou vyjádřeny hranami mezi nimi. Velmi neformálně a\ zjednodušeně je\ možné si\ graf představit jako mapu, kde města a\ vesnice představují vrcholy grafu a\ silniční síť mezi obcemi jsou hrany. Nekdy je\ potřeba, aby hrany měly směr -- tedy byly orientované -- asi jako když je\ některá ulice jednosměrná. Formálnější definice (neorientovaného) grafu by\ mohla vypadat nějak takto:
+A\ konečně se\ dostáváme k\ významu pojmu graf. V\ pojetí, se\ kterým dále operuji, se\ jedná o\ množinu objektů -- dále označované jako vrcholy --, jejichž vztahy jsou vyjádřeny hranami mezi nimi. Velmi neformálně a\ zjednodušeně je\ možné si\ graf představit jako mapu, kde města a\ vesnice představují vrcholy grafu a\ silniční síť mezi obcemi představují hrany. Nekdy je\ potřeba, aby hrany měly směr -- tedy byly orientované -- asi jako když je\ některá ulice jednosměrná. Formálnější definice (neorientovaného) grafu by\ mohla vypadat nějak takto:
 
 > Neorientovaný graf je\ dvojce $G = (V, E)$, kde $V$ je\ neprázdná množina vrcholů a\ $E$ je\ množina hran, pro kterou platí $E \subseteq \left\{\left\{u, v\right\}| u,v \in V, u \neq v \right\}$.
 
@@ -23,17 +23,11 @@ Orientovaný graf se\ liší tím, že\ hrany mají směr a\ že\ je\ možné gr
 
 > Orientovaný graf je\ dvojce $G = (V, E)$, kde $V$ je\ neprázdná množina vrcholů a\ $E$ je\ množina hran, pro kterou platí $E \subseteq V \times V$.
 
-Tolik znalostí čtenáři postačí, aby se\ v\ dále v\ textu neztrácel, takže oblast grafů prozatím opustíme. Detailnějšímu rozboru problematiky grafů se\ věnuje obor matematické informatiky, jehož název je\ [teorie grafů](https://cs.wikipedia.org/wiki/Teorie_graf%C5%AF).
-
-## Formální verifikace
-
-Ve\ světě počítačů a\ programů se\ pojem formální verifikace užívá ve\ spojitosti se\ zjištěním, jestli nějaký program, který se\ stal obětí formální verifikace, obsahuje chybu, či\ nikoliv. Přesnější definice je, že\ pomocí metod formální verifikace se\ dokazuje či\ vyvrací správnost systému. Obvykle nelze ověřovat správnost systému tak nějak obecně, takže ověření bývá vztaženo na\ nějakou vlastnost systému, která je\ daná nějakým formálním popisem.
-
-Existuje několik konkrétních metod, které spadají pod formální verifikaci, jako třeba theorem proving [[X]](https://en.wikipedia.org/wiki/Automated_theorem_proving#cite_note-9) nebo abstraktní interpretace[[X]](https://en.wikipedia.org/wiki/Abstract_interpretation#cite_note-1)[[X]](https://en.wikipedia.org/wiki/Abstract_interpretation#cite_note-2). Pro nás je\ ale podstatný model checking, nebo také ověřování modelů.
+Tolik znalostí čtenáři postačí, aby se\ dále v\ textu neztrácel, takže oblast grafů prozatím opustíme. Detailnějšímu rozboru problematiky grafů se\ věnuje obor matematické informatiky, jehož název je\ [teorie grafů](https://cs.wikipedia.org/wiki/Teorie_graf%C5%AF).
 
 ## Paralelizmus
 
-Pojem paralelizmus lze přeložit jako souběžnost. V\ informatice tento pojem znamená, že\ nějaká aplikace provádí (zdánlivě) současně dvě nebo více nezávislých výpočtů. Paralelizmus můžeme dále rozdělit na\ dva druhy -- paralelizmus ve\ sdílené paměti a\ v\ distribuované paměti. V\ případě paralelizmu ve\ sdílené paměti hovoříme o\ vlákně jako o\ základním funkčním prvku. U\ paralelizmu v\ distribuované paměti je\ základním prvkem proces.
+Pojem paralelizmus lze přeložit jako souběžnost. V\ informatice tento pojem znamená, že\ nějaká aplikace provádí (zdánlivě) současně dva nebo více nezávislých výpočtů. Paralelizmus můžeme dále rozdělit na\ dva druhy -- paralelizmus ve\ sdílené paměti a\ v\ distribuované paměti. V\ případě paralelizmu ve\ sdílené paměti hovoříme o\ vlákně jako o\ základním funkčním prvku. U\ paralelizmu v\ distribuované paměti je\ základním prvkem proces.
 
 Ačkoliv téměř každý člověk, který se\ pohybuje v\ oblasti informatiky, intuitivně tuší, co\ znamenají pojmy proces a\ vlákno, uvedu zde popis, který dle mého názoru je\ dostačující.
 
@@ -41,39 +35,65 @@ Ačkoliv téměř každý člověk, který se\ pohybuje v\ oblasti informatiky, 
 
 > Vlákno je\ nejmenší sekvence příkazů, které mohou být nezávisle spravovány plánovačem úloh operačního systému. Vlákno je\ vždy součástí procesu a\ jako takové nevlastní žádné zdroje; ty\ náleží procesu. Protože spolu vlákna sdílí paměť, komunikace mezi nimi probíhá bez přímé interakce s\ operačním systémem za\ použití synchronizačních primitiv dostupných na\ dané architektuře.
 
-Důvod, proč není dostupná formální definice procesu, je\ ten, že\ pojem proces uvedli v\ 60.\ letech návrháři systému Multics[[X]](http://www.cim.mcgill.ca/~franco/OpSys-304-427/lecture-notes/node4.html) jako něco víc obecného než úkol, to\ v\ kontextu více programové jednotky. Význam slova proces tak byl určen spíše implementací systému než zavedením formálního popisu, u\ čehož v\ současné době, kdy existuje několik operačních systémů s\ různou filozofií, zůstalo [[X]](https://msdn.microsoft.com/en-us/library/windows/desktop/ms684841%28v=vs.85%29.aspx)[[X]](http://www.linfo.org/process.html). Obdobná situace je\ v\ případě definice pojmu vlákno, třebaže lze dohledat uvedení pojmu [[X]](https://en.wikipedia.org/wiki/Thread_%28computing%29#cite_note-1). Nicméně zde platí stejně jako u\ procesu, že\ přesný popis, co\ vlákno je, se\ liší na základě operačního systému, případně běhovém prostředí[^run-environment]
+Důvod, proč není dostupná formální definice procesu, je\ ten, že\ pojem proces uvedli v\ 60.\ letech návrháři systému Multics[[X]](http://www.cim.mcgill.ca/~franco/OpSys-304-427/lecture-notes/node4.html) jako něco víc obecného než úkol, to\ v\ kontextu víceprogramové jednotky. Význam slova proces tak byl určen spíše implementací systému než zavedením formálního popisu, u\ čehož v\ současné době, kdy existuje několik operačních systémů s\ různou filozofií[[X]](https://msdn.microsoft.com/en-us/library/windows/desktop/ms684841%28v=vs.85%29.aspx)[[X]](http://www.linfo.org/process.html), zůstalo . Obdobná situace je\ v\ případě definice pojmu vlákno, třebaže lze dohledat uvedení pojmu [[X]](https://en.wikipedia.org/wiki/Thread_%28computing%29#cite_note-1). Nicméně zde platí stejně jako u\ procesu, že\ přesný popis, co\ vlákno je, se\ liší na základě operačního systému, případně běhovém prostředí[^run-environment]
 
 [^run-environment]: Běhové prostředí je\ sada knihoven a\ nástrojů, které bývají součástí vyšších programovacích jazyků jako třeba Java nebo C#. Běhové prostředí může definovat jinou sémantiku především pro vlákna, které může být rozdílné od\ sémantiky, kterou popisuje operační systém.
 
 V\ případě paralelizmu ve\ sdílené paměti programátor očekává, že\ po\ startu programu má k\ dispozici jedno hlavní vlákno, ze\ kterého následně v\ případě potřeby pouští další vlákna, na\ která většinou na\ konci programu hlavní vlákno zase počká. V\ průběhu výpočtu používají vlákna synchronizační primitiva pro vzájemnou komunikaci. Navíc platí, že\ programátor má volnou ruku v\ tom, zda spustí jednu a\ tu\ samou funkcí vícekrát ve\ více vláknech nebo spustí v\ některých vláknech jiné funkce.
 
-V\ případě distribuovaného výpočtu je\ situace zcela opačná. Jeden program je\ s\ pomocí služeb operačního systému nebo nějaké knihovny spuštěn na\ různých výpočetních strojích, přičemž počet strojů -- a\ tedy počet procesů -- se\ během algoritmu zpravidla nemění. V\ průběhu výpočtu spolu mohou procesy komunikovat pomocí rozhraní, které jim poskytují podpůrné nástroje. Většinou je\ komunikace vedena formou zasílání zpráv. Je\ možné, že\ operační systém nebo knihovna umožňuje mezi procesy sdílet i\ části paměti, z\ důvodů výrazného zpomalení a\ problematické synchronizace nebývá její použití časté.
+V\ případě distribuovaného výpočtu je\ situace zcela opačná. Jeden program je\ s\ pomocí služeb operačního systému nebo nějaké knihovny spuštěn na\ různých výpočetních strojích, přičemž počet strojů -- a\ tedy počet procesů -- se\ během algoritmu zpravidla nemění. V\ průběhu výpočtu spolu mohou procesy komunikovat pomocí rozhraní, které jim poskytují podpůrné nástroje. Většinou je\ komunikace vedena formou zasílání zpráv. Je\ možné, že\ operační systém nebo knihovna umožňuje mezi procesy sdílet i\ části paměti, z\ důvodů výrazného zpomalení a\ problematické synchronizace ale nebývá její použití časté.
 
-Z\ předchozích odstavců vyplývá, že\ přístup obou druhů paralelizmu je\ odlišný. Nejedná se\ tedy o\ konkurující, ale naopak doplňující nástroje, které je\ možné využít při návrhu aplikace. Liší se i\ nástroje, pomocí kterými se\ oba druhy paralelizmu řídí. Pro paralelizmus ve\ sdílené paměti se\ používají nástroje jako [POSIX vlákna](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_09) nebo [OpenMP](http://openmp.org). Paralelizmus v\ distribuované paměti zase využívají knihovny jako [MPI](http://www.mpi-forum.org) nebo [PVM](http://www.csm.ornl.gov/pvm/). Není proto nezvyklé, že\ jsou v\ rámci jedné aplikace použity oba druhy paralelizace.
+Z\ předchozích odstavců vyplývá, že\ přístup obou druhů paralelizmu je\ odlišný. Nejedná se\ tedy o\ konkurující, ale naopak doplňující se\ nástroje, které je\ možné využít při návrhu aplikace. Liší se i\ nástroje, pomocí kterými se\ oba druhy paralelizmu řídí. Pro paralelizmus ve\ sdílené paměti se\ používají nástroje jako [POSIX vlákna](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_09) nebo [OpenMP](http://openmp.org). Paralelizmus v\ distribuované paměti zase využívají knihovny jako [MPI](http://www.mpi-forum.org) nebo [PVM](http://www.csm.ornl.gov/pvm/). Není proto nezvyklé, že\ jsou v\ rámci jedné aplikace použity oba druhy paralelizace.
+
+## Formální verifikace
+
+Ve\ světě počítačů a\ programů se\ pojem formální verifikace užívá ve\ spojitosti se\ zjištěním, jestli nějaký program, který se\ stal obětí formální verifikace, obsahuje chybu, či\ nikoliv. Přesnější definice je, že\ pomocí metod formální verifikace se\ dokazuje či\ vyvrací správnost systému. Obvykle nelze ověřovat správnost systému tak nějak obecně, takže ověření bývá vztaženo na\ nějakou vlastnost systému, která je\ daná nějakým formálním popisem.
+
+Existuje několik konkrétních metod, které spadají pod formální verifikaci, jako třeba theorem proving [[X]](https://en.wikipedia.org/wiki/Automated_theorem_proving#cite_note-9) nebo abstraktní interpretace[[X]](https://en.wikipedia.org/wiki/Abstract_interpretation#cite_note-1)[[X]](https://en.wikipedia.org/wiki/Abstract_interpretation#cite_note-2). Pro nás je\ ale podstatný model checking[GRUMBERG, Orna, Doron PELED a Edmund M. CLARKE. Model checking. Cambridge: MIT Press, 1999. xiv, 314 s. ISBN 0-262-03270-8.], nebo také ověřování modelů. Metoda ověřování modelů je\ vhodným nástrojem na\ nalézání chyb obzvláště na\ paralelní programy, u\ nichž se\ případná chyba nemusí při běžném testování vůbec objevit, kdežto pomocí formálních metod lze tyto zákeřné chyby objevit.
+
+Pro použití formální metody ověřování modelů je\ potřeba vzít model systému, který se\ vytvoří z\ popisu programu, který chceme ověřit. Další věc, kterou je\ potřeba mít, je\ specifikace vlastností, která vznikne převedením požadavků na\ systém do\ nějakého formálního jazyka. Obě vzniklé věci -- model systému a\ specifikace vlastností -- jsou vstupem ověřovacímu algoritmu. Pokud model systému splňuje specifikované vlastnosti, je\ ověřovacím algoritmem označen jako správný. Pokud ale model nesplňuje specifikaci, označí ho\ ověřovací algoritmus jako nesprávný a\ podá uživateli protipříklad, což je\ příklad chování modelu systému, které vede k\ porušení některé ze\ specifikovaných vlastností.
+
+Algoritmus pro ověřování modelu je\ prováděn programem, kterému se\ říká *model checker*^[Seznam některých *model checkerů* je\ například na\ stránce <https://en.wikipedia.org/wiki/List_of_model_checking_tools>.]. Každý *model checker* definuje, jakým způsobem má\ být zapsaný model systému a\ specifikace vlastností. Některé *model checkery* požadují, aby byl model systému napsán v\ nějakém speciálním modelovacím jazyku [ISO/IEC international standard 8807:1989. Information Processing Systems - Open Systems Interconnection - LOTOS: A Formal Description Technique based on the Temporal Ordering of Observational Behaviour. Geneva, September 1989.], jiné dokáží akceptovat jako model rovnou ověřovaný program ve\ formě zdrojových kódů. Mnohé *model checkery* dokáží přijímat více formátů vstupu. Stejná situace je\ u\ specifikace vlastností, kde ale záleží nejen na\ *model checkeru*, ale také na\ formátu modelu systému. Základní specifikační vlastnost je\ *assert* (tvrzení), kdy *model checker* ověří, že\ jsou všechna tvrzení, která nalezne, platná. Jiný možný formalizmus, který lze použít, jsou [LTL](https://en.wikipedia.org/wiki/Linear_temporal_logic#cite_note-4) a\ [CTL](https://en.wikipedia.org/wiki/Model_checking#cite_note-LoP81-4) formule, pomocí nichž je\ možné popisovat chování modelů, jejichž běh nikdy neskončí.
+
+Ověřování modelů lze obecně provádět dvěma způsoby -- [symbolicky](http://www.kenmcmil.com/pubs/thesis.pdf) a\ [explicitně](https://en.wikipedia.org/wiki/Model_checking#cite_note-LoP81-4). Symbolickému vyhodnocování se\ nebudu dále věnovat, pozornost věnuji naopak explicitnímu. Algoritmus pro explicitní ověřování modelů nejprve rozloží běh programu na\ jednotlivé stavy. V\ rámci každého stavu je\ uložen obraz paměti programu, včetně hodnot registrů[^registers] a\ ukazatele na\ ještě nespuštěnou instrukci. Stavy programu jsou vrcholy grafu, který se\ nazývá stavový prostor programu. Vrcholy grafu jsou spojeny orientovanou hranou, pokud se\ provedením jedné instrukce stane z\ jednoho vrcholu (předchůdce) druhý (následník). Pokud bude ověření podroben program bez paralelizmu, ve\ výsledném stavovém prostoru budou nejspíše všechny vrcholy pospojovány v\ řadě za\ sebou. Ovšem v\ okamžiku, kdy bude ověřovaný program používat paralelizmus, začne být situace zajímavější -- pokaždé, kdy bude v\ programu více vláken, *model checker* musí postupně provést instrukci za\ každé jedno vlákno, takže z\ předchůdce vzniknou hrany do\ více následníků.
+
+[^registers]: Registry jsou pekelně rychlé malé paměti (řádově jednotky bytů), které procesor využívá k\ výpočtům. Podle architektury jich procesor může mít jednotky[[X]](http://microsym.com/editor/assets/386intel.pdf) až\ malé desítky [[X]](http://www.amd.com/Documents/x86-64_wp.pdf)[[X]](http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf).
+
+Pokud je\ použitá specifikační vlastnost *assert*, postačí při vytváření stavového prostory označit ty\ vrcholy, v\ nichž požadované tvrzení neplatí. V\ případě použití komplikovanějšího formalizmu, například LTL formule, musí nejprve *model checker* z\ formule vytvořit její negaci, ze\ které následně vytvoří Büchi automat [[X]](https://en.wikipedia.org/wiki/B%C3%BCchi_automaton#cite_note-1). Výsledný automat se\ vynásobí se\ stavovým prostorem, poznačí se\ všechny stavy, ve kterých platí negovaná formule, a\ výsledný graf následně zpracuje *model checker*. Pokud při průchodu nenalezne žádný označený vrchol, prohlásí model systému za\ validní. Naopak pokud *model checker* nalezne označený vrchol, prohlásí model za\ chybný a\ jako protipříklad uvede cestu grafem od\ počátečního vrcholu až\ k\ označenému vrcholu. Pro samotné procházení grafu se\ využívají převážně algoritmy na\ procházení grafu do\ hloubky a\ do\ šířky.
+
+Reálné *model checkery* samozřejmě nepostupují tak, jak jsem v\ předchozích odstavcích předestřel, ale používají různé finty, jako třeba *partial order reduction* [[X]](https://en.wikipedia.org/wiki/Partial_order_reduction#CITEREFPeled1993). Stavový prostor dále bývá generovaný postupně, jak *model checker* prochází grafem a\ generuje následníky zpracovávaného vrcholu. Jedním takovým reálným *model checkerem* je\ nástroj DIVINE.
 
 ## DIVINE
 
-XXX
+Nástroj [DIVINE](http://divine.fi.muni.cz/)[Jiri Barnat: Distributed Memory LTL Model Checking Ph.D. Thesis, Masaryk University Brno, Faculty of Informatics, 2004.][[X]](https://is.muni.cz/auth/th/139761/fi_d/) je\ explicitní *model checker*, který zvládá verifikovat modely v\ jazycích jako [LLVM](http://llvm.org/), nebo [UPPAAL](http://www.uppaal.org/)^[Formát pro vytváření časových automatů [[X]](https://en.wikipedia.org/wiki/Timed_automaton#cite_note-1).], nebo ve\ formátu [DVE](http://divine.fi.muni.cz/manual.html#the-dve-specification-language)^[Původní modelovací jazyk, ve\ kterém nástroj DIVINE uměl verifikovat modely.]. Specifikace vlastností lze zadávat jako *asserty* nebo vyjádřit pomocí LTL formulí. V\ současné době je\ snaha soustředit se\ na\ jazyk LLVM a\ postupně rušit podporu pro ostatní vstupní formáty.
+
+Proč tomu tak je? Jazyk LLVM je\ jednoduchým mezijazykem navrženým především pro snadnou implementaci optimalizací tak, aby zůstaly odstíněny od\ abstrakcí vyšších programovacích jazyků a\ zároveň aby nebyly omezovány prvky konkrétních architektur. První front-end, který překládal vyšší programovací jazyky do\ LLVM byl [Clang](http://clang.llvm.org/), který překládá jazyky C, C++ a\ Objective-C, posléze začaly vznikat front-endy i\ pro další jazyky, jako je\ Java, C#, Haskell a\ další. Pro velký úspěch byl adoptován společností Apple Inc.[[X]](https://developer.apple.com/xcode/). Jazyk LLVM je\ v\ nástroji DIVINE upřednostňován pro svoji jednoduchost, protože je\ pak poměrně snadné generovat stavy programu, a\ zároveň existenci mnoha překladačů pro populární programovací jazyky, což může vést k\ použití nástroje DIVINE pro verifikaci reálných programů namísto upravovaných modelů systémů.
+
+Pro generování stavového prostoru se\ používá interpret jazyka LLVM. To\ znamená, že\ nástroj DIVINE potřebuje pro verifikaci mít nejen zdrojové soubory ověřovaného programu, ale i\ zdrojové soubory všech knihoven, které program používá. Pro jazyky\ C a\ C++ jsme tento problém vyřešili tak, že spolu s\ nástrojem DIVINE distribuujeme standardní knihovny pro oba jazyky. Ostatní programovací jazyky proto nástroj DIVINE zatím nepodporuje.
+
+Je\ potřeba si\ uvědomit, že\ graf stavového prostoru, který vzniknul interpretací mezijazyka LLVM má\ dvě podstatné vlastnosti. Velikost grafu narůstá s\ velikostí programu, a\ to\ jak kvůli délce programu, kde je\ nárůst lineární, tak kvůli počtu vláken ověřovaného programu, kde je\ nárůst exponenciální. Samotné vrcholy grafu také nejsou malé, neboť každý vrchol potřebuje obsáhnout celou paměť programu v\ určitém místě výpočtu. Nástroj DIVINE se\ se\ skutečností, že\ potřebuje pracovat s\ obrovskými grafy[^large-graphs], které mají zároveň velké vrcholy^[Běžně dosahují několika jednotek nebo malých desítek kilobytů.], vypořádává několika způsoby. Zavádí bezztrátovou kompresi stavů [[X]](https://is.muni.cz/auth/th/373979/fi_b/), což snižuje velikosti jednotlivých vrcholů. Dále používá *partial order reduction* a\ spojování instrukcí[^instruction-concat], což vede ke\ zmenšování velikosti grafu.
+
+[^large-graphs]: Pomocí nástroje DIVINE jsme verifikovali některé jeho komponenty, což mnohdy vyústilo v\ grafy o\ několika milionech vrcholů.
+
+[^instruction-concat]: Při interpretaci není potřeba po\ každé provedené instrukci vytvořit nový stav, pokud výsledek této instrukce není viditelný z\ jiného vlákna.
+
+Nadále velké grafy, třebaže zmenšené, je\ potřeba co\ nejrychleji zpracovat. Nástroj DIVINE proto využívá oba druhy paralelizace, přičemž v\ aktuální verzi^[DIVINE 3.x] je\ upřednostňován režim paralelizace pouze ve\ sdílené paměti. Některé důvody jako například možnost komprese stavového prostoru nebo rovnoměrnější rozvržení pracovní zátěže jednotlivých vláken, což vede k\ rychlejšímu prohledávání stavového prostoru, jsou popsány v\ [[X]](https://is.muni.cz/auth/th/373979/fi_b/) a\ v\ mé bakalářské práci [[X]](https://is.muni.cz/auth/th/374154/fi_b/).
+
+Druhý režim paralelizace je\ hybridní a\ zahrnuje oba dva druhy paralizace. Tento režim pochází ze\ starší verze programu^[DIVINE 2.x] a\ oproti původní verzi nebyl nikterak vylepšován (až\ na\ malé optimalizační změny). Hybridní paralelizmus je\ realizován tak, že\ každý stav ze\ zpracovávaného stavového prostoru je\ staticky přiřazen některému vláknu na\ některé samostatné výpočetní jednotce pomocí hašování [[X]](https://en.wikipedia.org/wiki/Hash_function#cite_note-knuth-17).
+
+Nevýhodou hybridního režimu paralelizace je\ statické rozdělení stavů nejen mezi jednotlivé výpočtní stroje, ale\ i\ mezi jednotlivá vlákna. Toto rozdělení má\ kromě nevýhody v\ potenciálně nerovnoměrném rozložení práce mezi jednotlivá vlákna i\ nevýhodu v\ nemožnosti použít aktuální implementaci komprese paměti bez velké paměťové režie.
+
+V současné době se\ pracuje na\ nové verzi programu DIVINE, přičemž součástí změn je\ i\ úprava modelu paralelního zpracování stavového prostoru a\ zavedení jednotného režimu paralelizace pomocí dvouvrstvé architektury. Z\ tohoto důvodu jsme zvažovali, jestli by\ nebylo výhodné zaměnit stávající řešení řízení distribuovaného výpočtu za\ jiné.
 
 ## Cíl práce
 
-XXX
+Zde konečně přichází objasnění zadání mé dimplomové práce. Mým cílem je\ navrhnout a\ implementovat novou komunikační vrstvu, kterou by\ nástroj DIVINE používal namísto stávájícího [MPI standardu](http://www.mpi-forum.org/)^[O\ standardu MPI je\ napsáno více v\ kapitole 2.]. Součástí práce je\ i\ porovnání nového a\ stávajícího komunikačního rozhraní.
+
+Motivací pro implementaci vlastní komunikační vrstvy je\ několik. Předně je\ zde očekávání, že\ komunikační vrstva psaná na\ míru nástroji DIVINE bude rychlejší než stávající řešení, které je\ obecné. Dále je\ předpoklad, že\ pokud bude komunikace postavena přímo nad síťovým protokolem, odpadne nutnost přikládat k\ nástroji DIVINE další knihovnu, což činí režii nám vývojářům a\ může činit potíže uživatelům nástroje. A\ naposled je\ motivací touha mé\ maličkosti vyzkoušet si\ práci se\ sítí na\ projektu, který má\ budoucnost.
 
 # Komunikační vrstva
 
-Program DIVINE dokáže zpracovávat stavový prostor s\ použitím obou druhů paralelizace, z\ nichž je\ v\ aktuální verzi programu (DIVINE 3.x) upřednostňován režim paralelizace pouze ve\ sdílené paměti. Některé důvody jako například možnost komprese stavového prostoru -- a\ tudíž efektivnější využívání paměti -- nebo rovnoměrnější rozvržení pracovní zátěže jednotlivých vláken -- což vede k\ rychlejšímu prohledávání stavového prostoru -- jsou popsány v\ [Vláďova bakalářka] a\ v\ [moje bakalářka].
-
-Druhý režim paralelizace je\ hybridní a\ zahrnuje oba dva druhy paralizace. Tento režim pochází ze\ starší verze programu (DIVINE 2.x) a\ oproti původní verzi nebyl nikterak vylepšován (až\ na\ malé optimalizační změny). Hybridní paralelizmus je\ realizován tak, že\ každý stav ze\ zpracovávaného stavového prostoru je\ staticky přiřazen některému vláknu na\ některé samostatné výpočetní jednotce pomocí hašování [odkaz na hash]. Jako komunikační vrstva je\ použit [standard MPI](http://www.mpi-forum.org/), konkrétně implementace [Open MPI](https://www.open-mpi.org).
-
-Hlavní nevýhodou původní implementace hybridního paralelizmu bylo statické rozdělení stavů nejen mezi jednotlivé výpočtní stroje ale\ i\ mezi jednotlivá vlákna. Toto rozdělení má\ kromě nevýhody v\ potenciálně nerovnoměrném rozložení práce mezi jednotlivá vlákna i\ nevýhodu v\ nemožnosti použít aktuální implementaci komprese paměti.
-
-Již\ v\ průběhu vytváření režimu paralelizace ve\ sdílené paměti bylo zřejmé, že\ by\ bylo možné upravit stávající hybridní režim tak, aby\ v\ rámci jednotlivých výpočetních jednotek byl\ použit režim paralelizace ve\ sdílené paměti, kdežto pro\ rozdělení práce mezi výpočetní jednotky by\ nadále používalo statické rozdělování stavů na\ základě haše. Tento režim, pracovně nazvaný dvouvrstvá architektura, ovšem z\ důvodu upřednostnění jiných úkolů nebyl nikdy realizována.
-
-V současné době se\ pracuje na\ nové verzi programu DIVINE, přičemž součástí změn je\ i\ úprava modelu paralelního zpracování stavového prostoru a\ zavedení jednotného režimu paralelizace pomocí dvouvrstvé architektury. Z\ tohoto důvodu bylo zvažováno, jestli by\ jiná komunikační vrstva nebyla jednodušší na\ použití a\ jestli by\ nebyla efektivnější při\ práci s\ pamětí. Další věc, kterou jsem zvažoval, byla co\ nejmenší závislost na\ externích knihovnách.
-
-
-**Removed:**
-> Před volbou vhodného komunikačního rozhraní bylo potřeba definovat, v\ jakém prostředí bude program DIVINE spouštěn, a\ tedy jaká jsou hlavní kritéria výběru. Očekáváme, že [`TBA`]
+V\ této kapitole pojednávám o\ hlavních adeptech pro použití jako komunikační kanál v\ distribuované paralelní aplikaci. Ve\ čtvrté podkapitole je\ popsaná komunikační vrstva tak, jak je\ používaná v\ aktuální verzi nástroje DIVINE.
 
 ## MPI
 
@@ -93,11 +113,11 @@ MPI je\ navržen jako multiplatformní systém, což umožňuje z\ pohledu aplik
 
 Jako knihovna pro podporu paralelizmu v\ distribuované paměti poskytuje MPI několik nástrojů. Jsou jimi knihovna a\ hlavičkové soubory, které exportují deklarace funkcí a\ definice struktur, vlastní překladač, který způsobí připojení knihoven MPI k\ programu, a\ speciální zaváděcí program, pomocí které lze distribuovaný výpočet spustit.
 
-Jakýkoliv program, který má být spuštěn pomocí MPI jako distribuovaný výpočet,musí nejprve inicializovat MPI knihovnu voláním funkce [`MPI_Init`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Init.3.php). Následně je\ vhodné zjistit, co\ je\ každý proces zač, k\ čemuž slouží funkce [`MPI_Comm_rank`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Comm_rank.3.php) a\ [`MPI_Comm_size`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Comm_size.3.php). První z\ nich vrací rank procesu a\ druhá počet procesů. Rank je\ číslo, které udává pořadí procesu, je\ číslované od\ $0$ až\ po\ $N - 1$, kdy $N$ je\ počet procesů. Dále pokračuje běh výpočtu, který se\ obvykle řídí zasíláním zpráv. Před ukončením musí každý proces zavolat funkci [`MPI_Finalize`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Finalize.3.php), která korektně ukončí spojení s\ ostatními procesy.
+Jakýkoliv program, který má být spuštěn pomocí MPI jako distribuovaný výpočet,musí nejprve inicializovat MPI knihovnu voláním funkce [`MPI_Init`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Init.3.php). Následně je\ vhodné zjistit, co\ je\ každý proces zač, k\ čemuž slouží funkce [`MPI_Comm_rank`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Comm_rank.3.php) a\ [`MPI_Comm_size`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Comm_size.3.php). První z\ nich vrací rank procesu a\ druhá počet procesů. Rank je\ číslo, které udává pořadí procesu, je\ číslované od\ $0$ až\ po\ $N - 1$, kdy $N$ je\ počet procesů. Dále pokračuje běh výpočtu, který se\ obvykle řídí zasíláním zpráv. Před ukončením musí každý proces zavolat funkci [`MPI_Finalize`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Finalize.3.php), která korektně ukončí spojení s\ ostatními procesy.
 
 Pro spuštění programu je\ nejprve potřeba přeložit zdrojový kód a\ připojit k\ výslednému programu právě knihovnu MPI. To\ je\ možné udělat buď přeložením zdrojového kódu pomocí `mpicc` nebo `mpic++`, překladače dodaného implementací MPI standardu, nebo svému překladači nastavit vhodné systémové cesty právě ke knihovně MPI, aby ji\ mohl připojit k\ výslednému programu^[Což je\ ostatně přesně to\ samé, co\ provede překladač dodaný implementací MPI.].
 
-Následné spuštění distribuovaného algoritmu se\ provede spuštěním zaváděcí program `mpirun` nebo `mpiexec`^[Jsou totožné.]. V\ rámci spuštění je\ potřeba definovat některé parametry, z\ nichž nejpodstatnější je\ seznam strojů, na\ kterých mají běžet procesy. Další parametry pak bývají volitelné a\ je\ možné jimi nastavit mnoho vlastností běhu.
+Následné spuštění distribuovaného algoritmu se\ provede spuštěním zaváděcí program `mpirun` nebo `mpiexec`^[Jsou totožné. Opravdu.], který bývá nazýván MPI agentem. V\ rámci spuštění je\ potřeba definovat některé parametry, z\ nichž nejpodstatnější je\ seznam strojů, na\ kterých mají běžet procesy. Další parametry pak bývají volitelné a\ je\ možné jimi nastavit mnoho vlastností běhu.
 
 ### Koncepty MPI
 
@@ -113,46 +133,46 @@ Jde o\ důležitý mechanizmus, který umožňuje posílat zprávy od\ jednoho p
 
 MPI nabízí několik variant zasílání zpráv, které se\ liší především svým vztahem k\ paměti a\ k\ blokování výpočtu. Jsou dvě základní rozdělení. První dělí operace na\ blokující a\ neblokující, druhé je\ dělí na\ přímé (nebafrované) a\ na\ ty s\ vyrovnávací pamětí (bafrované).
 
-[`MPI_Send`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Send.3.php) -- blokující nebafrované
+[`MPI_Send`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Send.3.php) -- blokující nebafrované
 
 :   \ \
     Funkce odešle zprávu a\ blokuje až\ do\ okamžiku, když přijímající proces započal příjem zprávy a\ zpráva byla úspěšně odeslána. Po\ skončení funkce jsou odkazovaná plně k\ dispozici.
 
-[`MPI_Bsend`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Bsend.3.php) -- blokující bafrované
+[`MPI_Bsend`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Bsend.3.php) -- blokující bafrované
 
 :   \ \
     Funkce nakopíruje zprávu do\ vyrovnávací paměti, zahájí přenos zprávy a\ skončí. Po\ dokončení přenosu je potřeba obsah vyrovnávací paměti zlikvidovat.
 
-[`MPI_Isend`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Isend.3.php) -- neblokující nebafrované
+[`MPI_Isend`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Isend.3.php) -- neblokující nebafrované
 
 :   \ \
-    Funkce zahájí přenos zprávy a\ skončí. Zprávu nesmí odesílatel modifikovat, dokud si\ neověřil, že\ bylo odeslání dokončeno. To\ je\ možné provést voláním funkcí [`MPI_Test`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Test.3.php) nebo [`MPI_Wait`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Wait.3.php).
+    Funkce zahájí přenos zprávy a\ skončí. Zprávu nesmí odesílatel modifikovat, dokud si\ neověřil, že\ bylo odeslání dokončeno. To\ je\ možné provést voláním funkcí [`MPI_Test`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Test.3.php) nebo [`MPI_Wait`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Wait.3.php).
 
-[`MPI_Ibsend`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Ibsend.3.php) -- neblokující bafrované
+[`MPI_Ibsend`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Ibsend.3.php) -- neblokující bafrované
 
 :   \ \
-    Funkce zahájí kopírování zprávy do\ vyrovnávací paměti, zahájí přenos zprávy a\ skončí. Zprávu nesmí odesílatel modifikovat, dokud si\ neověřil, že\ bylo odeslání dokončeno. To\ je\ možné provést voláním funkcí [`MPI_Test`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Test.3.php) nebo [`MPI_Wait`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Wait.3.php).
+    Funkce zahájí kopírování zprávy do\ vyrovnávací paměti, zahájí přenos zprávy a\ skončí. Zprávu nesmí odesílatel modifikovat, dokud si\ neověřil, že\ bylo odeslání dokončeno. To\ je\ možné provést voláním funkcí [`MPI_Test`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Test.3.php) nebo [`MPI_Wait`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Wait.3.php).
 
 Pro příjem zprávy slouží primárně dvě funkce, opět dělené na\ blokující a\ neblokující.
 
-[`MPI_Recv`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Recv.3.php) -- blokující
+[`MPI_Recv`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Recv.3.php) -- blokující
 
 :   \ \
     Funkce čeká na\ zprávu, dokud není zpráva doručena. Příchozí zpráva musí mít správného odesílatele a\ správnou hodnotu štítku, aby byla přijata, ale je možné ignorovat jak rank odesílatele, tak hodnotu štítku zprávy. Je\ třeba dopředu nastavit dostatečně velkou paměť pro příjem zprávy.
 
-[`MPI_Irecv`](https://www.open-mpi.org/doc/v1.8/man3/MPI_IRecv.3.php) -- neblokující
+[`MPI_Irecv`](https://www.open-mpi.org/doc/v1.10/man3/MPI_IRecv.3.php) -- neblokující
 
 :   \ \
-    Funkce zahájí příjem zprávy, předá zpátky kontrolní strukturu a\ skončí. Příchozí zpráva musí mít správného odesílatele a\ správnou hodnotu štítku, aby byla přijata, ale je možné ignorovat jak rank odesílatele, tak hodnotu štítku zprávy. Příjem zprávy je\ potřeba ověřit voláním [`MPI_Test`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Test.3.php) nebo [`MPI_Wait`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Wait.3.php) s\ kontrolní strukturou jako parametrem. Je\ třeba dopředu nastavit dostatečně velkou paměť pro příjem zprávy. Pokud je\ iniciován příjem zprávy, je\ nutné tuto zprávu přijmout před ukončením výpočtu.
+    Funkce zahájí příjem zprávy, předá zpátky kontrolní strukturu a\ skončí. Příchozí zpráva musí mít správného odesílatele a\ správnou hodnotu štítku, aby byla přijata, ale je možné ignorovat jak rank odesílatele, tak hodnotu štítku zprávy. Příjem zprávy je\ potřeba ověřit voláním [`MPI_Test`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Test.3.php) nebo [`MPI_Wait`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Wait.3.php) s\ kontrolní strukturou jako parametrem. Je\ třeba dopředu nastavit dostatečně velkou paměť pro příjem zprávy. Pokud je\ iniciován příjem zprávy, je\ nutné tuto zprávu přijmout před ukončením výpočtu.
 
 Pokud není dopředu známe, zda vůbec nějaká zpráva dojde, případně není známá její velikost, nabízí se\ použít dvou funkcí na\ zjištění příchozí zprávy. Funkce jsou opět dělené na\ blokující a\ neblokující.
 
-[`MPI_Probe`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Probe.3.php) -- blokující
+[`MPI_Probe`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Probe.3.php) -- blokující
 
 :   \ \
     Funkce čeká, dokud nepřijde nějaká zpráva. Příchozí zpráva musí mít správného odesílatele a\ správnou hodnotu štítku, aby byla přijata, ale je možné ignorovat jak rank odesílatele, tak hodnotu štítku zprávy. Poté vrátí vlastnosti zprávy -- rank odesílajícího procesu, štítek zprávy a\ velikost zprávy v\ bytech.
 
-[`MPI_Iprobe`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Iprobe.3.php) -- neblokující
+[`MPI_Iprobe`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Iprobe.3.php) -- neblokující
 
 :   \ \
     Funkce zjistí, zda na\ příjem nečeká nějaká zpráva od\ správného odesílatele a\ se\ správnou hodnotu štítku. Je možné ignorovat jak rank odesílatele, tak hodnotu štítku zprávy. Pokud funkce zjistí příchozí zprávu, je\ možné zjistit její vlastnosti -- rank odesílajícího procesu, štítek zprávy a\ velikost zprávy v\ bytech.
@@ -163,32 +183,32 @@ Kolektivní komunikace znamená, že\ všechny procesy začnou společně prová
 
 Mezi základní kolektivní operace patří jeden-všem, kdy jeden proces prošle stejná data všem ostatním procesům, všichni-jednomu, kdy všechny procesy až\ na\ jeden zašlou data jednomu procesu, přičemž data jsou před přijetím podrobeny redukční operaci, a\ bariéra, což je\ synchronizační primitivum, kterého musí všechny procesy ve\ skupině dosáhnout, než jim všem bude umožněno pokračovat dále ve\ výpočtu. Obdobně jako u\ komunikace jeden na\ jednoho i\ operace kolektivní komunikace mají varianty v\ podobě neblokujících volání; ověření dokončení operací se\ řeší také stejně.
 
-[`MPI_Bcast`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Bcast.3.php)
+[`MPI_Bcast`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Bcast.3.php)
 
 :   \ \
     Funkce realizující broadcast -- rozeslání balíku dat všem ostatním procesům ve\ skupině.
 
-[`MPI_Reduce`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Reduce.3.php)
+[`MPI_Reduce`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Reduce.3.php)
 
 :   \ \
-    Funkce realizující redukci dat -- pošle data jednomu procesu od\ všech ostatních ze\ skupiny. Pro redukční operaci je\ možné využít buď jednu z\ předdefinovaných operací jako je\ součet, maximum, či\ logický součet, nebo si\ může uživatel definovat pomoc funkce [`MPI_Op_create`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Op_create.3.php) vlastní operaci.
+    Funkce realizující redukci dat -- pošle data jednomu procesu od\ všech ostatních ze\ skupiny. Pro redukční operaci je\ možné využít buď jednu z\ předdefinovaných operací jako je\ součet, maximum, či\ logický součet, nebo si\ může uživatel definovat pomoc funkce [`MPI_Op_create`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Op_create.3.php) vlastní operaci.
 
-[`MPI_Barrier`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Barrier.3.php)
+[`MPI_Barrier`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Barrier.3.php)
 
 :   \ \
     Funkce realizující bariéru.
 
-Pokročilější kolektivní operace zahrnují rozesílání a\ sbírání různých dat od\ procesů ve\ skupině. Další operace jako [`MPI_Allgather`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Allgather.3.php) nebo [`MPI_Allreduce`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Allreduce.3.php) kombinují více kolektivních operací do\ jedné.
+Pokročilější kolektivní operace zahrnují rozesílání a\ sbírání různých dat od\ procesů ve\ skupině. Další operace jako [`MPI_Allgather`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Allgather.3.php) nebo [`MPI_Allreduce`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Allreduce.3.php) kombinují více kolektivních operací do\ jedné.
 
-[`MPI_Scatter`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Scatter.3.php)
-
-:   \ \
-    Funkce rozešle balíky dat všem procesům ve\ skupině. Rozdíl oproti funkci [`MPI_Bcast`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Bcast.3.php) je\ v\ tom, že\ odesílající proces sestaví různá data pro každý přijímající proces.
-
-[`MPI_Gather`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Gather.3.php)
+[`MPI_Scatter`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Scatter.3.php)
 
 :   \ \
-    Funkce přijme data od všech ostatních procesů ve\ skupině. Je\ podobná funkci [`MPI_Reduce`](https://www.open-mpi.org/doc/v1.8/man3/MPI_Reduce.3.php) s\ rozdílem, že\ není definována redukční operace, ale přijímající proces má k\ dispozici všechna data.
+    Funkce rozešle balíky dat všem procesům ve\ skupině. Rozdíl oproti funkci [`MPI_Bcast`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Bcast.3.php) je\ v\ tom, že\ odesílající proces sestaví různá data pro každý přijímající proces.
+
+[`MPI_Gather`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Gather.3.php)
+
+:   \ \
+    Funkce přijme data od všech ostatních procesů ve\ skupině. Je\ podobná funkci [`MPI_Reduce`](https://www.open-mpi.org/doc/v1.10/man3/MPI_Reduce.3.php) s\ rozdílem, že\ není definována redukční operace, ale přijímající proces má k\ dispozici všechna data.
 
 #### Vlastní datové typy
 
@@ -243,7 +263,7 @@ Garance neporušení dat je\ realizována kontrolním součtem, který je\ před
 
 Zde je\ nutné zmínit se\ o\ portech. Pro úspěšné navázání komunikace je\ zapotřebí dvou různých entit -- serveru (stroje, který očekává příchozí spojení) a\ klienta (stroje, který iniciuje komunikaci). V\ rámci serveru je\ obyčejně více aplikací, které čekají na\ příchozí spojení. Každé takové čekání musí být jednoznačně identifikováno a\ k\ tomu slouží port -- číslo, které popisuje jeden konec (ještě nenavázaného) spojení.
 
-Klient musí dopředu vědět, na\ kterém portu chce na\ serveru navázat spojení, proto byl v\ počátcích internetu zveřejněn dokument [[RFC1700]](https://tools.ietf.org/html/rfc1700), který byl postupně aktualizován[^iana] a\ obsahoval původně seznam 256, posléze až\ 1024, obsazených portů pro\ specifikované účely, například porty 20 a\ 21 pro FTP [[RFC959]](https://tools.ietf.org/html/rfc959) nebo port 80 pro\ web a\ HTTP [[RFC7230]](https://tools.ietf.org/html/rfc7230). Číslo portu je\ v\ síťové doméně jméno služby a\ je\ předáváno jako parametr do\ funkce `getaddrinfo`.
+Klient musí dopředu vědět, na\ kterém portu chce na\ serveru navázat spojení, proto byl v\ počátcích internetu zveřejněn dokument [[RFC1700]](https://tools.ietf.org/html/rfc1700), který byl postupně aktualizován[^iana] a\ obsahoval původně seznam 256, posléze až\ 1024, obsazených portů pro\ specifikované účely, například porty 20 a\ 21 pro FTP [[RFC959]](https://tools.ietf.org/html/rfc959) nebo port 80 pro\ web a\ HTTP [[RFC7230]](https://tools.ietf.org/html/rfc7230). Číslo portu je\ v\ síťové doméně jméno služby a\ je\ předáváno jako parametr do\ funkce [`getaddrinfo`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html).
 
 [^iana]: V roce 2002 bylo původní [[RFC1700]](https://tools.ietf.org/html/rfc1700) nahrazeno za [[RFC3232]](https://tools.ietf.org/html/rfc3232), které odkazuje na online databázi na adrese <http://www.iana.org/assignments/protocol-numbers/>.
 
@@ -276,7 +296,7 @@ Z\ pohledu použití spojitých socketů v\ programu \v síťové komunikační 
 
 **[diagram]**
 
-Po\ navázání spojení si\ jsou klient i\ server rovni a\ oba mohou používat funkce pro\ odesílání i\ přijímání dat. Spojité sockety je\ možné jak na\ jedné straně tak na\ druhé kdykoliv uzavřít, či\ přivřít. Zavřít socket je\ možné voláním funkce [`shutdown`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/shutdown.html), která v\ případě TCP provede čtyřkrokové rozvázání spojení. Standardním voláním funkce [`close`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html) dojde k\ uvolnění popisovače souboru, ale\ až\ poslední volání nad\ daným socketem funkce `close` zavolá funkci `shutdown`.
+Po\ navázání spojení si\ jsou klient i\ server rovni a\ oba mohou používat funkce pro\ odesílání i\ přijímání dat. Spojité sockety je\ možné jak na\ jedné straně tak na\ druhé kdykoliv uzavřít, či\ přivřít. Zavřít socket je\ možné voláním funkce [`shutdown`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/shutdown.html), která v\ případě TCP provede čtyřkrokové rozvázání spojení. Standardním voláním funkce [`close`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html) dojde k\ uvolnění popisovače souboru, ale\ až\ poslední volání nad\ daným socketem funkce [`close`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html) zavolá funkci [`shutdown`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/shutdown.html).
 
 #### Sekvenční sockety
 
@@ -340,7 +360,7 @@ Vzhledem k\ tomu, že\ UDP nevytváří spojení, je\ nutné při každém zasl�
 
 [^multicast]: I\ v\ IPv4 byl později [[RFC988]](https://tools.ietf.org/html/rfc988)[[RFC3376]](https://tools.ietf.org/html/rfc3376) také implementován multicast, ovšem koncovému uživateli Internetu nemusí být dostupný.
 
-[^posix-recv]: Jedná se primárně o funkce [`recv`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/recv.html), [`recvfrom`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/recvfrom.html) a [`recvmsg`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/recvmsg.html).
+[^posix-recv]: Jedná se primárně o funkce [`recv`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/recv.html), [`recvfrom`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/recvfrom.html) a\ [`recvmsg`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/recvmsg.html).
 
 ##### Unixová doména
 
@@ -406,17 +426,21 @@ Třídy z\ knihovny je\ možné použít i\ pro synchronní vstupně-výstupní 
 
 ## Stávající komunikační rozhraní
 
-Pro uvedení do\ stávající rozhraní nástroje DIVINE je\ nejprve
+V\ nástroji DIVINE je\ od\ konkrétního rozhraní abstrahováno pomocí rozhraní, která se\ stará o\ topologii. Topologie zajišťuje správné nastavení výkonných jednotek, ať už vláken, nebo procesů, stará se\ o\ realizaci komunikace a\ vzájemnou synchronizaci výkonných jednotek. Implementovány jsou konkrétně dvě. Jedna reprezentuje lokální stroj a\ její starostí jsou vlákna. Druhá reprezentuje skupinu procesů, takže její starostí jsou procesy, uvnitř nichž poté deleguje zodpovědnost za\ vlákna lokální topologii.
 
-XXX
+Topologie reprezentující skupinu strojů je\ napojena na\ rozhraní MPI funkcí^[V\ tomto případě by\ bylo lepší hovořit o\ metodách, protože nástroj DIVINE používá rozhraní C++ ze\ standardu MPI-2.]. Z\ nich jich používá jen několik. Používá převážně neblokující odesílání zpráv, taktéž zjišťování příchozích zpráv provádí neblokujícně, samotný příjem zprávy zůstává blokující.
+
+Ačkoliv standard MPI říká o\ možnosti paralelního přístupu ke\ svému rozhraní, ne\ všechny implementace MPI tuto možnost nabízejí a\ konkrétně implementace, kterou používáme -- Open MPI -- v\ dokumentaci uvádí, že\ paralelnímu přístupu nevěnují dostatek pozornosti a\ spíše se\ soustředí na\ korektnost než na\ výkon. Nástroj DIVINE proto používá dedikované vlákno, které obsluhuje veškerou MPI komunikaci. Ostatní vlákna, pokud chtějí odeslat data jinému procesu, je\ musí nejprve vložit do\ fronty na\ zpracování vláknu dedikovanému na\ komunikaci. Obdobně je\ tomu tak i\ v\ případě příjmu zprávy, kdy dedikované vlákno vkládá příchozí zprávy výkonným vláknům do\ jejich front na\ zpracování. Dohromady tedy dochází ke\ zbytečnému kopírování bloků dat, kterému se\ ovšem nelze při použití MPI efektivně vyhnout.
+
+V\ nástroji DIVINE je\ komunikační rozhraní využito pouze při spuštění v\ hybridním režimu paralelizace. Sama hybridní paralelizace si\ s\ sebou nese jisté potíže, které jsem v\ první kapitole přednesl. Jeden z\ problémů, kterým je\ zapojení komprese paměti bez zvýšené režie, by\ bylo možné vyřešit, pokud by\ se\ řízení vláken při procházení grafu realizovalo obdobně, jak se\ realizuje v\ režimu paralelizace ve\ sdílené paměti. To\ by\ navíc mohlo vést i\ k\ snížení nerovnoměrného rozložení zátěže. Tento koncept, pracovně nazvaný jako dvouvrstvá architektura, jsem předestřel již dříve v\ své bakalářské práci, ovšem z\ důvodu upřednostnění jiných úkolů nebyl doposud realizována.
 
 # Návrh a implementace nového komunikačního rozhraní
 
-Na\ základě vlastností jednotlivých dříve uvedených přístupů jsem se\ rozhodl, že\ implementuji novou komunikační vrstvu za\ použití BSD socketů. Pro samotnou implementaci pak bude potřeba ze\ dříve uvedených typů socketů vybrat ten nejvhodnější. Nová implementace dále vyžaduje vytvořit jednoduchý komunikační protokol pro ustanovení sítě strojů kooperujících na\ distribuovaném výpočtu. Při návrhu nové implementace se\ navíc nemusím držet architektury distribuované aplikace, jak ji\ popisuje MPI, která má dle mého názoru některé vady, pročež jsem se\ rozhodl, že vytvořím architekturu s\ jinými vlastnostmi.
-
 Při zvažování, zda implementovat vlastní zjednodušenou nadstavbu nad BSD sockety, nebo zda použít knihovnu Asio, jsem zvolil první možnost. Jako důvod uvádím, že\ použití knihovny Asio by\ zavedlo do\ projektu další závislost -- buď ve\ formě správné verze knihovny Boost na\ straně uživatele, nebo ve\ formě nutnosti dodávat zdrojové soubory knihovny Asio spolu se\ zdrojovými soubory nástroje DIVINE, přičemž obojí přináší režii do\ správy projektu, který je\ limitován lidskými zdroji. Druhým důvodem pak může být, že\ z\ možností knihovny Asio by\ byla v\ nástroji DIVINE využito jen malá část.
 
-Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura je [x86-64](http://www.amd.com/Documents/x86-64_wp.pdf) a\ jehož operační systém používá rozhraní definované POSIX standardem -- převážně počítám s\ operačním systémem [GNU/Linux](http://www.gnu.org/gnu/linux-and-gnu.html.en). Dále předpokládám, že\ endianita všech strojů participující na\ výpočtu je\ stejná.
+Pro samotnou implementaci pak bude potřeba ze\ dříve uvedených typů socketů vybrat ten nejvhodnější. Nová implementace dále vyžaduje vytvořit jednoduchý komunikační protokol pro ustanovení sítě strojů kooperujících na\ distribuovaném výpočtu. Při návrhu nové implementace se\ navíc nemusím držet architektury distribuované aplikace, jak ji\ popisuje MPI, která má dle mého názoru některé vady, pročež jsem se\ rozhodl, že vytvořím architekturu s\ jinými vlastnostmi.
+
+Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura je\ [x86-64](http://www.amd.com/Documents/x86-64_wp.pdf) a\ jehož operační systém používá rozhraní definované POSIX standardem -- převážně počítám s\ operačním systémem [GNU/Linux](http://www.gnu.org/gnu/linux-and-gnu.html.en). Dále předpokládám, že\ endianita všech strojů participující na\ výpočtu je\ stejná, což je\ předpoklad, který využiji při návrhu formy zasílání dat.
 
 ## Analýza vlastností typů socketů
 
@@ -483,7 +507,7 @@ Jednak to\ znamená, že\ se\ bude v\ síťové komunikaci posílat méně dat v
 
 Pak to\ také znamená, že\ by bylo potřeba implementovat vlastní protokol nad UDP pro ověřování korektnosti dat a\ pro ověřování jejich doručení. Předpokládá se, že\ nástroj DIVINE bude provozován v\ uzavřených sítích, takže je\ zde silný předpoklad na\ to, že\ síťových prvků mezi dvěma komunikujícími stroji bude malý počet -- typicky jeden síťový rozbočovač. Případně implementovaný protokol by\ tedy měl být šetrný k\ běžnému provozu a\ až\ v\ případě chyby při přenosu by\ mělo dojít k vyšší režii.
 
-Další vlastností nespojitých socketů je\ maximální délka zprávy. Maximální délku UDP paketů POSIX standard [`link na konkrétní hodnotu`] se\ uvádí jako 64\ KB minus několik bytů na\ určené pro hlavičky IP paketů a\ UDP paketů. Ačkoliv nástroj DIVINE posílá zprávy o\ maximální velikosti několik málo desítek kilobytů, mohlo by\ se\ stát, že\ je potřeba poslat delší zprávu, u\ které by\ pak bylo potřeba zajistit, aby\ ji\ příjemce správně poskládal dohromady.
+Další vlastností nespojitých socketů je\ maximální délka zprávy. Maximální bezpečnou délku UDP paketů omezuje [[RFC1122]](https://tools.ietf.org/html/rfc1122#page-58) na\ 576 bytů minus délka IP hlavičky, což v\ praxi omezuje délku UDP paketu na\ 512 bytů. UDP paket může být větší, pokud všechny síťové prvky na\ cestě mezi odesílatelem a\ příjemcem podporují delší zprávy. Protože nástroj DIVINE posílá zprávy o\ velikosti několika málo desítek kilobytů, znamenalo by\ to\ potřebu zajistit fragmentaci dat na\ straně odesílatele a\ defragmentaci na\ straně příjemce.
 
 Poslední vlastností, kterou jsem výše uvedl, je\ neudržování spojení. Zde je\ namístě krátká polemika o\ tom, jak je\ síťová komunikace využívaná z\ pohledu nástroje DIVINE. Ačkoliv totiž od komunikační vrstvy DIVINE požaduje v\ podstatě pouze posílání zpráv, kde by\ se\ nespojité sockety hodily, potřebuje také udržovat znalost o\ tom, že\ jsou všechny stroje participující na\ distribuovaném výpočtu spojené. Danou funkcionalitu UDP nenabízí a\ bylo by\ tedy nutné ji\ taktéž implementovat.
 
@@ -496,7 +520,7 @@ Z\ výše uvedených vlastností UDP a\ nespojitých socketů vyplývají někte
 3.  rozdělení dlouhé právy a její složení při příjmu
 4.  detekce, zda jsou stroje stále spojeny
 
-Složení příliš dlouhých zpráv z\ více UDP paketů v\ sobě ukrývá příjemnou vlastnost, kterou je\ nutnost použití další vrstvy vyrovnávacích pamětí a\ s\ tím spojenou režii ve\ formě kopírování bloků dat z\ a\ do\ těchto pamětí. Tato režie se\ navíc vyskytuje i\ na\ straně odesílatele -- zde ovšem z\ důvodu garantování zaslání nepoškozených dat. Každý odeslaný blok dat musí být na\ straně odesílatele uchován tak dlouho, dokud neobdrží potvrzení o\ přijetí.
+Složení dlouhých zpráv z\ více UDP paketů v\ sobě ukrývá příjemnou vlastnost, kterou je\ nutnost použití další vrstvy vyrovnávacích pamětí a\ s\ tím spojenou režii ve\ formě kopírování bloků dat z\ a\ do\ těchto pamětí. Tato režie se\ navíc vyskytuje i\ na\ straně odesílatele -- zde ovšem z\ důvodu garantování zaslání nepoškozených dat. Každý odeslaný blok dat musí být na\ straně odesílatele uchován tak dlouho, dokud neobdrží potvrzení o\ přijetí.
 
 Při zamyšlením nad zapojením komunikační vrstvy do\ nástroje DIVINE bychom narazili na\ další problém, kterým je\ paralelní přístup k\ přichozím zprávám. Na\ jednom výpočetním stroji lze mít na\ jednom portu otevřenou pouze jednu komunikačním linku, což znamená mít buď jedno dedikované vlákno na\ veškerou obsluhu spojení, nebo implementovat synchronizaci pomocí zámků pro\ paralelní přístup k\ socketu.
 
@@ -536,9 +560,7 @@ Z\ tohoto shrnutí se\ mi jeví jako vhodné použít spojité sockety spolu s\ 
 
 ## Architektura
 
-Stávající řešení, kdy se\ MPI agent[^mpi-agent] postupně přes `ssh` [[RFC4252]](https://tools.ietf.org/html/rfc4252) připojí ke\ všem strojům, kteří se\ mají účastnit distribuovaného výpočtu, provede se\ výpočet a\ jednotlivé instance na\ výpočetních strojích se\ ukončí, vypovídá o\ pohledu, jakým se\ díváme na\ nástroj DIVINE. Jako na\ program, který jednou spustíme, on\ nám dá výsledek a\ tím je\ vše hotovo.
-
-[^mpi-agent]: Jedná se\ o\ program, který spustí MPI aplikaci. Většinou se\ tento agent jmenuje `mpirun` nebo `mpiexec`.
+Stávající řešení, kdy se\ MPI agent postupně přes `ssh` [[RFC4252]](https://tools.ietf.org/html/rfc4252) připojí ke\ všem strojům, kteří se\ mají účastnit distribuovaného výpočtu, provede se\ výpočet a\ jednotlivé instance na\ výpočetních strojích se\ ukončí, vypovídá o\ pohledu, jakým se\ díváme na\ nástroj DIVINE. Jako na\ program, který jednou spustíme, on\ nám dá výsledek a\ tím je\ vše hotovo.
 
 Na\ nástroj DIVINE se\ ale můžeme dívat i\ jinak. Jako na\ službu, která běží někde ve výpočetním clusteru a\ která je\ dostupná skrz nějaké rozhraní -- skrz grafickou aplikaci, příkazový řádek či\ webovou stránku. Pro tento nový pohled je\ ale potřeba provést změny v\ architektuře. Jedná se\ zejména o\ rozdělení programu na\ dvě části. První a\ podstatnější je\ serverová část, která je\ zodpovědná za\ samotné provedení výpočtu. Druhou částí je\ klientská část, která je\ v\ aktuálním návrhu zodpovědná za\ zadání práce vybraným serverům.
 
@@ -907,4 +929,6 @@ XXX
 
 # Závěr
 
-XXX
+Cíl práce, tedy návrh a\ implementace nového komunikačního rohraní s\ následným porovnání vůči stávajícímu řešení, jsem splnil. Měření neprobíhala přímo s\ použitím nástroje DIVINE, jak jsem očekával, ale jako nezávislé simulace. Toto selhání je\ jednak dílem nedostatku času z\ mé\ strany, jednak tím, že\ v\ průběhu vytváření diplomové práce současně vznikala nová verze nástroje DIVINE, která nebyla připravena na\ spuštění.
+
+Výsledky měření ...
