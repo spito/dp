@@ -44,7 +44,7 @@
 @misc{mpiforum,
   title={Message Passing Interface (MPI) Forum Home Page},
   author={MPI Forum},
-  howpublished={\url{http://mpi-forum.org/}}
+  howpublished={\url{http://mpi-forum.org/}},
   year = {2015},
   note = "[Online; nav\v{s}t\'{i}veno 7. 01. 2016]"
 }
@@ -119,7 +119,7 @@
   organization={IEEE}
 }
 
-@incollection{clarke1982design
+@incollection{clarke1982design,
     year={2008},
     isbn={978-3-540-69849-4},
     booktitle={25 Years of Model Checking},
@@ -142,7 +142,7 @@
 }
 
 @misc{intel386,
-  title={INTEL 80386 PROGRAMMERS'S REFERENCE MANUAL}
+  title={INTEL 80386 PROGRAMMERS'S REFERENCE MANUAL},
   year={1986},
   howpublished={\url{http://microsym.com/editor/assets/386intel.pdf}}
 }
@@ -176,585 +176,329 @@
   organization={Springer}
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-@InProceedings{BBH13LTL,
-  author =       "J. Barnat and L. Brim and V. Havel",
-  title =        "{LTL Model Checking of Parallel Programs with Under-Approximated TSO Memory Model}",
-  booktitle =    "Application of Concurrency to System Design (ACSD)",
-  pages =        "51--59",
-  year =         "2013",
-  url =          "http://dx.doi.org/10.1109/ACSD.2013.8",
-  publisher =    "IEEE"
+@InProceedings{BBH+13,
+  author    = "Ji\v{r}\'{i} Barnat and Lubo\v{s} Brim and Vojt\v{e}ch Havel
+               and Jan Havl\'{i}\v{c}ek and Jan Kriho and Milan Len\v{c}o
+               and Petr Ro\v{c}kai and Vladimír \v{S}till and Ji\v{r}\'{i} Weiser",
+  title     = "{DiVinE 3.0 -- An Explicit-State Model Checker
+                for Multithreaded C \& C++ Programs}",
+  booktitle = "{Computer Aided Verification (CAV 2013)}",
+  pages     = "863--868",
+  volume    = "8044",
+  series    = "LNCS",
+  year      = "2013",
+  publisher = "Springer"
 }
 
-@inproceedings {Jensen96modellingand,
-    author = "Henrik Ejersbo Jensen and Jensen Kim and Kim Guldstrand Larsen and
-        Arne Skou",
-    title = "Modelling and Analysis of a Collision Avoidance Protocol using SPIN
-        and UPPAAL",
-    booktitle = "Proceedings of the 2nd International Workshop on the SPIN
-        Verification System",
-    year = "1996"
+@phdthesis{barnat2004distributed,
+  title={Distributed memory LTL model checking},
+  author={Barnat, Ji\v{r}\'{i}},
+  year={2004},
+  school={PhD thesis, Faculty of Informatics, Masaryk University Brno}
 }
 
-@article{ dolev:an,
-   author = "Danny Dolev and Maria M. Klawe and Michael Rodeh",
-   title = "An O(n log n) Unidirectional Distributed Algorithm for Extrema
-       Finding in a Circle",
-    journal = "J. Algorithms",
-    pages = {245-260},
-    year = {1982},
+@misc{Weiser13BC,
+    AUTHOR = "Ji\v{r}\'{i} Weiser",
+    TITLE = "Dynamicky rostouc\'{i} sd\'{i}len\'{a} ha\v{s}ovac\'{i} tabulka pro DiVinE [online]",
+    YEAR = 2013,
+    urldate = {2013-05-06},
+    TYPE = "Bachelor's thesis",
+    SCHOOL = "\MU, \FI",
+    SUPERVISOR = "Ji\v{r}\'{i} Barnat",
+    URL = "http://is.muni.cz/th/374154/fi_b/",
 }
 
-@InProceedings{TSO+,
-  author =   {Linden, A. and Wolper, P.},
-  title =    {{An Automata-Based Symbolic Approach for Verifying Programs on
-                  Relaxed Memory Models.}},
-  booktitle = {Model Checking Software},
-  pages =    {212-226},
-  year =     {2010},
-  volume =   {6349},
-  series =   {LNCS},
-  publisher = {Springer}
+@misc{Still13BC,
+    AUTHOR = "Vladim\'{i}r \v{S}till",
+    TITLE = "State space compression for the DiVinE model checker [online]",
+    YEAR = 2013,
+    urldate = {2013-05-06},
+    TYPE = "Bachelor's thesis",
+    SCHOOL = "\MU, \FI",
+    SUPERVISOR = "Ji\v{r}\'{i} Barnat",
+    URL = "http://is.muni.cz/th/374154/fi_b/",
 }
 
-@inproceedings{Linden-mfence,
- author = {A. Linden and P. Wolper},
- title = {A verification-based approach to memory fence insertion in relaxed memory systems},
- booktitle = {Proceedings of the 18th international SPIN conference on Model checking software},
- year = {2011},
- isbn = {978-3-642-22305-1},
- location = {Snowbird, UT},
- pages = {144--160},
- numpages = {17},
- url = {http://dl.acm.org/citation.cfm?id=2032692.2032707},
- acmid = {2032707},
- publisher = {Springer},
- address = {Berlin, Heidelberg},
+@article{larsen1997uppaal,
+  title={UPPAAL in a nutshell},
+  author={Larsen, Kim G and Pettersson, Paul and Yi, Wang},
+  journal={International Journal on Software Tools for Technology Transfer (STTT)},
+  volume={1},
+  number={1},
+  pages={134--152},
+  year={1997},
+  publisher={Springer}
 }
 
-@InProceedings{Murphi,
-  author =   {D. Dill},
-  title =    {{The Murphi Verification System.}},
-  booktitle = {Computer Aided Verification},
-  pages =    {390-393},
-  year =     {1996},
-  volume =   {1102},
-  series =   {LLNC},
-  publisher = {Springer}
+@article{alur1994theory,
+  title={A theory of timed automata},
+  author={Alur, Rajeev and Dill, David L},
+  journal={Theoretical computer science},
+  volume={126},
+  number={2},
+  pages={183--235},
+  year={1994},
+  publisher={Elsevier}
 }
 
-@Article{ParkDill99,
-  author =   {S. Park and D. Dill},
-  title =    {An executable specification and verifier for relaxed memory
-                  order.},
-  journal =      {IEEE Trans. on Computers},
-  year =     {1999},
-  volume =   {48},
-  number =   {2},
-  pages =    {227-235}
-}
-
-@inproceedings{BBCR10,
-    title={DiVinE: Parallel distributed model checker},
-    author={Jiří Barnat and Luboš Brim and Milan Češka and Petr Ročkai},
-    booktitle={Parallel and Distributed Methods in Verification, 2010 Ninth
-        International Workshop on, and High Performance Computational Systems
-            Biology, Second International Workshop on},
-    pages={4--7},
-    year={2010},
-    organization={IEEE}
-}
-
-
-@online{cppref:RAII,
-    title  = {RAII -- cppreference.com},
-    date   = {2016-01},
-    url    = {http://en.cppreference.com/w/cpp/language/raii}
-}
-
-
-@inproceedings{Atig:2010:VPW:1706299.1706303,
- author = {M. F. Atig and A. Bouajjani and S. Burckhardt and M. Musuvathi},
- title = {On the verification problem for weak memory models},
- booktitle = {Proceedings of the 37th annual ACM SIGPLAN-SIGACT symposium on
-                  Principles of programming languages},
- series = {POPL '10},
- year = {2010},
- isbn = {978-1-60558-479-9},
- location = {Madrid, Spain},
- pages = {7--18},
- numpages = {12},
- doi = {10.1145/1706299.1706303},
- acmid = {1706303},
- publisher = {ACM},
- address = {New York, NY, USA},
- keywords = {infinite state systems, lossy channel systems, program verification, relaxed memory models},
-}
-
-@incollection{LLBMC,
-    year={2012},
-    isbn={978-3-642-28755-8},
-    booktitle={Tools and Algorithms for the Construction and Analysis of
-        Systems},
-    volume={7214},
-    series={Lecture Notes in Computer Science},
-    editor={Flanagan, Cormac and König, Barbara},
-    doi={10.1007/978-3-642-28756-5_44},
-    title={LLBMC: A Bounded Model Checker for LLVM’s Intermediate
-        Representation},
-    publisher={Springer Berlin Heidelberg},
-    author={Sinz, Carsten and Merz, Florian and Falke, Stephan},
-    pages={542-544},
-    language={English}
-}
-
-@INPROCEEDINGS{BCRSZ16,
-    author={Jiří Barnat and Ivana Černá and Petr Ročkai and Vladimír Štill and
-        Kristína Zákopčanová},
-    title={On Verifying C++ Programs with Probabilities},
-    year={2016},
-    booktitle={to appear in ACM Symposium on Applied Computing (ACM SAC 2016)},
-    doi={10.1145/2851613.2851721},
-    isbn={978-1-4503-3739-7}
-}
-
-@article{OWCTY,
-    title={On-the-fly Parallel Model Checking Algorithm that is Optimal for
-        Verification of Weak \ltl Properties},
-    author={Jiří Barnat and Luboš Brim and Petr Ročkai},
-    journal={Science of Computer Programming},
-    volume={77},
-    number={12},
-    pages={1272--1288},
-    year={2012},
-    publisher={Elsevier}
-}
-
-@MastersThesis{Simecek2006,
-    AUTHOR = "Pavel Šimeček",
-    TITLE = "DiVinE -- Distributed Verification Environment",
-    YEAR = "2006",
-    TYPE = "Master's Thesis",
-    SCHOOL = "Masaryk University, Faculty of Informatics, Brno",
-    SUPERVISOR = "Luboš Brim",
-    URL = "http://is.muni.cz/th/51636/fi_m/",
-}
-
-@incollection{UppAll,
-    year={1996},
-        isbn={978-3-540-61155-4},
-        booktitle={Hybrid Systems III},
-        volume={1066},
-        series={Lecture Notes in Computer Science},
-        editor={Alur, Rajeev and Henzinger, ThomasA. and Sontag, EduardoD.},
-        doi={10.1007/BFb0020949},
-        title={UPPAAL — a tool suite for automatic verification of real-time
-            systems},
-        publisher={Springer Berlin Heidelberg},
-        author={Bengtsson, Johan and Larsen, Kim and Larsson, Fredrik and
-            Pettersson, Paul and Yi, Wang},
-        pages={232-243},
-        language={English}
-}
-
-@incollection{CBMC,
-    year={2014},
-    isbn={978-3-642-54861-1},
-    booktitle={Tools and Algorithms for the Construction and Analysis of
-        Systems},
-    volume={8413},
-    series={Lecture Notes in Computer Science},
-    editor={Ábrahám, Erika and Havelund, Klaus},
-    doi={10.1007/978-3-642-54862-8_26},
-    title={CBMC – C Bounded Model Checker},
-    publisher={Springer Berlin Heidelberg},
-    author={Kroening, Daniel and Tautschnig, Michael},
-    pages={389-391},
-    language={English}
-}
-
-
-@incollection{BRSW15,
-    year={2015},
-    isbn={978-3-319-23403-8},
-    booktitle={Model Checking Software (SPIN 2015)},
-    volume={9232},
-    series={Lecture Notes in Computer Science},
-    editor={Fischer, Bernd and Geldenhuys, Jaco},
-    doi={10.1007/978-3-319-23404-5_5},
-    title={Fast, Dynamically-Sized Concurrent Hash Table},
-    publisher={Springer International Publishing},
-    author={Jiří Barnat and Petr Ročkai and Vladimír Štill and Jiří Weiser},
-    pages={49-65},
-    language={English}
-}
-
-
-@online{SVCOMP,
-    author = {Dirk Beyer},
-    title  = {Competition on Software Verification (SV-COMP), TACAS 2016},
-    date   = {2015-12},
-    url    = {http://sv-comp.sosy-lab.org/2016/}
-}
-
-@INPROCEEDINGS{SRB16svc,
-    author={Vladimír Štill and Petr Ročkai and Jiří Barnat},
-    title={{\divine: Explicit-State \ltl Model Checker}},
-    year={2016},
-    booktitle={to appear in International Conference on Tools and Algorithms for
-    the Construction and Analysis of Systems (TACAS 2016)}
-}
-
-
-@INPROCEEDINGS{RBB14,
-  author =       "Petr Ročkai and Jiří Barnat and Luboš Brim",
-  title =        "{Model Checking C++ with Exceptions}",
-  booktitle=     "Automated Verification of Critical Systems (AVoCS 2014)",
-  year =         "2014",
-}
-
-@INPROCEEDINGS{BBH14,
-   author={Jiří Barnat and Petr Bauch and Vojtěch Havel},
-booktitle={Parallel, Distributed and Network-Based Processing (PDP), 2014 22nd Euromicro International Conference on},
-   title={{Model Checking Parallel Programs with Inputs}},
-   year={2014},
-   pages={756-759},
-   doi={10.1109/PDP.2014.44},
-   ISSN={1066-6192},
-}
-
-@book{SPARC94,
- author = {{SPARC International, Inc., CORPORATE}},
- title = {The SPARC architecture manual (version 9)},
- year = {1994},
- isbn = {0-13-099227-5},
- publisher = {Prentice-Hall, Inc.},
- address = {Upper Saddle River, NJ, USA},
-}
-
-@online{llvm:web,
+@online{llvm,
     author = {Chris Lattner},
     title  = {The \llvm Compiler Infrastructure Project},
     date   = {2015-11},
     url    = {http://llvm.org/}
 }
 
-@online{llvm:langref,
-    author = {\llvm Project},
-    title  = {\llvm Language Reference Manual},
-    date   = {2015-11},
-    url    = {http://llvm.org/docs/LangRef.html}
+@misc{knuth1968art,
+  title={The Art of Computer Programming 1: Fundamental Algorithms 2: Seminumerical Algorithms 3: Sorting and Searching},
+  author={Knuth, D},
+  year={1968},
+  pages={506--542},
+  publisher={MA: Addison-Wesley}
 }
 
-@online{llvm:atomics,
-    author = {\llvm Project},
-    title  = {\llvm Atomic Instructions and Concurrency Guide},
-    date   = {2015-11},
-    url    = {http://llvm.org/docs/Atomics.html}
+@article{carpenter2000mpj,
+  title={MPJ: MPI-like message passing for Java},
+  author={Carpenter, Bryan and Getov, Vladimir and Judd, Glenn and Skjellum, Anthony and Fox, Geoffrey C},
+  year={2000}
 }
 
-@online{llvm:except,
-    author = {\llvm Project},
-    title  = {Exception Handling in \llvm},
-    date   = {2015-11},
-    url    = {http://llvm.org/docs/ExceptionHandling.html}
+@Misc{Chen2012pbdMPIpackage,
+  title = {{pbdMPI}: Programming with Big Data -- Interface to {MPI}},
+  author = {Wei-Chen Chen and George Ostrouchov and Drew Schmidt and Pragneshkumar Patel and Hao Yu},
+  year = {2012},
+  note = {{R} Package, URL http://cran.r-project.org/package=pbdMPI},
 }
 
-@MastersThesis{Lattner02,
-    author  = {Chris Lattner},
-    title   = "{\llvm: An Infrastructure for Multi-Stage
-    Optimization}",
-    school  = "{Computer Science Dept., University of Illinois at
-    Urbana-Champaign}",
-    year    = {2002},
-    address = {Urbana, IL},
-    month   = {Dec},
-    url = {http://llvm.org/pubs/2002-12-LattnerMSThesis.html}
+@inproceedings{gregor2008design,
+  title={Design and implementation of a high-performance MPI for C\# and the common language infrastructure},
+  author={Gregor, Douglas and Lumsdaine, Andrew},
+  booktitle={Proceedings of the 13th ACM SIGPLAN Symposium on Principles and practice of parallel programming},
+  pages={133--142},
+  year={2008},
+  organization={ACM}
 }
 
-@inproceedings{RSB15,
-  author    = {Petr Ročkai and Vladimír Štill and Jiří Barnat},
-  title     = {{Techniques for Memory-Efficient Model Checking of {C} and {C++} Code}},
-  booktitle = {International Conference on Software Engineering and Formal
-      Methods (SEFM 2015)},
-  pages     = {268--282},
-  series    = {LNCS},
-  volume    = {9276},
-  publisher = {Springer},
-  year      = {2015}
-  }
-
-@inproceedings{SRB14,
-    year={2014},
-    isbn={978-3-319-14895-3},
-    booktitle={Mathematical and Engineering Methods in Computer Science
-        (MEMICS 2014)},
-    volume={8934},
-    series={LNCS},
-    title={{Context-Switch-Directed Verification in DIVINE}},
-    publisher={Springer},
-    author={Vladimír Štill and Petr Ročkai and Jiří Barnat},
-    pages={135--146},
+@article{zimmermann1980osi,
+  title={OSI reference model--The ISO model of architecture for open systems interconnection},
+  author={Zimmermann, Hubert},
+  journal={Communications, IEEE Transactions on},
+  volume={28},
+  number={4},
+  pages={425--432},
+  year={1980},
+  publisher={IEEE}
 }
 
-# TODO
-@inproceedings{SRB15,
-    year={2015},
-    booktitle={to appear in Mathematical and Engineering Methods in Computer
-        Science  (MEMICS 2015)},
-    title={{Weak Memory Models as LLVM-to-LLVM Transformations}},
-    author={Vladimír Štill and Petr Ročkai and Jiří Barnat}
+@report{RFC791,
+  shorthand = {RFC791},
+  year = {1981},
+  month = {9},
+  title = {INTERNET PROTOCOL},
+  note = {RFC 791},
 }
 
-@PhdThesis{RockaiPhD,
-    AUTHOR = "Petr Ročkai",
-    TITLE = "Model Checking Software",
-    YEAR = "2015",
-    TYPE = "Ph.D. Thesis",
-    SCHOOL = "Masaryk University, Faculty of Informatics, Brno",
-    SUPERVISOR = "Jiří Barnat",
-    URL = "http://is.muni.cz/th/139761/fi_d/",
+@report{RFC793,
+  shorthand = {RFC793},
+  year = {1981},
+  month = {9},
+  title = {TRANSMISSION CONTROL PROTOCOL},
+  note = {RFC 793},
 }
 
-######
-
-@book{Clarke2000MC,
-     author = {{Edmund M. Clarke, Jr.} and Orna Grumberg and Doron A. Peled},
-     title = {Model checking},
-     year = {1999},
-     isbn = {0-262-03270-8},
-     publisher = {MIT Press},
-     address = {Cambridge, MA, USA},
+@report{RFC768,
+  shorthand = {RFC768},
+  year = {1980},
+  month = {8},
+  author = {J. Postel},
+  title = {User Datagram Protocol},
+  note = {RFC 768},
 }
 
-@InProceedings{BHR13HC,
-    author =       "Jiří Barnat and Jan Havlíček and Petr Ročkai",
-    title =        "{Distributed LTL Model Checking with Hash Compaction}",
-    booktitle =    "To appear in proceedings of PASM/PDMC 2012.",
-    year =         "2013"
+@report{RFC959,
+  shorthand = {RFC959},
+  year = {1985},
+  month = {10},
+  title = {FILE TRANSFER PROTOCOL (FTP)},
+  note = {RFC 959},
 }
 
-@InProceedings{DiVinE30,
-    author    = "Jiří Barnat and Luboš Brim and Vojtěch Havel and Jan Havlíček
-        and Jan Kriho and Milan Lenčo and Petr Ročkai and Vladimír Štill and
-        Jiří Weiser",
-    title     = "{DiVinE 3.0 -- An Explicit-State Model Checker for
-        Multithreaded C \& C++ Programs}",
-    booktitle = "{Computer Aided Verification (CAV 2013)}",
-    pages     = "863--868",
-    volume    = "8044",
-    series    = "LNCS",
-    year      = "2013",
-    publisher = "Springer"
+@report{RFC988,
+  shorthand = {RFC988},
+  year = {1986},
+  author = {S. E. Deering},
+  month = {7},
+  title = {Host Extensions for IP Multicasting},
+  note = {RFC 988},
 }
 
-@InProceedings{RBB13,
-  author =       "Petr Ročkai and Jiří Barnat and Luboš Brim",
-  title =        "{Improved State Space Reductions for LTL Model Checking of C \& C++ Programs}",
-  booktitle =    "NASA Formal Methods (NFM 2013)",
-  pages =        "1--15",
-  year =         "2013",
-  volume =       "7871",
-  series =       "LNCS",
-  publisher =    "Springer"
+@report{RFC3376,
+  shorthand = {RFC3376},
+  year = {2002},
+  author = {B. Cain and S. Deering and I. Kouvelas and B. Fenner and A. Thyagarajan},
+  month = {10},
+  title = {Internet Group Management Protocol, Version 3},
+  note = {RFC 3376},
 }
 
-@InProceedings{BBR12,
-  author =       "Jiří Barnat and Luboš Brim and Petr Ročkai",
-  title =        "{Towards LTL Model Checking of Unmodified Thread-Based C \& C++ Programs}",
-  booktitle =    "NASA Formal Methods Symposium",
-  pages =        "252--267",
-  year =         "2012",
-  volume =       "7226",
-  series =       "LNCS",
-  publisher =    "Springer"
+@report{RFC4252,
+  shorthand = {RFC4252},
+  year = {2006},
+  author = {T. Ylonen, C. Lonvick},
+  month = {1},
+  title = {The Secure Shell (SSH) Authentication Protocol},
+  note = {RFC 4252},
 }
 
-@InProceedings{BBR10por,
-  author =       "Jiří Barnat and Luboš Brim and Petr Ročkai",
-  title =        "{Parallel Partial Order Reduction with Topological Sort Proviso}",
-  booktitle =    "Software Engineering and Formal Methods (SEFM 2010)",
-  pages =        "222--231",
-  year =         "2010",
-  publisher =    "IEEE Computer Society Press"
+@report{RFC4291,
+  shorthand = {RFC4291},
+  year = {2006},
+  author = {S. Deering and R. Hinden},
+  month = {2},
+  title = {IP Version 6 Addressing Architecture},
+  note = {RFC 4291},
 }
 
-@PhdThesis{Bar04,
-  author =       "Jiři Barnat",
-  title =        "{D}istributed {M}emory {LTL} {M}odel {C}hecking",
-  school =       "{M}asaryk {U}niversity {B}rno, {F}aculty of {I}nformatics",
-  year =         "2004"
+@report{RFC1034,
+  shorthand = {RFC1034},
+  year = {1987},
+  author = {P. Mockapetris},
+  month = {11},
+  title = {DOMAIN NAMES - CONCEPTS AND FACILITIES},
+  note = {RFC 1034},
 }
 
-@INPROCEEDINGS{Hol97SC,
-    author = {Gerard J. Holzmann},
-    title = {State Compression in SPIN: Recursive Indexing And Compression Training Runs},
-    booktitle = {Proceedings of third international \spin{} workshop},
-    year = {1997},
-    publisher = {}
+@report{RFC1035,
+  shorthand = {RFC1035},
+  year = {1987},
+  author = {P. Mockapetris},
+  month = {11},
+  title = {DOMAIN NAMES - IMPLEMENTATION AND SPECIFICATION},
+  note = {RFC 1035},
 }
 
-@ARTICLE{Hol97SPIN,
-    author = {Gerard J. Holzmann},
-    title = {The model checker SPIN},
-    journal = {IEEE Transactions on Software Engineering},
-    year = {1997},
-    volume = {23},
-    pages = {279--295}
+@report{RFC1700,
+  shorthand = {RFC1700},
+  year = {1994},
+  author = {J. Reynolds and J. Postel},
+  month = {10},
+  title = {ASSIGNED NUMBERS},
+  note = {RFC 1700},
 }
 
-@inproceedings{TC_ltsmin,
-    eprintid = {20146},
-    month = {July},
-    issn = {0302-9743},
-    author = {A. W. {Laarman} and J. C. {van de Pol} and M. {Weber}},
-    num_pages = {18},
-    series = {Lecture Notes in Computer Science },
-    keywords = {model checking, parallel, multi-core, state space compression, tree-based algorithm, incremental
-algorithm},
-    pres_types = {Talk},
-    ispublished = {Published},
-    editor = {A. {Groce} and M. {Musuvathi}},
-    address = {berlin},
-    publisher = {Springer Verlag},
-    id_number = {10.1007/978-3-642-22306-8_4},
-    isbn_13 = {978-3-642-22305-1},
-    howpublished = {http://eprints.eemcs.utwente.nl/20146/},
-    volume = {6823},
-    location = {Snow Bird, Utah},
-    event_type = {Workshop},
-    event_dates = {14-15 Jul 2011},
-    research_groups = {EWI-FMT: Formal Methods and Tools},
-    booktitle = {Proceedings of the 18th International SPIN Workshop, SPIN 2011, Snow Bird, Utah},
-    refereed = {Yes},
-    research_programs = {CTIT-DSN: Dependable Systems and Networks},
-    research_projects = {CEDICT: 3TU Center of Excellence for ICT},
-    title = {Parallel Recursive State Compression for Free},
-    international = {Yes},
-    year = {2011},
-    pages = {38--56}
+@report{RFC1886,
+  shorthand = {RFC1886},
+  year = {1995},
+  author = {S. Thomson and C. Huitema},
+  month = {12},
+  title = {DNS Extensions to support IP version 6},
+  note = {RFC 1886},
 }
 
-
-@ARTICLE{Hol99min,
-    author = {Gerard J. Holzmann and Anuj Puri},
-    title = {A Minimized Automaton Representation of Reachable States},
-    journal = {Software Tools for Technology Transfer},
-    year = {1999},
-    volume = {2},
-    pages = {270--278}
+@report{RFC2460,
+  shorthand = {RFC2460},
+  author = {S. Deering, R. Hinden},
+  year = {1998},
+  month = {12},
+  title = {Internet Protocol, Version 6 (IPv6) Specification},
+  note = {RFC 2460},
 }
 
-@INPROCEEDINGS{beem,
-    author = {Radek Pelánek},
-    title = {BEEM: Benchmarks for explicit model checkers},
-    booktitle = {In Proc. of SPIN Workshop, volume 4595 of LNCS},
-    year = {2007},
-    pages = {263--267},
-    publisher = {Springer}
+@report{RFC6298,
+  shorthand = {RFC6298},
+  year = {2011},
+  author = {V. Paxson, M. Allman and J. Chu, M. Sargent},
+  month = {6},
+  title = {Computing TCP's Retransmission Timer},
+  note = {RFC 6298},
 }
 
-@misc{Sedenka07bc,
-    AUTHOR = "Jaroslav Šeděnka",
-    TITLE = "Huffmanovo kódování stavů v DiVinE [online]",
-    YEAR = 2007,
-    urldate = {2013-04-29},
-    TYPE = "Bachelor's thesis",
-    SCHOOL = "Masarykova univerzita, Fakulta informatiky",
-    SUPERVISOR = "Radek Pelánek",
-    URL = "http://is.muni.cz/th/143135/fi_b/",
+@report{RFC7230,
+  shorthand = {RFC7230},
+  year = {2014},
+  month = {6},
+  author = {R. Fieding and J. Reschke},
+  title = {Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing},
+  note = {RFC 7230}
 }
 
-@MastersThesis{Havlicek13MGR,
-    AUTHOR = "Jan Havlíček",
-    TITLE = "Untimed LTL Model Checking of Timed Automata [online]",
-    YEAR = 2013,
-    urldate = {2013-05-06},
-    TYPE = "Master's thesis",
-    SCHOOL = "\MU, \FI",
-    SUPERVISOR = "Jiří Barnat",
-    URL = "http://is.muni.cz/th/324943/fi_m/",
+@report{RFC3232,
+  shorthand = {RFC3232},
+  year = {2002},
+  month = {1},
+  author = {J. Reynolds},
+  title = {Assigned Numbers: RFC 1700 is Replaced by an On-line Database},
+  note = {RFC 3232}
 }
 
-@misc{Weiser13BC,
-    AUTHOR = "Jiří Weiser",
-    TITLE = "Dynamicky rostoucí sdílená hašovací tabulka pro DiVinE [online]",
-    YEAR = 2013,
-    urldate = {2013-05-06},
-    TYPE = "Bachelor's thesis",
-    SCHOOL = "\MU, \FI",
-    SUPERVISOR = "Jiří Barnat",
-    URL = "http://is.muni.cz/th/374154/fi_b/",
+@report{RFC1122,
+  shorthand = {RFC1122},
+  year = {1989},
+  month = {1},
+  author = {R. Branden},
+  title = {Requirements for Internet Hosts -- Communication Layers},
+  note = {RFC 1122}
 }
 
-@online{DiVinE:web,
-    author = "Jiří Barnat and Luboš Brim and Vojtěch Havel
-              and Jan Havlíček and Jan Kriho and Milan Lenčo
-              and Petr Ročkai and Vladimír Štill and Jiří Weiser",
-    title = {DIVINE: Model Checking for Everyone},
-    year = 2013,
-    url = {http://divine.fi.muni.cz/},
-    urldate = {2013-05-12},
-    publisher = "ParaDiSe Labs, Faculty of Informatics, Masaryk University"
+@report{RFC6101,
+  shorthand = {RFC6101},
+  year = {2011},
+  author = {A. Freier, P. Karlton, P. Kocher},
+  month = {8},
+  title = {The Secure Sockets Layer (SSL) Protocol Version 3.0},
+  note = {RFC 6101}
 }
 
-@online{ltsmin,
-    author = "Alfons Laarman",
-    title = {LTSmin},
-    year = 2013,
-    url = {http://fmt.cs.utwente.nl/tools/ltsmin/},
-    urldate = {2013-05-12},
-    publisher = "Formal Methods and Tools, University of Twente"
+@article{kohlhoff2003boost,
+  title={Boost. Asio},
+  author={Kohlhoff, Christopher},
+  journal={Online: http://www.boost.org/doc/libs/1},
+  volume={48},
+  number={0},
+  pages={2003--2013},
+  year={2003}
+}
+
+@article{ritchie1974unix,
+  title={The UNIX time-sharing system},
+  author={Ritchie, Dennis M and Thompson, Ken},
+  journal={Communications of the ACM},
+  volume={17},
+  number={7},
+  pages={365--375},
+  year={1974},
+  publisher={ACM}
+}
+
+@book{schmidt2013pattern,
+  title={Pattern-Oriented Software Architecture, Patterns for Concurrent and Networked Objects},
+  author={Schmidt, Douglas C and Stal, Michael and Rohnert, Hans and Buschmann, Frank},
+  volume={2},
+  year={2013},
+  publisher={John Wiley \& Sons}
+}
+
+@inproceedings{karger1984augmented,
+  title={An augmented capability architecture to support lattice security and traceability of access},
+  author={Karger, Paul A and Herbert, Andrew J},
+  booktitle={Security and Privacy, 1984 IEEE Symposium on},
+  pages={2--2},
+  year={1984},
+  organization={IEEE}
+}
+
+@InProceedings{Liedtke95MicrokernelConstruction,
+  author = {Jochen Liedtke},
+  title = {On Microkernel Construction},
+  booktitle = {Proceedings of the 15th ACM Symposium on Operating System Principles (SOSP-15)},
+  address = {Copper Mountain Resort, CO},
+  month = dec,
+  year = 1995,
+  url = {http://l4ka.org/publications/}
+}
+
+@book{hillis1989connection,
+  title={The connection machine},
+  author={Hillis, W Daniel},
+  year={1989},
+  publisher={MIT press}
 }

@@ -75,21 +75,21 @@ Reálné *model checkery* samozřejmě nepostupují tak, jak jsem v\ předchozí
 
 \label{sec:intro:divine}
 
-Nástroj [DIVINE](http://divine.fi.muni.cz/)[Jiri Barnat: Distributed Memory LTL Model Checking Ph.D. Thesis, Masaryk University Brno, Faculty of Informatics, 2004.][[X]](https://is.muni.cz/auth/th/139761/fi_d/) je\ explicitní *model checker*, který zvládá verifikovat modely v\ jazycích jako [LLVM](http://llvm.org/), nebo [UPPAAL](http://www.uppaal.org/)^[Formát pro vytváření časových automatů [[X]](https://en.wikipedia.org/wiki/Timed_automaton#cite_note-1).], nebo ve\ formátu [DVE](http://divine.fi.muni.cz/manual.html#the-dve-specification-language)^[Původní modelovací jazyk, ve\ kterém nástroj DIVINE uměl verifikovat modely.]. Specifikace vlastností lze zadávat jako *asserty* nebo vyjádřit pomocí LTL formulí. V\ současné době je\ snaha soustředit se\ na\ jazyk LLVM a\ postupně rušit podporu pro ostatní vstupní formáty.
+Nástroj DIVINE \cite{BBH+13, barnat2004distributed} je\ explicitní *model checker*, který zvládá verifikovat modely v\ jazycích jako LLVM \cite{llvm}, UPPAAL \cite{larsen1997uppaal}^[Formát pro vytváření časových automatů \cite{alur1994theory}.], nebo ve\ formátu [DVE](http://divine.fi.muni.cz/manual.html#the-dve-specification-language)^[Původní modelovací jazyk, ve\ kterém nástroj DIVINE uměl verifikovat modely.]. Specifikace vlastností lze zadávat jako *asserty* nebo vyjádřit pomocí LTL formulí. V\ současné době je\ snaha soustředit se\ na\ jazyk LLVM a\ postupně rušit podporu pro ostatní vstupní formáty.
 
 Proč tomu tak je? Jazyk LLVM je\ jednoduchým mezijazykem navrženým především pro snadnou implementaci optimalizací tak, aby zůstaly odstíněny od\ abstrakcí vyšších programovacích jazyků a\ zároveň aby nebyly omezovány prvky konkrétních architektur. První front-end, který překládal vyšší programovací jazyky do\ LLVM byl [Clang](http://clang.llvm.org/), který překládá jazyky C, C++ a\ Objective-C, posléze začaly vznikat front-endy i\ pro další jazyky, jako je\ Java, C#, Haskell a\ další. Pro velký úspěch byl adoptován společností Apple Inc.[[X]](https://developer.apple.com/xcode/). Jazyk LLVM je\ v\ nástroji DIVINE upřednostňován pro svoji jednoduchost, protože je\ pak poměrně snadné generovat stavy programu, a\ zároveň existenci mnoha překladačů pro populární programovací jazyky, což může vést k\ použití nástroje DIVINE pro verifikaci reálných programů namísto upravovaných modelů systémů.
 
 Pro generování stavového prostoru se\ používá interpret jazyka LLVM. To\ znamená, že\ nástroj DIVINE potřebuje pro verifikaci mít nejen zdrojové soubory ověřovaného programu, ale i\ zdrojové soubory všech knihoven, které program používá. Pro jazyky\ C a\ C++ jsme tento problém vyřešili tak, že spolu s\ nástrojem DIVINE distribuujeme standardní knihovny pro oba jazyky. Ostatní programovací jazyky proto nástroj DIVINE zatím nepodporuje.
 
-Je\ potřeba si\ uvědomit, že\ graf stavového prostoru, který vzniknul interpretací mezijazyka LLVM má\ dvě podstatné vlastnosti. Velikost grafu narůstá s\ velikostí programu, a\ to\ jak kvůli délce programu, kde je\ nárůst lineární, tak kvůli počtu vláken ověřovaného programu, kde je\ nárůst exponenciální. Samotné vrcholy grafu také nejsou malé, neboť každý vrchol potřebuje obsáhnout celou paměť programu v\ určitém místě výpočtu. Nástroj DIVINE se\ se\ skutečností, že\ potřebuje pracovat s\ obrovskými grafy[^large-graphs], které mají zároveň velké vrcholy^[Běžně dosahují několika jednotek nebo malých desítek kilobytů.], vypořádává několika způsoby. Zavádí bezztrátovou kompresi stavů [[X]](https://is.muni.cz/auth/th/373979/fi_b/), což snižuje velikosti jednotlivých vrcholů. Dále používá *partial order reduction* a\ spojování instrukcí[^instruction-concat], což vede ke\ zmenšování velikosti grafu.
+Je\ potřeba si\ uvědomit, že\ graf stavového prostoru, který vzniknul interpretací mezijazyka LLVM má\ dvě podstatné vlastnosti. Velikost grafu narůstá s\ velikostí programu, a\ to\ jak kvůli délce programu, kde je\ nárůst lineární, tak kvůli počtu vláken ověřovaného programu, kde je\ nárůst exponenciální. Samotné vrcholy grafu také nejsou malé, neboť každý vrchol potřebuje obsáhnout celou paměť programu v\ určitém místě výpočtu. Nástroj DIVINE se\ se\ skutečností, že\ potřebuje pracovat s\ obrovskými grafy[^large-graphs], které mají zároveň velké vrcholy^[Běžně dosahují několika jednotek nebo malých desítek kilobytů.], vypořádává několika způsoby. Zavádí bezztrátovou kompresi stavů \cite{Still13BC}, což snižuje velikosti jednotlivých vrcholů. Dále používá *partial order reduction* a\ spojování instrukcí[^instruction-concat], což vede ke\ zmenšování velikosti grafu.
 
 [^large-graphs]: Pomocí nástroje DIVINE jsme verifikovali některé jeho komponenty, což mnohdy vyústilo v\ grafy o\ několika milionech vrcholů.
 
 [^instruction-concat]: Při interpretaci není potřeba po\ každé provedené instrukci vytvořit nový stav, pokud výsledek této instrukce není viditelný z\ jiného vlákna.
 
-Nadále velké grafy, třebaže zmenšené, je\ potřeba co\ nejrychleji zpracovat. Nástroj DIVINE proto využívá oba druhy paralelizace, přičemž v\ aktuální verzi^[DIVINE 3.x] je\ upřednostňován režim paralelizace pouze ve\ sdílené paměti. Některé důvody jako například možnost komprese stavového prostoru nebo rovnoměrnější rozvržení pracovní zátěže jednotlivých vláken, což vede k\ rychlejšímu prohledávání stavového prostoru, jsou popsány v\ [[X]](https://is.muni.cz/auth/th/373979/fi_b/) a\ v\ mé bakalářské práci [[X]](https://is.muni.cz/auth/th/374154/fi_b/).
+Nadále velké grafy, třebaže zmenšené, je\ potřeba co\ nejrychleji zpracovat. Nástroj DIVINE proto využívá oba druhy paralelizace, přičemž v\ aktuální verzi^[DIVINE 3.x] je\ upřednostňován režim paralelizace pouze ve\ sdílené paměti. Některé důvody jako například možnost komprese stavového prostoru nebo rovnoměrnější rozvržení pracovní zátěže jednotlivých vláken, což vede k\ rychlejšímu prohledávání stavového prostoru, jsou popsány v\ \cite{Still13BC} a\ v\ mé bakalářské práci \cite{Weiser13BC}.
 
-Druhý režim paralelizace je\ hybridní a\ zahrnuje oba dva druhy paralizace. Tento režim pochází ze\ starší verze programu^[DIVINE 2.x] a\ oproti původní verzi nebyl nikterak vylepšován (až\ na\ malé optimalizační změny). Hybridní paralelizmus je\ realizován tak, že\ každý stav ze\ zpracovávaného stavového prostoru je\ staticky přiřazen některému vláknu na\ některé samostatné výpočetní jednotce pomocí hašování [[X]](https://en.wikipedia.org/wiki/Hash_function#cite_note-knuth-17).
+Druhý režim paralelizace je\ hybridní a\ zahrnuje oba dva druhy paralizace. Tento režim pochází ze\ starší verze programu^[DIVINE 2.x] a\ oproti původní verzi nebyl nikterak vylepšován (až\ na\ malé optimalizační změny). Hybridní paralelizmus je\ realizován tak, že\ každý stav ze\ zpracovávaného stavového prostoru je\ staticky přiřazen některému vláknu na\ některé samostatné výpočetní jednotce pomocí hašování \cite{knuth1968art}.
 
 Nevýhodou hybridního režimu paralelizace je\ statické rozdělení stavů nejen mezi jednotlivé výpočtní stroje, ale\ i\ mezi jednotlivá vlákna. Toto rozdělení má\ kromě nevýhody v\ potenciálně nerovnoměrném rozložení práce mezi jednotlivá vlákna i\ nevýhodu v\ nemožnosti použít aktuální implementaci komprese paměti bez velké paměťové režie.
 
@@ -99,7 +99,7 @@ V současné době se\ pracuje na\ nové verzi programu DIVINE, přičemž souč
 
 \label{sec:intro:aim}
 
-Zde konečně přichází objasnění zadání mé dimplomové práce. Mým cílem je\ navrhnout a\ implementovat novou komunikační vrstvu, kterou by\ nástroj DIVINE používal namísto stávájícího [MPI standardu](http://www.mpi-forum.org/)^[O\ standardu MPI je\ napsáno více v\ kapitole 2.]. Součástí práce je\ i\ porovnání nového a\ stávajícího komunikačního rozhraní.
+Zde konečně přichází objasnění zadání mé dimplomové práce. Mým cílem je\ navrhnout a\ implementovat novou komunikační vrstvu, kterou by\ nástroj DIVINE používal namísto stávájícího MPI standardu \cite{mpiforum}^[O\ standardu MPI je\ napsáno více v\ kapitole 2.]. Součástí práce je\ i\ porovnání nového a\ stávajícího komunikačního rozhraní.
 
 Motivací pro implementaci vlastní komunikační vrstvy je\ několik. Předně je\ zde očekávání, že\ komunikační vrstva psaná na\ míru nástroji DIVINE bude rychlejší než stávající řešení, které je\ obecné. Dále je\ předpoklad, že\ pokud bude komunikace postavena přímo nad síťovým protokolem, odpadne nutnost přikládat k\ nástroji DIVINE další knihovnu, což činí režii nám vývojářům a\ může činit potíže uživatelům nástroje. A\ naposled je\ motivací touha mé\ maličkosti vyzkoušet si\ práci se\ sítí na\ projektu, který má\ budoucnost.
 
@@ -111,11 +111,11 @@ V\ této kapitole pojednávám o\ hlavních adeptech pro použití jako komunika
 
 \label{sec:comm:mpi}
 
-*Message Passing Interface*, zkráceně [MPI](http://www.mpi-forum.org/), je\ standardizovaný systém pro distribuované výpočty, což zahrnuje pro zasílání zpráv mezi procesy a\ prvky kolektivní komunikace. Ačkoliv se\ většinou mluví o\ systému, MPI jako takové je\ standard[^mpi-standard] a\ pro použití je\ potřeba použít některou z\ implementací.
+*Message Passing Interface*, zkráceně MPI, je\ standardizovaný systém pro distribuované výpočty, což zahrnuje pro zasílání zpráv mezi procesy a\ prvky kolektivní komunikace. Ačkoliv se\ většinou mluví o\ systému, MPI jako takové je\ standard[^mpi-standard] a\ pro použití je\ potřeba použít některou z\ implementací.
 
 [^mpi-standard]: Ačkoliv má MPI standard již  několik verzí, stále nedošlo ke\ standardizačnímu řízení u\ některé ze\ známých standardizačních autorit, jako je například [ISO](http://www.iso.org/) nebo [IEEE](https://www.ieee.org/).
 
-Samotný standard MPI se\ zmiňuje o\ rozhraní pouze pro jazyky\ C a\ Fortran. Ve\ 2. verzi standardu MPI byla přidána podpora pro jazyk C++, která byla hned ve verzi 3 odstraněna. Implementace standardu MPI tak musí nabízet rozhraní v\ jazycích\ C a\ Fortran. Z\ těch základních jmenujme alespoň [MPICH](http://www.mpich.org/)[^mpich], [Open MPI](https://www.open-mpi.org), či\ LAM/MPI, jehož vývoj byl zastaven ve prospěch Open MPI. Pro jiné programovací jazyky existují moduly^[dle názvosloví daného jazyka také knihovny, balíčky, ...], které používají rozhraní pro jazyk\ C z\ dostupné implementace standardu MPI. Jde mimo jiné o\ programovací jazyky jako Java [[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-16)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-17)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-18), Python[[X]](http://sourceforge.net/projects/pympi/)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-10)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-12), jazyk R[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-21), nebo o\ knihovny dostupné pro framework .NET[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-22)[[X]](https://en.wikipedia.org/wiki/Message_Passing_Interface#cite_note-23).
+Samotný standard MPI se\ zmiňuje o\ rozhraní pouze pro jazyky\ C a\ Fortran. Ve\ 2. verzi standardu MPI byla přidána podpora pro jazyk C++, která byla hned ve verzi 3 odstraněna. Implementace standardu MPI tak musí nabízet rozhraní v\ jazycích\ C a\ Fortran. Z\ těch základních jmenujme alespoň [MPICH](http://www.mpich.org/)[^mpich], [Open MPI](https://www.open-mpi.org), či\ LAM/MPI, jehož vývoj byl zastaven ve prospěch Open MPI. Pro jiné programovací jazyky existují moduly^[dle názvosloví daného jazyka také knihovny, balíčky, ...], které používají rozhraní pro jazyk\ C z\ dostupné implementace standardu MPI. Jde mimo jiné o\ programovací jazyky jako Java \cite{carpenter2000mpj}, Python^[<http://sourceforge.net/projects/pympi/>]^[<https://code.google.com/p/pypar/>], jazyk R \cite{Chen2012pbdMPIpackage}, nebo o\ knihovnu dostupné pro framework .NET \cite{gregor2008design}.
 
 [^mpich]: MPICH byl vůbec první implementací MPI standardu, konkrétně MPI-1.1.
 
@@ -234,29 +234,29 @@ Kromě vlastních datových typů umožňuje MPI definovat i\ vlastní datové t
 
 \label{sec:comm:sock}
 
-Další možností je vlastní implementace komunikačního rozhraní pro DIVINE, které by\ používalo BSD sockety, které jsou v zahrnuty v [POSIX](http://pubs.opengroup.org/onlinepubs/9699919799/functions/contents.html) standardu. Vlastní implementace nepřidává žádnou závislost na externí knihovně a protože jsou BSD sockety v podstatě standardem pro síťovou komunikaci[dodat odkazy na pojednávající články], lze předpokládat, že výsledný kód bude možné bez větších změn použít i na operačních systémech, které nevycházejí z filozofie systému UNIX.
+Další možností je vlastní implementace komunikačního rozhraní pro DIVINE, které by\ používalo BSD sockety, které jsou v zahrnuty v [POSIX](http://pubs.opengroup.org/onlinepubs/9699919799/functions/contents.html) standardu. Vlastní implementace nepřidává žádnou závislost na externí knihovně a protože jsou BSD sockety v podstatě standardem pro síťovou komunikaci, lze předpokládat, že výsledný kód bude možné bez větších změn použít i na operačních systémech, které nevycházejí z filozofie systému UNIX.
 
-Popis BSD socketů je abstrakce nad různými druhy spojení. V\ části POSIX standardu o [socketech](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_06) můžeme nalézt poměrně nemálo věcí, které jsou specifikovány. Stěžejní z\ pohledu nástroje DIVINE a\ výběru vhodného komunikačního rozhraní jsou především dvě pasáže, a\ to\ `Address Famillies` a\ `Socket Types`. První definuje, skrz které médium se\ budou sockety používat, zatímco druhá podstatná pasáž je\ o\ tom, jaké vlastnosti bude mít samotný přenos dat skrz sockety.
+Popis BSD socketů je abstrakce nad různými druhy spojení. V\ části POSIX standardu o\ socketech^[<http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_06>] můžeme nalézt poměrně nemálo věcí, které jsou specifikovány. Stěžejní z\ pohledu nástroje DIVINE a\ výběru vhodného komunikačního rozhraní jsou především dvě pasáže, a\ to\ `Address Famillies` a\ `Socket Types`. První definuje, skrz které médium se\ budou sockety používat, zatímco druhá podstatná pasáž je\ o\ tom, jaké vlastnosti bude mít samotný přenos dat skrz sockety.
 
 Ačkoliv se\ v\ odkazované části POSIX standardu hovoří o\ ``Address Families'', dále ve\ standardu v\ části popisující funkce a\ jejich parametry se\ již hovoří o\ komunikační doméně. Budu tento termín nadále používat, neboť dle mého soudu lépe popisuje danou skutečnost.
 
 ## Komunikační doména
 
-POSIX standard popisuje konkrétně tři možné komunikační domény -- lokální unixové sockety, sockety určené pro\ síťový protokol IPv4 [[RFC791]](https://tools.ietf.org/html/rfc791) a\ sockety pro síťový protokol IPv6 [[RFC2460]](https://tools.ietf.org/html/rfc2460). Standard se\ pak dále zabývá technickými detaily, jako které číselné konstanty jsou určeny pro kterou rodinu adres, či\ jak přesně jsou zápisy adres reprezentovány v\ paměti.
+POSIX standard popisuje konkrétně tři možné komunikační domény -- lokální unixové sockety, sockety určené pro\ síťový protokol IPv4 \cite{RFC791} a\ sockety pro síťový protokol IPv6 \cite{RFC2460}. Standard se\ pak dále zabývá technickými detaily, jako které číselné konstanty jsou určeny pro kterou rodinu adres, či\ jak přesně jsou zápisy adres reprezentovány v\ paměti.
 
 Pro\ adresaci unixových socketů se\ používá cesta adresářovým stromem,[^fs-tree] s\ tím, že\ standard nedefinuje maximální délku cesty. Žádné další aspekty adresování nejsou při práci unixovými sockety zohledňovány.
 
 [^fs-tree]: Zde je nejspíše nutné malou poznámkou zmínit, že\ v\ souborových systémech unixového typu není adresářový strom stromem z\ pohledu teoretické informatiky, neboť umožňuje vytvářet cykly.
 
-V\ případě socketů pro\ síťový protokol je\ třeba rozlišovat mezi protokolem IPv4 a\ IPv6. První zmiňovaný používá k\ adresaci čtyři čísla v\ rozsahu 0 -- 255. Při textové reprezentaci se\ ony\ čtyři čísla zapíšou v\ desítkovém základu a\ oddělí se\ tečkami. Ve\ strojovém zápisu se\ pak jedná o\ 32bitové číslo. Protokol IPv6 [[RFC4291]](https://tools.ietf.org/html/rfc4291) reflektuje primárně nedostatek adres IPv4 [[ICANN zpráva]](https://www.icann.org/en/system/files/press-materials/release-03feb11-en.pdf), což bylo při návrhu zohledněno a\ pro adresaci se\ používá osm čísel v rozsahu 0 -- 65 535. Preferovaná textová reprezentace je\ zapsat oněch osm čísel v\ šestnáctkovém základu a\ oddělit je\ dvojtečkami. Ve\ strojovém zápisu se\ pak jedná o 128bitové číslo.
+V\ případě socketů pro\ síťový protokol je\ třeba rozlišovat mezi protokolem IPv4 a\ IPv6. První zmiňovaný používá k\ adresaci čtyři čísla v\ rozsahu 0 -- 255. Při textové reprezentaci se\ ony\ čtyři čísla zapíšou v\ desítkovém základu a\ oddělí se\ tečkami. Ve\ strojovém zápisu se\ pak jedná o\ 32bitové číslo. Protokol IPv6 \cite{RFC4291} reflektuje primárně nedostatek adres IPv4^[Zpráva organizace ICANN: <https://www.icann.org/en/system/files/press-materials/release-03feb11-en.pdf>], což bylo při návrhu zohledněno a\ pro adresaci se\ používá osm čísel v rozsahu 0 -- 65 535. Preferovaná textová reprezentace je\ zapsat oněch osm čísel v\ šestnáctkovém základu a\ oddělit je\ dvojtečkami. Ve\ strojovém zápisu se\ pak jedná o 128bitové číslo.
 
 Vzhledem k\ tomu, že\ v\ současné době oba protokoly koexistují vedle sebe a\ nelze bez podrobnějšího zkoumání rozhodnout, zda nějaká síť používá IPv4, či\ IPv6, je\ nutné v\ POSIXovém rozhraní nabídnout takovou funkcionalitu, která bude (pro běžné používáním) nezávislá na\ verzi protokolu IP. Touto funkcí je\ [`getaddrinfo`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html), která přeloží jméno cílového stroje a/nebo jméno služby a\ vrací seznam adres, lhostejno zda IPv4, či\ IPv6, které lze dále použít ve\ funkcích řešících otevření spojení, zaslání dat a\ jiných.
 
-Jméno cílového stroje obyčejně bývá název stroje v\ síti, což může také zahrnout i\ nadřazené domény. Více informací lze hledat v\ [[RFC1034]](https://tools.ietf.org/html/rfc1034), [[RFC1035]](https://tools.ietf.org/html/rfc1035) (definují koncept doménových jmen a popisují jejich implementaci) a\ [[RFC1886]](https://tools.ietf.org/html/rfc1886) (rozšíření doménových jmen pro IPv6). Co je\ jméno služby bude probráno více u\ typů socketů.
+Jméno cílového stroje obyčejně bývá název stroje v\ síti, což může také zahrnout i\ nadřazené domény. Více informací lze hledat v\ [\cite{RFC1034,RFC1035}^[Definují koncept doménových jmen a\ popisují jejich implementaci.]) a\ \cite{RFC1886}^[Rozšíření doménových jmen pro IPv6.]. Co je\ jméno služby bude probráno více u\ typů socketů.
 
 ## Typy socketů
 
-[[POSIX standard]](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_06) definuje čtyři různé typy: `SOCK_DGRAM`, `SOCK_RAW`, `SOCK_SEQPACKET` a\ `SOCK_STREAM` s\ tím, že\ implementace může definovat další typy. Ne\ všechny typy socketů jsou k\ dispozici ve všech komunikačních doménách, navíc je\ nutné mít na paměti, že\ výsledné chování každého typu může navíc záležet na\ komuniační doméně. Pro nástroj DIVINE je\ navíc klíčové použití síťové komunikační domény, takže pozornost bude věnována primárně na\ chvání různých typů socketů v\ této doméně.
+POSIX standard^[<http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_06>] definuje čtyři různé typy: `SOCK_DGRAM`, `SOCK_SEQPACKET`, `SOCK_RAW` a\ `SOCK_STREAM` s\ tím, že\ implementace může definovat další typy. Ne\ všechny typy socketů jsou k\ dispozici ve všech komunikačních doménách, navíc je\ nutné mít na paměti, že\ výsledné chování každého typu může navíc záležet na\ komuniační doméně. Pro nástroj DIVINE je\ navíc klíčové použití síťové komunikační domény, takže pozornost bude věnována primárně na\ chvání různých typů socketů v\ této doméně.
 
 Stručné vysvětlení, co jednotlivé typy socketů znamenají:
 
@@ -271,17 +271,17 @@ Jak vyplývá z\ názvu, spojité sockety vytváří spojení mezi dvěma komuni
 
 #### Síťová doména
 
-V\ síťové doméně je\ zbytečné rozlišovat mezi IPv4 a\ IPv6. Novější IPv6 sice přidává některé zajímavé vlastnosti jako například možnost šifrování, ale\ obecně lze\ z\ pohledu spojitých socketů brát IPv4 a\ IPv6 za\ totožné. Spojité sockety jsou v\ síťové komunikační doméně implementovány pomocí TCP [[RFC793]](https://tools.ietf.org/html/rfc793).
+V\ síťové doméně je\ zbytečné rozlišovat mezi IPv4 a\ IPv6. Novější IPv6 sice přidává některé zajímavé vlastnosti jako například možnost šifrování, ale\ obecně lze\ z\ pohledu spojitých socketů brát IPv4 a\ IPv6 za\ totožné. Spojité sockety jsou v\ síťové komunikační doméně implementovány pomocí TCP \cite{RFC793}.
 
 TCP v\ sobě implementuje všechny požadavky na\ spojité sockety, které klade POSIX standard. Před použitím je\ třeba navázat spojení, které operační systém provede ve\ třech krocích. V\ TCP je\ proud dat simulován tak, že\ jednotlivé bloky dat (dále jako záznamy) jsou rozděleny do paketů, v\ případě, že\ je\ záznam příliš velký na paket, je\ záznam rozdělen mezi více paketů.
 
-Garance neporušení dat je\ realizována kontrolním součtem, který je\ předáván společně s\ daty v hlavičce paketu. Garance doručení a\ doručení ve\ správném pořadí je\ v\ TCP prováděna tak, že\ každý odeslaný paket má\ své unikátní číslo, případně pořadové číslo (v\ případě rozdělení záznamu do\ více paketů), a\ odesílající strana vyžaduje potvrzení přijetí od\ přijímající strany do\ určitého času [[RFC6298]](https://tools.ietf.org/html/rfc6298). Pokud by\ k\ potvrzení nedošlo, je\ paket odeslán znovu. Na\ straně příjemce je\ v\ případě rozdělení záznamu do\ více paketů záznam zrekonstruován.
+Garance neporušení dat je\ realizována kontrolním součtem, který je\ předáván společně s\ daty v hlavičce paketu. Garance doručení a\ doručení ve\ správném pořadí je\ v\ TCP prováděna tak, že\ každý odeslaný paket má\ své unikátní číslo, případně pořadové číslo (v\ případě rozdělení záznamu do\ více paketů), a\ odesílající strana vyžaduje potvrzení přijetí od\ přijímající strany do\ určitého času \cite{RFC6298}. Pokud by\ k\ potvrzení nedošlo, je\ paket odeslán znovu. Na\ straně příjemce je\ v\ případě rozdělení záznamu do\ více paketů záznam zrekonstruován.
 
 Zde je\ nutné zmínit se\ o\ portech. Pro úspěšné navázání komunikace je\ zapotřebí dvou různých entit -- serveru (stroje, který očekává příchozí spojení) a\ klienta (stroje, který iniciuje komunikaci). V\ rámci serveru je\ obyčejně více aplikací, které čekají na\ příchozí spojení. Každé takové čekání musí být jednoznačně identifikováno a\ k\ tomu slouží port -- číslo, které popisuje jeden konec (ještě nenavázaného) spojení.
 
-Klient musí dopředu vědět, na\ kterém portu chce na\ serveru navázat spojení, proto byl v\ počátcích internetu zveřejněn dokument [[RFC1700]](https://tools.ietf.org/html/rfc1700), který byl postupně aktualizován[^iana] a\ obsahoval původně seznam 256, posléze až\ 1024, obsazených portů pro\ specifikované účely, například porty 20 a\ 21 pro FTP [[RFC959]](https://tools.ietf.org/html/rfc959) nebo port 80 pro\ web a\ HTTP [[RFC7230]](https://tools.ietf.org/html/rfc7230). Číslo portu je\ v\ síťové doméně jméno služby a\ je\ předáváno jako parametr do\ funkce [`getaddrinfo`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html).
+Klient musí dopředu vědět, na\ kterém portu chce na\ serveru navázat spojení, proto byl v\ počátcích internetu zveřejněn dokument \cite{RFC1700}, který byl postupně aktualizován[^iana] a\ obsahoval původně seznam 256, posléze až\ 1024, obsazených portů pro\ specifikované účely, například porty 20 a\ 21 pro FTP \cite{RFC959} nebo port 80 pro\ web a\ HTTP \cite{RFC7230}. Číslo portu je\ v\ síťové doméně jméno služby a\ je\ předáváno jako parametr do\ funkce [`getaddrinfo`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/getaddrinfo.html).
 
-[^iana]: V roce 2002 bylo původní [[RFC1700]](https://tools.ietf.org/html/rfc1700) nahrazeno za [[RFC3232]](https://tools.ietf.org/html/rfc3232), které odkazuje na online databázi na adrese <http://www.iana.org/assignments/protocol-numbers/>.
+[^iana]: V roce 2002 bylo původní \cite{RFC1700} nahrazeno za \cite{RFC3232}, které odkazuje na online databázi na adrese <http://www.iana.org/assignments/protocol-numbers/>.
 
 **[obrázek hlavičky paketu]**
 
@@ -322,7 +322,7 @@ V\ čem se\ ale liší, je\ sémantika přenosu dat. Spojité sockety vytvářel
 
 #### Síťová doména
 
-POSIX standard nespecifikuje [[X]](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_18), jak má být tento typ socketu implementován v\ síťové komunikační doméně. Ačkoliv je\ možné předpokládat, že\ bude tento typ socketu dostupný v\ proprietárních sítích dostupný, v\ běžně používaných síťových prvcích není dostupný.
+POSIX standard nespecifikuje^[<http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_18>], jak má být tento typ socketu implementován v\ síťové komunikační doméně. Ačkoliv je\ možné předpokládat, že\ bude tento typ socketu dostupný v\ proprietárních sítích dostupný, v\ běžně používaných síťových prvcích není dostupný.
 
 #### Unixová doména
 
@@ -357,7 +357,7 @@ Protože nespojité sockety nevytváří spojení, celý komunikační model je\
 
 #### Síťová doména
 
-Podobně jako u\ spojitých socketů je\ v\ kontextu síťové domény zbytečné rozlišovat mezi IPv4 a\ IPv6. Jediný podstatnější rozdíl bude zmíněn později. Nespojité sockety jsou v\ síťové komunikační doméně implementovány pomocí UDP [[RFC768]](https://tools.ietf.org/html/rfc768).
+Podobně jako u\ spojitých socketů je\ v\ kontextu síťové domény zbytečné rozlišovat mezi IPv4 a\ IPv6. Jediný podstatnější rozdíl bude zmíněn později. Nespojité sockety jsou v\ síťové komunikační doméně implementovány pomocí UDP \cite{RFC768}.
 
 UDP slouží k\ co\ nejjednoduššímu předávání dat od\ odesílatele k\ příjemci. Z\ tohoto důvodu v\ sobě implementuje minimum mechanismů, jako například garance doručení, neporušení integrity dat a\ jiné, které jsou implementované v TCP. Shodně s\ TCP je\ v\ případě UDP přenos realizován pomocí paketů.
 
@@ -374,7 +374,7 @@ Další zajímavou položkou z\ hlavičky UDP paketu je\ délka dat. Při znalos
 
 Vzhledem k\ tomu, že\ UDP nevytváří spojení, je\ nutné při každém zaslání zprávy specifikovat příjemce. Jedním z\ vedlejších důsledků této vlastnosti je, že\ je možné zprávu zaslat na\ speciální adresu, což způsobí, že\ se\ zpráva rozešle všem síťovým prvkům v\ lokální síti. V\ IPv4 se\ tento způsob doručování zpráv jmenuje *broadcast* a\ ona speciální adresa je\ `255.255.255.255`. V\ IPv6 se\ nehovoří o broadcastu, ale o\ *multicastu*[^multicast]. Multicast se\ od\ broadcastu liší tím, že\ zpráva nemusí být zaslána všem strojům v\ místní síti, ale\ pouze těm, kteří se\ nahlásí o\ její přijetí. Zpráva zaslaná pomocí multicastu navíc může být doručena i\ mimo lokální síť.
 
-[^multicast]: I\ v\ IPv4 byl později [[RFC988]](https://tools.ietf.org/html/rfc988)[[RFC3376]](https://tools.ietf.org/html/rfc3376) také implementován multicast, ovšem koncovému uživateli Internetu nemusí být dostupný.
+[^multicast]: I\ v\ IPv4 byl později \cite{RFC988,RFC3376} také implementován multicast, ovšem koncovému uživateli Internetu nemusí být dostupný.
 
 [^posix-recv]: Jedná se primárně o funkce [`recv`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/recv.html), [`recvfrom`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/recvfrom.html) a\ [`recvmsg`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/recvmsg.html).
 
@@ -402,7 +402,7 @@ Ukázka použití v unixové komunikační doméně[^note-site]:
 
 ### Hrubé sockety
 
-Hrubé sockety[^raw-socket] jsou posledním typem socketů, které definuje POSIX standard. Sami o\ sobě nejsou samostatným typem (pokud by\ byly srovnávány s\ třemi předchozími), ale\ spíše je\ základem pro\ dříve jmenované. Žádostí o\ vytvoření hrubého socketu program žádá rozhraní operačního systému pro přímý přístup ke třetí vrstvě [ISO/OSI](http://www.ecma-international.org/activities/Communications/TG11/s020269e.pdf) modelu.
+Hrubé sockety[^raw-socket] jsou posledním typem socketů, které definuje POSIX standard. Sami o\ sobě nejsou samostatným typem (pokud by\ byly srovnávány s\ třemi předchozími), ale\ spíše je\ základem pro\ dříve jmenované. Žádostí o\ vytvoření hrubého socketu program žádá rozhraní operačního systému pro přímý přístup ke třetí vrstvě ISO/OSI \cite{zimmermann1980osi} modelu.
 
 Touto cestou je\ možné implementovat libovolný vlastní protokol na\ čtvrté vrstvě ISO/OSI modelu. Moderní operační systémy z\ důvodu bezpečnosti nedovolují aplikacím s\ běžným oprávněním vytváření takovýchto typů socketů, proto se\ jimi nebudu v\ této práci dále zaobírat.
 
@@ -412,31 +412,31 @@ Touto cestou je\ možné implementovat libovolný vlastní protokol na\ čtvrté
 
 \label{sec:comm:asio}
 
-[Asio](http://www.boost.org/doc/libs/1_60_0/doc/html/boost_asio.html) je\ knihovna z\ Boostu, která nabízí asynchronní vstupně-výstupní operace. Je\ také jednou z\ knihoven, které mohou být použity i\ [samostatně](http://think-async.com).
+Asio \cite{kohlhoff2003boost} je\ knihovna z\ Boostu, která nabízí asynchronní vstupně-výstupní operace. Je\ také jednou z\ knihoven, které mohou být použity i\ samostatně^[<http://think-async.com>].
 
 ## Boost
 
-[Boost](http://www.boost.org) je\ seskupení C++ knihoven, které pokrývají mnoho témat, od\ základních věcí jako časovače, přes statistické funkce, až\ po\ práci s\ obrázky či\ regulárními výrazy. Celkově tak Boost obsahuje několik desítek takových khihoven. Některé knihovny navíc mohou existovat ve\ dvou formách -- jednou jako součást Boostu, podruhé jako samostatná knihovna.
+Boost^[<http://www.boost.org>] je\ seskupení C++ knihoven, které pokrývají mnoho témat, od\ základních věcí jako časovače, přes statistické funkce, až\ po\ práci s\ obrázky či\ regulárními výrazy. Celkově tak Boost obsahuje několik desítek takových khihoven. Některé knihovny navíc mohou existovat ve\ dvou formách -- jednou jako součást Boostu, podruhé jako samostatná knihovna.
 
-Mnohé knihovny z\ Boostu, obdobně jako nemalé části Standardní C++ knihovny[^STD] (dále jako STD), nabízejí sjednocené rozhraní k\ systémovému rozhraní, které se\ může lišit na\ základě operačního systému. Jako příklad co\ nejrozdílnějšího systémového rozhraní lze uvést operační systémy [Microsoft Windows](https://www.microsoft.com/cs-cz/windows) a\ UNIX-like[^unix-like] systémy. Knihovny z\ Boostu, na\ rozdíl od\ STD, mnohdy poskytují specifická rozšíření pro některé architektury a\ operační systémy.
+Mnohé knihovny z\ Boostu, obdobně jako nemalé části Standardní C++ knihovny[^STD] (dále jako STD), nabízejí sjednocené rozhraní k\ systémovému rozhraní, které se\ může lišit na\ základě operačního systému. Jako příklad co\ nejrozdílnějšího systémového rozhraní lze uvést operační systémy Microsoft Windows a\ UNIX-like[^unix-like] systémy. Knihovny z\ Boostu, na\ rozdíl od\ STD, mnohdy poskytují specifická rozšíření pro některé architektury a\ operační systémy.
 
 [^STD]: Standardní C++ knihovna je\ kolekce tříd a\ funkcí, které jsou napsány převážně v\ jazyce C++ (některé části, například Knihovna jazyka C, jsou psány v\ jazyce C). Standardní C++ knihovna je\ součástí ISO C++ standardu, který tak definuje rozhraní a\ další vlastnosti knihovních tříd a\ funkcí. Více o\ standardní knihovně lze nalézt na <http://en.cppreference.com/w/cpp/links> a\ v\ odkazech uvedených na\ stránce.
 
-[^unix-like]: Jedná se\ o\ operační systémy, které vycházejí z\ filozofie systému [UNIX](https://en.wikipedia.org/wiki/Unix#cite_note-Ritchie-3), poskytují obdobné rozhraní, ale neprošly procesem standardizace. Jako příklad lze uvést operační systémy jako BSD, či\ System\ V.
+[^unix-like]: Jedná se\ o\ operační systémy, které vycházejí z\ filozofie systému UNIX \cite{ritchie1974unix}, poskytují obdobné rozhraní, ale neprošly procesem standardizace. Jako příklad lze uvést operační systémy jako BSD, či\ System\ V.
 
-Vztah knihoven obsažených v\ Boostu a\ STD je\ v\ některých případech velmi těsný. Důvod je\ ten, že spousta tříd a\ funkcí, které jsou standardizovány a\ tedy jsou součástí STD, mají svůj původ v\ některé knihovně v\ Boostu [[X]](http://www.boost.org/doc/libs/?view=filtered_std-proposal)[[X]](http://www.boost.org/doc/libs/?view=filtered_std-tr1). V\ novějších verzích standardu jazyka C++ pak těchto knihoven přibývá.
+Vztah knihoven obsažených v\ Boostu a\ STD je\ v\ některých případech velmi těsný. Důvod je\ ten, že spousta tříd a\ funkcí, které jsou standardizovány a\ tedy jsou součástí STD, mají svůj původ v\ některé knihovně v\ Boostu^[<http://www.boost.org/doc/libs/?view=filtered_std-proposal> a\ <http://www.boost.org/doc/libs/?view=filtered_std-tr1>]. V\ novějších verzích standardu jazyka C++ pak těchto knihoven přibývá.
 
 ## Knihovna Asio
 
- Hlavním přínosem knihovny Asio je její pojetí asynchronních volání. Asynchronní volání se\ v\ posledních několika letech stávají populární především možností použít ho v\ rozšířených programovacích jazycích, jako je\ například  [Java](https://docs.oracle.com/javase/6/docs/api/java/util/concurrent/FutureTask.html) nebo [C#](https://msdn.microsoft.com/en-us/library/hh873175%28v=vs.110%29.aspx). V\ poslední velké revizi jazyka C++ se\ asynchronní volání objevily také v\ podobě funkce `std::async`. Asynchronní volání ve\ zkratce znamená, že\ namísto běžného volání funkce poznačíme, že\ požadujeme provedené té které funkce, a\ až v\ místě, kde potřebujeme znát výsledek, si\ o\ něho požádáme. Je\ pak na\ možnostech jazyka a\ běhového prostředí, aby se\ postaralo o\ vyhodnocení asynchronně volané funkce. Možností je\ zde více, namátkou například spuštění asynchronní funkce v\ samostatném vlákně, nebo prolnutí funkcí během překladu do\ strojového kódu či\ mezikódu.
+ Hlavním přínosem knihovny Asio je její pojetí asynchronních volání. Asynchronní volání se\ v\ posledních několika letech stávají populární především možností použít ho v\ rozšířených programovacích jazycích, jako je\ například  Java^[<https://docs.oracle.com/javase/6/docs/api/java/util/concurrent/FutureTask.html>] nebo C#^[<https://msdn.microsoft.com/en-us/library/hh873175%28v=vs.110%29.aspx>]. V\ poslední velké revizi jazyka C++ se\ asynchronní volání objevily také v\ podobě funkce `std::async`. Asynchronní volání ve\ zkratce znamená, že\ namísto běžného volání funkce poznačíme, že\ požadujeme provedené té které funkce, a\ až v\ místě, kde potřebujeme znát výsledek, si\ o\ něho požádáme. Je\ pak na\ možnostech jazyka a\ běhového prostředí, aby se\ postaralo o\ vyhodnocení asynchronně volané funkce. Možností je\ zde více, namátkou například spuštění asynchronní funkce v\ samostatném vlákně, nebo prolnutí funkcí během překladu do\ strojového kódu či\ mezikódu.
 
 Další neméně důležitou součástí jsou vstupně-výstupní operace. STD poskytuje rozhraní pro práci se\ standardním vstupem a\ výstupem a\ také rozhraní pro práci se\ soubory. Co\ už\ ale STD knihovna nenabízí je\ práce se\ sítí, kterou naopak knihovna Asio poskytuje. Poskytnuté funkce a\ třídy jsou navíc psány v\ obdobných konvencích jako STD.
 
-Rozhraní pro síťovou komunikaci implementuje knihovna Asio nad BSD sockety. Samozřejmě poskytuje podporu pro použití obou verzí IP, taktéž pro TCP i\ UDP. Navíc, protože je\ v\ současné době často nutnost použít zabezpečené spojení, umožňuje knihovna Asio použít SSL [[RFC6101]](https://tools.ietf.org/html/rfc6101), ke\ kterému je\ ale potřeba další knihovna -- [OpenSSL](https://www.openssl.org/).
+Rozhraní pro síťovou komunikaci implementuje knihovna Asio nad BSD sockety. Samozřejmě poskytuje podporu pro použití obou verzí IP, taktéž pro TCP i\ UDP. Navíc, protože je\ v\ současné době často nutnost použít zabezpečené spojení, umožňuje knihovna Asio použít SSL \cite{RFC6101}, ke\ kterému je\ ale potřeba další knihovna -- OpenSSL^[<https://www.openssl.org/>].
 
 ## Princip používání Asio
 
-Knihovna Asio je\ postavena na\ návrhovém vzoru Proaktor[D. Schmidt et al, Pattern Oriented Software Architecture, Volume 2. Wiley, 2000.]. Základem pro veškeré asynchronní operace je\ objekt třídy `asio::io_service`, která zároveň plní úlohu proaktora. Další třídy, které reprezentují například sockety, mají roli inicializátorů. Poslední rolí, která stojí za\ zmínku, je\ oznamovač, což je\ funkce, která je\ spuštěna proaktorem po\ dokončení asynronní operace.
+Knihovna Asio je\ postavena na\ návrhovém vzoru Proaktor \cite{schmidt2013pattern}. Základem pro veškeré asynchronní operace je\ objekt třídy `asio::io_service`, která zároveň plní úlohu proaktora. Další třídy, které reprezentují například sockety, mají roli inicializátorů. Poslední rolí, která stojí za\ zmínku, je\ oznamovač, což je\ funkce, která je\ spuštěna proaktorem po\ dokončení asynronní operace.
 
 Asynchronní režim se\ za\ podpory knihovny Asio používá poměrně jednoduše. Po\ vytvoření instance třídy `asio::io_service` program zaregistruje různé události, které ho zajímají. Může to\ být impulz z\ časovače, příchozí spojení nebo třeba dokončený zápis dat do\ souboru. Současně s\ registrací program upřesňuje, jaké funkce se\ mají zavolat v\ okamžiku, kdy událost nastane. Jediné, na\ co\ je\ třeba dávat pozor, je\ opětovná registrace na\ nastalou událost. Po\ zaregistrování všech požadovaných událostí stačí spustit metodu `run` na\ proaktoru.
 
@@ -460,7 +460,7 @@ Při zvažování, zda implementovat vlastní zjednodušenou nadstavbu nad BSD s
 
 Pro samotnou implementaci pak bude potřeba ze\ dříve uvedených typů socketů vybrat ten nejvhodnější. Nová implementace dále vyžaduje vytvořit jednoduchý komunikační protokol pro ustanovení sítě strojů kooperujících na\ distribuovaném výpočtu. Při návrhu nové implementace se\ navíc nemusím držet architektury distribuované aplikace, jak ji\ popisuje MPI, která má dle mého názoru některé vady, pročež jsem se\ rozhodl, že vytvořím architekturu s\ jinými vlastnostmi.
 
-Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura je\ [x86-64](http://www.amd.com/Documents/x86-64_wp.pdf) a\ jehož operační systém používá rozhraní definované POSIX standardem -- převážně počítám s\ operačním systémem [GNU/Linux](http://www.gnu.org/gnu/linux-and-gnu.html.en). Dále předpokládám, že\ endianita všech strojů participující na\ výpočtu je\ stejná, což je\ předpoklad, který využiji při návrhu formy zasílání dat.
+Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura je\ x86-64 \cite{AMD64} a\ jehož operační systém používá rozhraní definované POSIX standardem -- převážně počítám s\ operačním systémem GNU/Linux^[<http://www.gnu.org/gnu/linux-and-gnu.html.en>]. Dále předpokládám, že\ endianita všech strojů participující na\ výpočtu je\ stejná, což je\ předpoklad, který využiji při návrhu formy zasílání dat.
 
 # Analýza vlastností typů socketů
 
@@ -498,7 +498,7 @@ Nástroj DIVINE potřebuje ke\ své práci korektní data. V\ případě běhu v
 
 Spojité sockety, konkrétně implementované pomocí TCP, tyto garance zajišťují pomocí kontrolních součtů dat při příjmu. Pokud je\ kontrolní součet dat odlišný od\ toho, který byl v\ hlavičce TCP paketu, dojde k\ opětovnému přenosu paketu. Použitím spojitých socketů tak odpadá potřeba implementovat vlastní mechanismy do\ nástroje DIVINE, které by\ zaručovaly nepoškozená data.
 
-TCP sockety mají navíc mechanismus, který zaručuje (v\ případě, že\ to\ je\ možné) doručení dat. Znamená to\ tedy, že\ pokud do\ určitého časového intervalu nedorazí odesílateli potvrzení o\ doručení, pošle odesílatel zprávu znovu.
+TCP sockety mají navíc mechanismus, který zaručuje (v\ případě, že\ to\ je možné) doručení dat. Znamená to\ tedy, že\ pokud do\ určitého časového intervalu nedorazí odesílateli potvrzení o\ doručení, pošle odesílatel zprávu znovu.
 
 ### Možnost poslat neomezeně dlouhou zprávu
 
@@ -529,7 +529,7 @@ Jednak to\ znamená, že\ se\ bude v\ síťové komunikaci posílat méně dat v
 
 Pak to\ také znamená, že\ by bylo potřeba implementovat vlastní protokol nad UDP pro ověřování korektnosti dat a\ pro ověřování jejich doručení. Předpokládá se, že\ nástroj DIVINE bude provozován v\ uzavřených sítích, takže je\ zde silný předpoklad na\ to, že\ síťových prvků mezi dvěma komunikujícími stroji bude malý počet -- typicky jeden síťový rozbočovač. Případně implementovaný protokol by\ tedy měl být šetrný k\ běžnému provozu a\ až\ v\ případě chyby při přenosu by\ mělo dojít k vyšší režii.
 
-Další vlastností nespojitých socketů je\ maximální délka zprávy. Maximální bezpečnou délku UDP paketů omezuje [[RFC1122]](https://tools.ietf.org/html/rfc1122#page-58) na\ 576 bytů minus délka IP hlavičky, což v\ praxi omezuje délku UDP paketu na\ 512 bytů. UDP paket může být větší, pokud všechny síťové prvky na\ cestě mezi odesílatelem a\ příjemcem podporují delší zprávy. Protože nástroj DIVINE posílá zprávy o\ velikosti několika málo desítek kilobytů, znamenalo by\ to\ potřebu zajistit fragmentaci dat na\ straně odesílatele a\ defragmentaci na\ straně příjemce.
+Další vlastností nespojitých socketů je\ maximální délka zprávy. Maximální bezpečnou délku UDP paketů omezuje \cite{RFC1122} na\ 576 bytů minus délka IP hlavičky, což v\ praxi omezuje délku UDP paketu na\ 512 bytů. UDP paket může být větší, pokud všechny síťové prvky na\ cestě mezi odesílatelem a\ příjemcem podporují delší zprávy. Protože nástroj DIVINE posílá zprávy o\ velikosti několika málo desítek kilobytů, znamenalo by\ to\ potřebu zajistit fragmentaci dat na\ straně odesílatele a\ defragmentaci na\ straně příjemce.
 
 Poslední vlastností, kterou jsem výše uvedl, je\ neudržování spojení. Zde je\ namístě krátká polemika o\ tom, jak je\ síťová komunikace využívaná z\ pohledu nástroje DIVINE. Ačkoliv totiž od komunikační vrstvy DIVINE požaduje v\ podstatě pouze posílání zpráv, kde by\ se\ nespojité sockety hodily, potřebuje také udržovat znalost o\ tom, že\ jsou všechny stroje participující na\ distribuovaném výpočtu spojené. Danou funkcionalitu UDP nenabízí a\ bylo by\ tedy nutné ji\ taktéž implementovat.
 
@@ -564,14 +564,14 @@ Oproti spojitým socketům pevně ohraničují zprávy, takže se nemůže stát
 
 Na\ výběr zůstaly spojité sockety implementované pomocí TCP a\ nespojité sockety, které jsou implementované pomocí UDP. Obě dvě implementace jsou jako standardní síťové protokolyy na\ strojích typicky implementovány na\ úrovni operačního systému. V\ případě TCP to\ přináší několik výhod:
 
-1.  Veškerá obsluha spojení, příchozích dat a\ režie je\ prováděna v\ rámci jedné úrovně bezpečnosti procesoru [[Paul A. Karger, Andrew J. Herbert, An Augmented Capability Architecture to Support Lattice Security and Traceability of Access, sp, p. 2, 1984 IEEE Symposium on Security and Privacy, 1984]](http://www.computer.org/csdl/proceedings/sp/1984/0532/00/06234805-abs.html) a\ nedochází tak k\ vícenásobnému přepínání kontextu z\ uživatelského prostoru (*ring 3*) do\ jádra operačního systému (*ring 0*).
+1.  Veškerá obsluha spojení, příchozích dat a\ režie je\ prováděna v\ rámci jedné úrovně bezpečnosti procesoru \cite{karger1984augmented} a\ nedochází tak k\ vícenásobnému přepínání kontextu z\ uživatelského prostoru (*ring 3*) do\ jádra operačního systému (*ring 0*).
 2.  Obsluha síťového rozhraní musí používat zámky pro paralelní přístup. Výhodou je, že\ u\ rozšířeného operačního systému, jakým GNU/Linux je, se\ očekává, že\ implementace nebude obsahovat problémy typu uváznutí a\ bude optimalizovaná.
 3.  Implementace TCP pracuje šetrně s\ pamětí. Znamená to, že\ obsahy příchozích paketů skládá do\ vyrovnávacích pamětí a\ až\ v\ případě, že\ přijde z\ uživatelského prostoru požadavek na\ přijetí dat, se\ zpráva zkopíruje do\ programem označené paměti. Příchozí zpráva je\ tedy dvakrát kopírována.
 4.  TCP je\ v\ provozu již více jak 30 let. Lze tedy očekávat, že\ případné chyby v\ protokolu a\ v\ implementacích operačních systémů již byly nalezeny a\ opraveny.
 
 Oproti tomu použití nespojitých socketů umožňuje využít malou režii a\ zároveň vyšší rychlost díky kratším hlavičkám UDP paketů. Nevýhodou je\ nutnost implementovat vlastní protokol pro udržování spojení, pro garanci korektnosti dat a\ pro další dříve zmíněné požadované vlastnosti. Tento vlastní protokol navíc obrací výhodu uvedené u\ TCP na\ nevýhody:
 
-1.  Obsluha spojení, příchozích dat a\ režije je\ prováděna v\ uživatelském prostoru. Každý dotaz na\ příchozí data nutně vyžaduje přepnutí kontextu z\ uživatelského do\ jádra opračního systému, což je\ drahá operace vzhledem k\ času [[X]](http://os.itec.kit.edu/65_1029.php).
+1.  Obsluha spojení, příchozích dat a\ režije je\ prováděna v\ uživatelském prostoru. Každý dotaz na\ příchozí data nutně vyžaduje přepnutí kontextu z\ uživatelského do\ jádra opračního systému, což je\ drahá operace vzhledem k\ času \cite{Liedtke95MicrokernelConstruction}.
 2.  V\ případě paralelního přístupu by\ bylo potřeba navíc použít zámky pro paralelní přístup v\ uživatelském prostoru. Další zámky mohou hypoteticky snížit rychlost zpracování dat. V\ případě použití dedikovaného vlákna pro zpracování příchozích spojení pak musíme řešit navíc mezivláknovou komunikaci, kde se\ pravděpodobně také použijí zámky. Povšimněte si, že\ k\ zamykání systémových zámků dochází i\ při tomto přístupu.
 3.  Další vrstva vyrovnávacích pamětí, kterou je\ potřeba použít, způsobí, že\ bloky dat nebudou před přijetím kopírovány dvakrát, ale třikrát.
 4.  U čerstvě vytvořeného protokolu hrozí vyšší riziko chyb -- jak návrhové chyby, tak implementační.
@@ -584,7 +584,7 @@ Z\ tohoto shrnutí se\ mi jeví jako vhodné použít spojité sockety spolu s\ 
 
 \label{sec:new:arch}
 
-Stávající řešení, kdy se\ MPI agent postupně přes `ssh` [[RFC4252]](https://tools.ietf.org/html/rfc4252) připojí ke\ všem strojům, kteří se\ mají účastnit distribuovaného výpočtu, provede se\ výpočet a\ jednotlivé instance na\ výpočetních strojích se\ ukončí, vypovídá o\ pohledu, jakým se\ díváme na\ nástroj DIVINE. Jako na\ program, který jednou spustíme, on\ nám dá výsledek a\ tím je\ vše hotovo.
+Stávající řešení, kdy se\ MPI agent postupně přes `ssh` \cite{RFC4252} připojí ke\ všem strojům, kteří se\ mají účastnit distribuovaného výpočtu, provede se\ výpočet a\ jednotlivé instance na\ výpočetních strojích se\ ukončí, vypovídá o\ pohledu, jakým se\ díváme na\ nástroj DIVINE. Jako na\ program, který jednou spustíme, on\ nám dá výsledek a\ tím je\ vše hotovo.
 
 Na\ nástroj DIVINE se\ ale můžeme dívat i\ jinak. Jako na\ službu, která běží někde ve výpočetním clusteru a\ která je\ dostupná skrz nějaké rozhraní -- skrz grafickou aplikaci, příkazový řádek či\ webovou stránku. Pro tento nový pohled je\ ale potřeba provést změny v\ architektuře. Jedná se\ zejména o\ rozdělení programu na\ dvě části. První a\ podstatnější je\ serverová část, která je\ zodpovědná za\ samotné provedení výpočtu. Druhou částí je\ klientská část, která je\ v\ aktuálním návrhu zodpovědná za\ zadání práce vybraným serverům.
 
@@ -653,9 +653,8 @@ Zpráva poskytuje metody pro manipulaci s\ hlavičkou zprávy a\ pro přidáván
 
 Seznam příkazů, odpovědí a\ oznámení, které se\ používají v\ navrženém protokolu, je\ následující:
 
-    OK, Refuse, Enslave, Disconnect, Peers, ConnectTo, Join, DataLine,
-    Grouped, InitialData, Run, Start, Done, PrepareToLeave, Leave,
-    CutRope, Error, Renegade, Status, Shutdown, ForceShutdown, ForceReset
+    OK, Refuse, Enslave, Disconnect, Peers, ConnectTo, Join,
+    DataLine, Grouped, InitialData, Run, Start, Done, PrepareToLeave, Leave, CutRope, Error, Renegade, Status, Shutdown, ForceShutdown, ForceReset
 
 Každý prvek z\ tohoto výčtu má\ svoji číselnou hodnotu, která je\ přiřazena do\ *štítku* zprávy.
 
@@ -763,7 +762,7 @@ Příkaz `Shutdown` je\ zdvořilou žádostí o\ ukončení běhu serveru. Serve
 
 Příkaz `ForceShutdown` je\ silnější variantou předchozího příkazu, která zaručí, že\ server ukončí svoji činnost nezávisle na\ stavu, ve\ kterém se\ nachází. Navázaná spojení jsou ukončena bez zaslání jakékoliv zprávy a\ v\ případě, že\ je nastartován výkonný proces, je\ násilně ukončen.
 
-Poslední příkaz -- `ForceReset` -- slouží k\ tomu, aby hlavní proces přešel do\ stavu *volný*, ať\ už\ byl předtím v\ kterémkoliv jiném stavu, což zahrnuje také násilné ukončení výkonného procesu, pokud je\ spuštěn. Tento příkaz kromě explicitního vyžádání od\ uživatele použije klient v\ případě, že\ obdržel [signál](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_04), který by\ způsobil ukočení klienta. Zejména se\ jedná o\ [signály](http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html) `SIGALRM`, `SIGINT`[^SIGINT] a\ `SIGTERM`.
+Poslední příkaz -- `ForceReset` -- slouží k\ tomu, aby hlavní proces přešel do\ stavu *volný*, ať\ už\ byl předtím v\ kterémkoliv jiném stavu, což zahrnuje také násilné ukončení výkonného procesu, pokud je\ spuštěn. Tento příkaz kromě explicitního vyžádání od\ uživatele použije klient v\ případě, že\ obdržel [signál](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_04), který by\ způsobil ukočení klienta. Zejména se\ jedná o\ signály^[<http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html>] `SIGALRM`, `SIGINT`[^SIGINT] a\ `SIGTERM`.
 
 [^SIGINT]: Tento signál je\ na unixových systémech většinou generován prostřednictvím klávesové zkratky `Ctrl+C`.
 
@@ -793,13 +792,13 @@ Nevhodný návrh distribuovaného algoritmu spolu s\ chybnou implementací mohou
 
 Protokol jako takový byl koncipován na\ provoz v\ bezpečném prostředí, takže nepodporuje žádnou úroveň zabezpečení. Ze\ základních prvků zabezpečení zde chybí hlavně autentizace klienta vůči serveru a\ kontrola integrity dat.
 
-Žádná metoda zabezpečení nebyla nasazena ze\ dvou důvodů. První z\ nich byl již vyřčen -- očekávám, že\ nástroj DIVINE bude provozován v\ zabezpečené vnitřní síti. Druhým důvodem je\ velký důraz na\ rychlost. Ačkoliv by\ nasazení autentizace sice nešlo proti druhému důvodu, implementace integrity dat například pomocí SSL [[RFC6101]](https://tools.ietf.org/html/rfc6101) by\ již mohla způsobit snížení rychlosti toku dat. Protože však záměr práce nespočívá v\ nasazení zabezpečovacích prvků, je\ dle mého soudu zbytečné tyto mechanizmy do\ protokolu implementovat.
+Žádná metoda zabezpečení nebyla nasazena ze\ dvou důvodů. První z\ nich byl již vyřčen -- očekávám, že\ nástroj DIVINE bude provozován v\ zabezpečené vnitřní síti. Druhým důvodem je\ velký důraz na\ rychlost. Ačkoliv by\ nasazení autentizace sice nešlo proti druhému důvodu, implementace integrity dat například pomocí SSL by\ již mohla způsobit snížení rychlosti toku dat. Protože však záměr práce nespočívá v\ nasazení zabezpečovacích prvků, je\ dle mého soudu zbytečné tyto mechanizmy do\ protokolu implementovat.
 
 # Rozhraní pro distribuované procházení grafu
 
 \label{sec:new:inte}
 
-Při návrhu rozhraní jsem vycházel převážně z\ požadavků nástroje DIVINE. Všechny aktuálně implementované distribuované algoritmy využívají z\ knihovny MPI pouze několik málo funkcí pro komunikaci. Funkce `MPI_Send`/`MPI_Isend` , `MPI_Probe`/`MPI_Iprobe` a\ `MPI_Recv`/`MPI_Irecv`. Ačkoliv některé algoritmy navíc zasílají zprávu všem spolupracujícím instancím, k\ tomu se\ ale nevyužívá funkce `MPI_Bcast`, nýbrž opakované volání funkce pro zaslání zprávy.
+Při návrhu rozhraní jsem vycházel převážně z\ požadavků nástroje DIVINE. Všechny aktuálně implementované distribuované algoritmy využívají z\ knihovny MPI pouze několik málo funkcí pro komunikaci -- `MPI_Send`/`MPI_Isend`, `MPI_Probe`/`MPI_Iprobe` a\ `MPI_Recv`/`MPI_Irecv`. Ačkoliv některé algoritmy navíc zasílají zprávu všem spolupracujícím instancím, k\ tomu se\ ale nevyužívá funkce `MPI_Bcast`, nýbrž opakované volání funkce pro zaslání zprávy.
 
 Dalším požadavkem bylo, aby šla komunikační vrstva použít v\ paralelním kontextu bez nutnosti řešit zamykání uvnitř algoritmu a\ tím lépe využít paralelizmu. Přestože jsem neměl k\ dispozici kompletní požadavky na\ rozhraní z\ důvodu souběžně vyvíjené nové verze nástroje DIVINE, snažil jsem se\ co\ nejvíc vyhovět požadavkům, které jsem dostal. Způsob komunikace -- zasílání zpráv -- zůstává nadále platný i\ pro novou verzi.
 
@@ -807,7 +806,7 @@ Dalším požadavkem bylo, aby šla komunikační vrstva použít v\ paralelním
 
 Zprávy jsou v\ rozhraní reprezentovány dvěma třídami. Třída `InputMessage` reprezentuje příchozí zprávu, třída `OutputMessage` pak odchozí zprávu. Důvod pro dvě odlišné třídy je\ daný jiným očekávaným chováním každé z\ nich, především co\ se\ práce s\ pamětí týká.
 
-Do\ odchozí zprávy je možné přidat data buď pomocí metody `add` nebo pomocí operátoru `<<`. Druhý způsob umožňuje připojit ke\ zprávě i\ třídu `std::string` případně `std::vector`. Pro data připojené pomocí operátoru `<<` navíc platí, že\ typ dat musí splňovat koncept [`TriviallyCopyable`](http://en.cppreference.com/w/cpp/concept/TriviallyCopyable).
+Do\ odchozí zprávy je možné přidat data buď pomocí metody `add` nebo pomocí operátoru `<<`. Druhý způsob umožňuje připojit ke\ zprávě i\ třídu `std::string` případně `std::vector`. Pro data připojené pomocí operátoru `<<` navíc platí, že\ typ dat musí splňovat koncept `TriviallyCopyable`^[<http://en.cppreference.com/w/cpp/concept/TriviallyCopyable>].
 
 Připojení konstantních dat způsobí vytvoření jejich kopie. K\ tomuto kroku jsem přistoupil, protože použitá funkce z\ rozhraní BSD socketů (`sendmsg`) neumožňuje předat ukazatel na\ konstantní data. Vzhledem ke\ stávajícímu způsobu práce s\ pamětí v\ nástroji DIVINE očekávám, že\ i\ nadále bude výskyt konstantních dat sporadický. Co\ je\ ovšem důležitější, je platnost nekonstantních dat, kdy tato data musí být validní dokud nedojde k\ odeslání zprávy.
 
@@ -900,7 +899,7 @@ Většina komunikačních metod může při problémech v\ síti vyhazovat různ
 
     Aktuální implementace této metody je\ taková, že\ dojde k\ vytvoření $N - 1$ vláken, které každé pošle zprávu jednomu procesu. Po skončení odesílání se\ zkontroluje, zda se\ podařilo zprávu poslat všem. Pokud ano,vrátí metoda hodnotu `true`, jinak `false`. Metoda nevyhazuje žádné výjimky.
 
-    Vzhledem k\ tomu, že\ je\ metoda málo používaná, zvolil jsem řešení s\ paralelním odesíláním. Pokud by\ v\ budoucnu začala metoda být více používaná, bylo by\ vhodné změnit implementaci odesílání z\ paralelní na\ hyperkubickou [W. Danny Hillis (1986). The Connection Machine. MIT Press. ISBN 0262081571.].
+    Vzhledem k\ tomu, že\ je\ metoda málo používaná, zvolil jsem řešení s\ paralelním odesíláním. Pokud by\ v\ budoucnu začala metoda být více používaná, bylo by\ vhodné změnit implementaci odesílání z\ paralelní na\ hyperkubickou \cite{hillis1989connection}.
 
 `int Daemon::probe(Ap applicator, ChannelID chID, int timeout);`
 
@@ -942,7 +941,7 @@ Test latence probíhá tak, že\ každé vlákno postupně vygeneruje čísla od
 
 Testy škálovatelnosti simulují průchod orientovaným grafem v\ obdobném duchu, jakým ho\ prochází nástroj DIVINE. Vrchol grafu je\ reprezentován dvěma čísly. V\ jednom z\ procesů dojde k\ vytvoření počátečního vrcholu grafu s\ nulovými hodnotami, který je\ poslán na\ zpracování. Zpracování probíhá tak, že\ je\ postupně jedno a\ druhé číslo z\ reprezentace vrcholu navýšeno o\ 1 a\ následně odesláno k\ dalšímu zpracování. Každý vrchol je\ na\ základě hashe jednoznačně přidělený procesu s\ určitým rankem.
 
-V\ rámci testu je\ ukončení výpočtu zaručeno nejvyšší možnou hodnotou obou čísel reprezentující, po\ jejichž dosažení nedochází dále k\ předávání nově vytvořených vrcholů ke\ zpracování. V\ testu je\ použita hodnota $1000$, z\ čehož vyplývá, že simulace prohledá graf o\ $10^{6}$ vrcholech. Pro realističtější výsledky je\ ke\ každému vygenerování nového vrcholu připojen rekurzivní výpočet 25. fibonacciho čísla [[X]](https://oeis.org/A000045), což způsobí podobnou časovou režii jako generování nového vrcholu v\ grafu nástrojem DIVINE.
+V\ rámci testu je\ ukončení výpočtu zaručeno nejvyšší možnou hodnotou obou čísel reprezentující, po\ jejichž dosažení nedochází dále k\ předávání nově vytvořených vrcholů ke\ zpracování. V\ testu je\ použita hodnota $1000$, z\ čehož vyplývá, že simulace prohledá graf o\ $10^{6}$ vrcholech. Pro realističtější výsledky je\ ke\ každému vygenerování nového vrcholu připojen rekurzivní výpočet 25. fibonacciho čísla^[<https://oeis.org/A000045>], což způsobí podobnou časovou režii jako generování nového vrcholu v\ grafu nástrojem DIVINE.
 
 Oba testy probíhají stejně, jediné, v\ čem se\ liší, je\ velikost vrcholu v\ grafu. V\ případě krátké zprávy vrchol obsahuje pouze 3\ čísla, kdežto dlouhé zprávy mají velikost přes 1\ KB.
 
