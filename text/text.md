@@ -1,7 +1,3 @@
----
-header-includes:
-    - \usepackage{text/custom}
----
 
 \chapter{Úvod}\label{chap:intro}
 
@@ -27,6 +23,8 @@ Orientovaný graf se\ liší tím, že\ hrany mají směr a\ že\ je\ možné gr
 
 > Orientovaný graf je\ dvojce $G = (V, E)$, kde $V$ je\ neprázdná množina vrcholů a\ $E$ je\ množina hran, pro kterou platí $E \subseteq V \times V$.
 
+Pro
+
 Tolik znalostí čtenáři postačí, aby se\ dále v\ textu neztrácel, takže oblast grafů prozatím opustím. Detailnějšímu rozboru problematiky grafů se\ věnuje obor matematické informatiky s\ názvem teorie grafů \cite{wiki:graphtheory}.
 
 # Paralelizmus
@@ -49,7 +47,7 @@ V\ případě paralelizmu ve\ sdílené paměti programátor očekává, že\ po
 
 V\ případě distribuovaného výpočtu je\ situace zcela opačná. Jeden program je\ s\ pomocí služeb operačního systému nebo nějaké knihovny spuštěn na\ různých výpočetních strojích, přičemž počet strojů -- a\ tedy počet procesů -- se\ během algoritmu zpravidla nemění. V\ průběhu výpočtu spolu mohou procesy komunikovat pomocí rozhraní, které jim poskytují podpůrné nástroje. Většinou je\ komunikace vedena formou zasílání zpráv. Je\ možné, že\ operační systém nebo knihovna umožňuje mezi procesy sdílet i\ části paměti, z\ důvodů výrazného zpomalení a\ problematické synchronizace ale nebývá její použití časté.
 
-Z\ předchozích odstavců vyplývá, že\ přístup obou druhů paralelizmu je\ odlišný. Nejedná se\ tedy o\ konkurující, ale naopak doplňující se\ nástroje, které je\ možné využít při návrhu aplikace. Liší se i\ nástroje, pomocí kterými se\ oba druhy paralelizmu řídí. Pro paralelizmus ve\ sdílené paměti se\ používají nástroje jako [POSIX vlákna](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_09) nebo OpenMP \cite{dagum1998openmp}. Paralelizmus v\ distribuované paměti zase využívají knihovny jako MPI \cite{mpiforum} nebo PVM \cite{geist1994pvm}. Není proto nezvyklé, že\ jsou v\ rámci jedné aplikace použity oba druhy paralelizace.
+Z\ předchozích odstavců vyplývá, že\ přístup obou druhů paralelizmu je\ odlišný. Nejedná se\ tedy o\ konkurující, ale naopak doplňující se\ nástroje, které je\ možné využít při návrhu aplikace. Liší se i\ nástroje, kterými se\ oba druhy paralelizmu řídí. Pro paralelizmus ve\ sdílené paměti se\ používají nástroje jako [POSIX vlákna](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_09) nebo OpenMP \cite{dagum1998openmp}. Paralelizmus v\ distribuované paměti zase využívají knihovny jako MPI \cite{mpiforum} nebo PVM \cite{geist1994pvm}. Není proto nezvyklé, že\ jsou v\ rámci jedné aplikace použity oba druhy paralelizace.
 
 # Formální verifikace
 
@@ -69,7 +67,7 @@ Ověřování modelů lze obecně provádět dvěma způsoby -- symbolicky \cite
 
 Pokud je\ použitá specifikační vlastnost *assert*, postačí při vytváření stavového prostory označit ty\ vrcholy, v\ nichž požadované tvrzení neplatí. V\ případě použití komplikovanějšího formalizmu, například LTL formule, musí nejprve *model checker* z\ formule vytvořit její negaci, ze\ které následně vytvoří Büchi automat \cite{buchi1990decision}. Výsledný automat se\ vynásobí se\ stavovým prostorem, poznačí se\ všechny stavy, ve kterých platí negovaná formule, a\ výsledný graf následně zpracuje *model checker*. Pokud při průchodu nenalezne žádný označený vrchol, prohlásí model systému za\ validní. Naopak pokud *model checker* nalezne označený vrchol, prohlásí model za\ chybný a\ jako protipříklad uvede cestu grafem od\ počátečního vrcholu až\ k\ označenému vrcholu. Pro samotné procházení grafu se\ využívají převážně algoritmy na\ procházení grafu do\ hloubky a\ do\ šířky.
 
-Reálné *model checkery* samozřejmě nepostupují tak, jak jsem v\ předchozích odstavcích předestřel, ale používají různé finty, jako třeba *partial order reduction* \cite{peled1993all}. Stavový prostor dále bývá generovaný postupně, jak *model checker* prochází grafem a\ generuje následníky zpracovávaného vrcholu. Jedním takovým reálným *model checkerem* je\ nástroj DIVINE.
+Postup, který jsem v\ předchozích odstavcích předestřel, je\ pouze funkční základ. Reálné *model checkery* ho\ rozšiřují o\ mnohá vylepšení, jako třeba *partial order reduction* \cite{peled1993all}. Stavový prostor dále bývá generovaný postupně, jak *model checker* prochází grafem a\ generuje následníky zpracovávaného vrcholu. Jedním takovým reálným *model checkerem* je\ nástroj DIVINE.
 
 # DIVINE
 
@@ -77,7 +75,7 @@ Reálné *model checkery* samozřejmě nepostupují tak, jak jsem v\ předchozí
 
 Nástroj DIVINE \cite{BBH+13, barnat2004distributed} je\ explicitní *model checker*, který zvládá verifikovat modely v\ jazycích jako LLVM \cite{llvm}, UPPAAL \cite{larsen1997uppaal}^[Formát pro vytváření časových automatů \cite{alur1994theory}.], nebo ve\ formátu [DVE](http://divine.fi.muni.cz/manual.html#the-dve-specification-language)^[Původní modelovací jazyk, ve\ kterém nástroj DIVINE uměl verifikovat modely.]. Specifikace vlastností lze zadávat jako *asserty* nebo vyjádřit pomocí LTL formulí. V\ současné době je\ snaha soustředit se\ na\ jazyk LLVM a\ postupně rušit podporu pro ostatní vstupní formáty.
 
-Proč tomu tak je? Jazyk LLVM je\ jednoduchým mezijazykem navrženým především pro snadnou implementaci optimalizací tak, aby zůstaly odstíněny od\ abstrakcí vyšších programovacích jazyků a\ zároveň aby nebyly omezovány prvky konkrétních architektur. První front-end, který překládal vyšší programovací jazyky do\ LLVM byl [Clang](http://clang.llvm.org/), který překládá jazyky C, C++ a\ Objective-C, posléze začaly vznikat front-endy i\ pro další jazyky, jako je\ Java, C#, Haskell a\ další. Pro velký úspěch byl adoptován společností Apple Inc.[[X]](https://developer.apple.com/xcode/). Jazyk LLVM je\ v\ nástroji DIVINE upřednostňován pro svoji jednoduchost, protože je\ pak poměrně snadné generovat stavy programu, a\ zároveň existenci mnoha překladačů pro populární programovací jazyky, což může vést k\ použití nástroje DIVINE pro verifikaci reálných programů namísto upravovaných modelů systémů.
+Proč tomu tak je? Jazyk LLVM je\ jednoduchým mezijazykem navrženým především pro snadnou implementaci optimalizací tak, aby zůstaly odstíněny od\ abstrakcí vyšších programovacích jazyků a\ zároveň aby nebyly omezovány prvky konkrétních architektur. První front-end, který překládal vyšší programovací jazyky do\ LLVM byl [Clang](http://clang.llvm.org/), který překládá jazyky C, C++ a\ Objective-C, posléze začaly vznikat front-endy i\ pro další jazyky, jako je\ Java, C#, Haskell a\ další. Pro velký úspěch byl adoptován společností Apple Inc. Jazyk LLVM je\ v\ nástroji DIVINE upřednostňován pro svoji jednoduchost, protože je\ pak poměrně snadné generovat stavy programu, a\ zároveň existenci mnoha překladačů pro populární programovací jazyky, což může vést k\ použití nástroje DIVINE pro verifikaci reálných programů namísto upravovaných modelů systémů.
 
 Pro generování stavového prostoru se\ používá interpret jazyka LLVM. To\ znamená, že\ nástroj DIVINE potřebuje pro verifikaci mít nejen zdrojové soubory ověřovaného programu, ale i\ zdrojové soubory všech knihoven, které program používá. Pro jazyky\ C a\ C++ jsme tento problém vyřešili tak, že spolu s\ nástrojem DIVINE distribuujeme standardní knihovny pro oba jazyky. Ostatní programovací jazyky proto nástroj DIVINE zatím nepodporuje.
 
@@ -115,7 +113,7 @@ V\ této kapitole pojednávám o\ hlavních adeptech pro použití jako komunika
 
 [^mpi-standard]: Ačkoliv má MPI standard již  několik verzí, stále nedošlo ke\ standardizačnímu řízení u\ některé ze\ známých standardizačních autorit, jako je například [ISO](http://www.iso.org/) nebo [IEEE](https://www.ieee.org/).
 
-Samotný standard MPI se\ zmiňuje o\ rozhraní pouze pro jazyky\ C a\ Fortran. Ve\ 2. verzi standardu MPI byla přidána podpora pro jazyk C++, která byla hned ve verzi 3 odstraněna. Implementace standardu MPI tak musí nabízet rozhraní v\ jazycích\ C a\ Fortran. Z\ těch základních jmenujme alespoň [MPICH](http://www.mpich.org/)[^mpich], [Open MPI](https://www.open-mpi.org), či\ LAM/MPI, jehož vývoj byl zastaven ve prospěch Open MPI. Pro jiné programovací jazyky existují moduly^[dle názvosloví daného jazyka také knihovny, balíčky, ...], které používají rozhraní pro jazyk\ C z\ dostupné implementace standardu MPI. Jde mimo jiné o\ programovací jazyky jako Java \cite{carpenter2000mpj}, Python^[<http://sourceforge.net/projects/pympi/>]^[<https://code.google.com/p/pypar/>], jazyk R \cite{Chen2012pbdMPIpackage}, nebo o\ knihovnu dostupné pro framework .NET \cite{gregor2008design}.
+Samotný standard MPI se\ zmiňuje o\ rozhraní pouze pro jazyky\ C a\ Fortran. Ve\ 2. verzi standardu MPI byla přidána podpora pro jazyk C++, která byla hned ve verzi 3 odstraněna. Implementace standardu MPI tak musí nabízet rozhraní v\ jazycích\ C a\ Fortran. Z\ těch základních jmenujme alespoň [MPICH](http://www.mpich.org/)[^mpich], [Open MPI](https://www.open-mpi.org), či\ LAM/MPI, jehož vývoj byl zastaven ve prospěch Open MPI. Pro jiné programovací jazyky existují moduly^[dle názvosloví daného jazyka také knihovny, balíčky, ...], které používají rozhraní pro jazyk\ C z\ dostupné implementace standardu MPI. Jde mimo jiné o\ programovací jazyky jako Java \cite{carpenter2000mpj}, Python^[<http://sourceforge.net/projects/pympi/> <https://code.google.com/p/pypar/>], jazyk R \cite{Chen2012pbdMPIpackage}, nebo o\ knihovnu dostupné pro framework .NET \cite{gregor2008design}.
 
 [^mpich]: MPICH byl vůbec první implementací MPI standardu, konkrétně MPI-1.1.
 
@@ -654,7 +652,8 @@ Zpráva poskytuje metody pro manipulaci s\ hlavičkou zprávy a\ pro přidáván
 Seznam příkazů, odpovědí a\ oznámení, které se\ používají v\ navrženém protokolu, je\ následující:
 
     OK, Refuse, Enslave, Disconnect, Peers, ConnectTo, Join,
-    DataLine, Grouped, InitialData, Run, Start, Done, PrepareToLeave, Leave, CutRope, Error, Renegade, Status, Shutdown, ForceShutdown, ForceReset
+    DataLine, Grouped, InitialData, Run, Start, Done, PrepareToLeave,
+    Leave, CutRope, Error, Renegade, Status, Shutdown, ForceShutdown, ForceReset
 
 Každý prvek z\ tohoto výčtu má\ svoji číselnou hodnotu, která je\ přiřazena do\ *štítku* zprávy.
 
