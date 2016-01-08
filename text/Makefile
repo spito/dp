@@ -4,9 +4,11 @@ all : thesis.pdf thesis-print.pdf
 
 thesis : thesis.tex $(ALL:.md=.tex)
 	rubber --pdf $<
+    rm thesis.*[^tex] text.tex
 
-thesisprint : thesis-print.tex $(ALL:.md=.tex)
+print : thesis-print.tex $(ALL:.md=.tex)
 	rubber --pdf $<
+    rm thesis-print.*[^tex] text.tex
 
 thesis-print.tex : thesis.tex
 	sed -e 's/linkcolor={.*}/linkcolor={black}/' \
