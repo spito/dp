@@ -1,14 +1,19 @@
 ALL=$(wildcard *.md)
 
-all : thesis.pdf thesis-print.pdf
+all : thesisX printX
+	./cleanup.sh
 
-thesis : thesis.tex $(ALL:.md=.tex)
-	rubber --pdf $<
-    rm thesis.*[^tex] text.tex
+thesis : thesisX
+	./cleanup.sh
 
-print : thesis-print.tex $(ALL:.md=.tex)
+print : printX
+	./cleanup.sh
+
+thesisX : thesis.tex $(ALL:.md=.tex)
 	rubber --pdf $<
-    rm thesis-print.*[^tex] text.tex
+
+printX : thesis-print.tex $(ALL:.md=.tex)
+	rubber --pdf $<
 
 thesis-print.tex : thesis.tex
 	sed -e 's/linkcolor={.*}/linkcolor={black}/' \
