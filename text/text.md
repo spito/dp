@@ -47,7 +47,7 @@ V\ případě paralelizmu ve\ sdílené paměti programátor očekává, že\ po
 
 V\ případě distribuovaného výpočtu je\ situace zcela opačná. Jeden program je\ s\ pomocí služeb operačního systému nebo nějaké knihovny spuštěn na\ různých výpočetních strojích, přičemž počet strojů -- a\ tedy počet procesů -- se\ během algoritmu zpravidla nemění. V\ průběhu výpočtu spolu mohou procesy komunikovat pomocí rozhraní, které jim poskytují podpůrné nástroje. Většinou je\ komunikace vedena formou zasílání zpráv. Je\ možné, že\ operační systém nebo knihovna umožňuje mezi procesy sdílet i\ části paměti, z\ důvodů výrazného zpomalení a\ problematické synchronizace ale nebývá její použití časté.
 
-Z\ předchozích odstavců vyplývá, že\ přístup obou druhů paralelizmu je\ odlišný. Nejedná se\ tedy o\ konkurující, ale naopak doplňující se\ nástroje, které je\ možné využít při návrhu aplikace. Liší se i\ nástroje, kterými se\ oba druhy paralelizmu řídí. Pro paralelizmus ve\ sdílené paměti se\ používají nástroje jako [POSIX vlákna](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_09) nebo OpenMP \cite{dagum1998openmp}. Paralelizmus v\ distribuované paměti zase využívají knihovny jako MPI \cite{mpiforum} nebo PVM \cite{geist1994pvm}. Není proto nezvyklé, že\ jsou v\ rámci jedné aplikace použity oba druhy paralelizace.
+Z\ předchozích odstavců vyplývá, že\ přístup obou druhů paralelizmu je\ odlišný. Nejedná se\ tedy o\ konkurující, ale naopak doplňující se\ nástroje, které je\ možné využít při návrhu aplikace. Liší se i\ nástroje, kterými se\ oba druhy paralelizmu řídí. Pro paralelizmus ve\ sdílené paměti se\ používají nástroje jako POSIX vlákna \cite{pthreads} nebo OpenMP \cite{dagum1998openmp}. Paralelizmus v\ distribuované paměti zase využívají knihovny jako MPI \cite{mpiforum} nebo PVM \cite{geist1994pvm}. Není proto nezvyklé, že\ jsou v\ rámci jedné aplikace použity oba druhy paralelizace.
 
 # Formální verifikace
 
@@ -226,13 +226,13 @@ Pokročilější kolektivní operace zahrnují rozesílání a\ sbírání různ
 
 Standard MPI zavádí vlastní datové typy, které jsou schopné reprezentovat většinu základních datových typů v\ jazycích C, C++ a\ Fortran. Naopak některé MPI datové typy nemají reprezentaci ve\ jmenovaných programovacích jazycích. Jedním z\ důvodů zavedení vlastních datových typů je\ nezávislost na\ architektuře -- především na\ endianitě. Dalším důvodem je\ možnost používat předdefinované operace pro kolektivní komunikaci.
 
-Kromě vlastních datových typů umožňuje MPI definovat i\ vlastní datové typy, což zahrnuje vytváření jak homogenních (pole), tak i\ heterogenních (struktury) datových typů. Spolu s\ uživatelsky definovanými operacemi je možné využít vlastní datové typy při redukcích během kolektivní komunikace.
+Kromě vlastních datových typů umožňuje MPI definovat i\ vlastní datové typy, což zahrnuje vytváření jak homogenních (pole), tak i\ heterogenních (struktury) datových typů. Spolu s\ uživatelsky definovanými operacemi je\ možné využít vlastní datové typy při redukcích během kolektivní komunikace.
 
 # BSD sockety
 
 \label{sec:comm:sock}
 
-Další možností je vlastní implementace komunikačního rozhraní pro DIVINE, které by\ používalo BSD sockety, které jsou v zahrnuty v [POSIX](http://pubs.opengroup.org/onlinepubs/9699919799/functions/contents.html) standardu. Vlastní implementace nepřidává žádnou závislost na externí knihovně a protože jsou BSD sockety v podstatě standardem pro síťovou komunikaci, lze předpokládat, že výsledný kód bude možné bez větších změn použít i na operačních systémech, které nevycházejí z filozofie systému UNIX.
+Další možností je\ vlastní implementace komunikačního rozhraní pro DIVINE, které by\ používalo BSD sockety, které jsou v\ zahrnuty v\ POSIX standardu. Vlastní implementace nepřidává žádnou závislost na externí knihovně a protože jsou BSD sockety v podstatě standardem pro síťovou komunikaci, lze předpokládat, že\ výsledný kód bude možné bez větších změn použít i\ na\ operačních systémech, které nevycházejí z\ filozofie systému UNIX.
 
 Popis BSD socketů je abstrakce nad různými druhy spojení. V\ části POSIX standardu o\ socketech^[<http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_10_06>] můžeme nalézt poměrně nemálo věcí, které jsou specifikovány. Stěžejní z\ pohledu nástroje DIVINE a\ výběru vhodného komunikačního rozhraní jsou především dvě pasáže, a\ to\ `Address Famillies` a\ `Socket Types`. První definuje, skrz které médium se\ budou sockety používat, zatímco druhá podstatná pasáž je\ o\ tom, jaké vlastnosti bude mít samotný přenos dat skrz sockety.
 
