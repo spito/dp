@@ -15,7 +15,9 @@ bool Communicator::sendAll( OutputMessage &message, ChannelID chID ) {
         switch ( chID.asType() ) {
         case ChannelType::Master:
             for ( auto &channel : connections().values() ) {
-                if ( channel->id() == id() || !channel->masterChannel() )
+                if ( channel->rank() == Master ||
+                     channel->rank() == rank() ||
+                     !channel->masterChannel() )
                     continue;
                 channels.emplace_back( channel->master() );
             }
@@ -24,7 +26,9 @@ bool Communicator::sendAll( OutputMessage &message, ChannelID chID ) {
             return false;
         default:
             for ( auto &channel : connections().values() ) {
-                if ( channel->id() == id() || !channel->dataChannel( chID ) )
+                if ( channel->rank() == Master ||
+                     channel->rank() == rank() ||
+                     !channel->dataChannel( chID ) )
                     continue;
                 channels.push_back( channel->data( chID ) );
             }
@@ -35,7 +39,7 @@ bool Communicator::sendAll( OutputMessage &message, ChannelID chID ) {
 }
 
 bool Communicator::sendAll( OutputMessage &message, std::vector< Channel > &channels ) {
-    message.from( _id );
+    message.from( rank() );
     message.to( ALL );
 
     std::vector< std::future< bool > > handles;

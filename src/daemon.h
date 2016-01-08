@@ -44,11 +44,15 @@ public:
     static Daemon &instance( const char *, int(*)( int, char ** ), std::string );
     static bool hasInstance();
 
-    void run();
+    void run( bool = true );
 
     // cannot be called during probe
     [[noreturn]]
     void exit( int = 0 );
+
+    bool master() const {
+        return rank() == MainSlave;
+    }
 
     char *data() const {
         return _initData.get();
@@ -58,16 +62,85 @@ public:
     }
 
     template< typename Ap >
-    void probe( Ap applicator, ChannelID chId = ChannelType::Master, int timeout = -1 ) {
-        Communicator::probe( _cache.at( chId.asIndex() ), applicator, timeout, false );
+    int probe( Ap applicator, ChannelID chID = ChannelType::Master, int timeout = -1 ) {
+        return Communicator::probe( _cache.at( chID.asIndex() ), applicator, timeout, false );
     }
-    bool sendAll( OutputMessage &message, ChannelID chId = ChannelType::Master ) {
-        return Communicator::sendAll( message, _cache.at( chId.asIndex() ) );
+    bool sendAll( OutputMessage &message, ChannelID chID = ChannelType::Master ) {
+        return Communicator::sendAll( message, _cache.at( chID.asIndex() ) );
     }
+
+    bool sendTo( int rank, OutputMessage &message, ChannelID chID = ChannelType::Master ) {
+        return sendTo( findChannel( rank, chID ), message );
+    }
+    bool sendTo( Channel channel, OutputMessage &message ) {
+        if ( !channel || !*channel )
+            return false;
+        message.from( rank() );
+        message.to( channel->rank() );
+        std::lock_guard< std::mutex > _{ channel->writeMutex() };
+        channel->send( message );
+        return true;
+    }
+
+    bool receive( int rank, InputMessage &message, ChannelID chID = ChannelType::Master ) {
+        return receive( findChannel( rank, chID ), message );
+    }
+    bool receive( Channel channel, InputMessage &message ) {
+        if ( !channel )
+            return false;
+        std::lock_guard< std::mutex > _{ channel->readMutex() };
+        channel->receive( message );
+        return true;
+    }
+
+    template< typename Al, typename D, typename C, typename Ap >
+    bool receive( int rank, Al allocator, D deallocator, C convertor, Ap applicator, ChannelID chID = ChannelType::Master ) {
+        Channel channel = findChannel( rank, chID );
+        if ( !channel )
+            return false;
+
+        InputMessage message;
+        std::vector< typename std::result_of< Al( size_t ) >::type > handles;
+
+        {
+            std::lock_guard< std::mutex > _{ channel->readMutex() };
+            channel->receive( message, [&] ( size_t size ) -> char * {
+                handles.emplace_back( allocator( size ) );
+                return convertor( handles.back() );
+            } );
+        }
+        for ( auto &h : handles )
+            applicator( h );
+
+        message.cleanup< char >( deallocator );
+        return true;
+    }
+
+
     void table();
 
-
 private:
+
+    Channel findChannel( int rank, ChannelID chID ) {
+        if ( chID.asType() == ChannelType::All )
+            return Channel{};
+
+        if ( rank > this->rank() )
+            --rank;
+
+        // master is not included in data channels
+        if ( chID.asType() != ChannelType::Master )
+            --rank;
+
+        if ( chID.asIndex() >= _cache.size() )
+            return Channel{};
+        auto &peers = _cache[ chID.asIndex() ];
+        if ( rank >= peers.size() )
+            return Channel{};
+
+        return peers[ rank ];
+    }
+
     bool daemonize();
     void loop();
     void runMain();
@@ -77,27 +150,30 @@ private:
     void processIncoming( Channel ) override;
 
     void enslave( InputMessage &, Channel );
+    void release( Channel );
     void startGrouping( InputMessage &, Channel );
     void connecting( InputMessage &, Channel );
-    Channel connectLine( Address &, LineType, int = 0 );
-    void addDataLine( InputMessage &, Channel );
     void join( InputMessage &, Channel );
+    void addDataLine( InputMessage &, Channel );
     void grouped( Channel );
+    void initData( InputMessage &, Channel );
+    void run( InputMessage &, Channel );
     void prepare( Channel );
     void leave( Channel );
-    void release( Channel );
     void cutRope( Channel );
-    void shutdown( Channel );
-    void forceShutdown();
     void error( Channel );
     void renegade( InputMessage &, Channel );
     void status( Channel );
-    void initData( InputMessage &, Channel );
-    void run( InputMessage &, Channel );
+    void shutdown( Channel );
+    void forceShutdown();
+    void forceReset();
 
     void reset();
     void reset( Address );
     void setDefault( bool = false );
+    void waitForChild( bool );
+
+    Channel connectLine( Address &, LineType, int = 0 );
 
     void becomeParent( Channel );
     void becomeChild( Channel );

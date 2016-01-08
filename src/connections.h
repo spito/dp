@@ -13,21 +13,21 @@
 struct Socket : brick::net::Socket {
     using Base = brick::net::Socket;
 
-    Socket( int id, Base &&base ) :
+    Socket( int rank, Base &&base ) :
         Base{ std::move( base ) },
-        _id{ id }
+        _rank{ rank }
     {}
     Socket( Base &&base ) noexcept :
         Base{ std::move( base ) },
-        _id{ 0 }
+        _rank{ 0 }
     {}
 
-    int id() const {
-        return _id;
+    int rank() const {
+        return _rank;
     }
 
-    void id( int i ) {
-        _id = i;
+    void rank( int r ) {
+        _rank = r;
     }
 
     std::mutex &readMutex() {
@@ -38,7 +38,7 @@ struct Socket : brick::net::Socket {
     }
 
 private:
-    int _id;
+    int _rank;
     std::mutex _mRead;
     std::mutex _mWrite;
 };
@@ -81,22 +81,22 @@ private:
 
 struct Peer {
 
-    Peer( int id, std::string name, const char *address, Channel master, int channels = 0 ) :
-        _id( id ),
+    Peer( int rank, std::string name, const char *address, Channel master, int channels = 0 ) :
+        _rank( rank ),
         _name( std::move( name ) ),
         _address( address ),
         _master( std::move( master ) )
     {
         if ( _master )
-            _master->id( _id );
+            _master->rank( _rank );
         if ( channels )
             _data.reserve( channels );
     }
 
     Peer( Peer && ) noexcept = default;
 
-    int id() const {
-        return _id;
+    int rank() const {
+        return _rank;
     };
 
     const std::string &name() const {
@@ -128,12 +128,12 @@ struct Peer {
     void openDataChannel( Channel channel, ChannelID number ) {
         if ( number >= _data.size() )
             _data.resize( number + 1 );
-        channel->id( id() );
+        channel->rank( rank() );
         _data[ number ] = std::move( channel );
     }
 
 private:
-    int _id;
+    int _rank;
     std::string _name;
     Address _address;
 
@@ -230,34 +230,34 @@ struct Connections {
         swap( other );
     }
 
-    bool insert( int id, Line connection ) {
-        return _table.emplace( id, std::move( connection ) ).second;
+    bool insert( int rank, Line connection ) {
+        return _table.emplace( rank, std::move( connection ) ).second;
     }
 
-    bool lockedInsert( int id, Line connection ) {
+    bool lockedInsert( int rank, Line connection ) {
         std::lock_guard< std::mutex > _( _mutex );
-        return insert( id, std::move( connection ) );
+        return insert( rank, std::move( connection ) );
     }
 
-    Line find( int id ) const {
-        auto i = _table.find( id );
+    Line find( int rank ) const {
+        auto i = _table.find( rank );
         if ( i == _table.end() )
             return Line();
         return i->second;
     }
-    Line lockedFind( int id ) {
+    Line lockedFind( int rank ) {
         std::lock_guard< std::mutex > _( _mutex );
-        return find( id );
+        return find( rank );
     }
 
 
-    bool erase( int id ) {
-        return _table.erase( id ) == 1;
+    bool erase( int rank ) {
+        return _table.erase( rank ) == 1;
     }
 
-    bool lockedErase( int id ) {
+    bool lockedErase( int rank ) {
         std::lock_guard< std::mutex > _( _mutex );
-        return erase( id );
+        return erase( rank );
     }
 
     template< typename UnaryPredicate >

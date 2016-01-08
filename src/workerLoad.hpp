@@ -7,26 +7,15 @@
 
 namespace load {
 
-template< typename Self >
-struct Worker : BaseWorker {
+template< template< typename > class S, typename Package >
+struct Worker : BaseWorker< S, Package > {
 
-    using BaseWorker::BaseWorker;
-
-    void start() {
-        _handle = std::async( std::launch::async, [this] {
-            try {
-                this->self().main();
-            } catch ( const std::exception &e ) {
-                std::cerr << "exception: " << e.what() << std::endl;
-            }
-        } );
-    }
-    void wait() {
-        _handle.get();
-    }
+    using BaseWorker< S, Package >::BaseWorker;
+    using Self = S< Package >;
+    using Common = Common< Package >;
 
     static void notifyAll( Common & ) {
-        brick::net::OutputMessage msg( MessageType::Data );
+        OutputMessage msg;
         msg.tag( Tag::Done );
 
         Daemon::instance().sendAll( msg );
@@ -48,7 +37,7 @@ struct Worker : BaseWorker {
     }
 
     static int rank() {
-        return Daemon::instance().id();
+        return Daemon::instance().rank();
     }
     static int worldSize() {
         return Daemon::instance().worldSize();
@@ -56,30 +45,30 @@ struct Worker : BaseWorker {
 
 protected:
     unsigned owner( Package p ) {
-        return p.hash() % common().worldSize() + 1;
+        return p.hash() % this->common().worldSize() + 1;
     }
 
     template< typename Yield >
     void successors( Package p, Yield yield ) {
-        if ( p.first < common().workLoad() ) {
+        if ( p.first < this->common().workLoad() ) {
             Package s = p;
-            s.result = F();
+            s.result = this->F();
             s.first++;
             yield( s );
         }
-        if ( p.second < common().workLoad() ) {
+        if ( p.second < this->common().workLoad() ) {
             Package s = p;
-            s.result = F();
+            s.result = this->F();
             s.second++;
             yield( s );
         }
     }
 
     void process( Package p, ChannelID chID ) {
-        progress();
+        this->progress();
 
-        if ( p.first == common().workLoad() && p.second == common().workLoad() ) {
-            done();
+        if ( p.first == this->common().workLoad() && p.second == this->common().workLoad() ) {
+            this->done();
             return;
         }
         expand( p, chID );
@@ -87,46 +76,39 @@ protected:
 
     void expand( Package p, ChannelID chID ) {
         unsigned o = owner( p );
-        if ( o == common().rank() ) {
-            if ( withTD().insert( p ).isnew() ) {
-                push( p );
+        if ( o == this->common().rank() ) {
+            if ( this->withTD().insert( p ).isnew() ) {
+                this->push( p );
             }
             return;
         }
-        brick::net::OutputMessage msg( MessageType::Data );
+        OutputMessage msg;
         msg.tag( Tag::Data );
         msg << p;
         Daemon::instance().sendTo( o, msg, chID );
     }
-
-private:
-    Self &self() {
-        return *static_cast< Self * >( this );
-    }
-
-    std::future< void > _handle;
 };
 
-
-struct Shared : Worker< Shared > {
-    using Worker< Shared >::Worker;
+template< typename Package >
+struct Shared : Worker< Shared, Package > {
+    using Worker< Shared::template Shared, Package >::Worker;
+    using Common = Common< Package >;
 
     void main() {
 
-        while ( !quit() ) {
+        while ( !this->quit() ) {
             Package p;
-            if ( pop( p ) ) {
-                successors( p, [this]( Package n ) {
-                    process( n, ChannelType::Master );
+            if ( this->pop( p ) ) {
+                this->successors( p, [this]( Package n ) {
+                    this->process( n, ChannelType::Master );
                 } );
             }
         }
-        done();
     }
 
     static void processDispatch( Common &common, Channel channel ) {
-        static Set::ThreadData td;
-        brick::net::InputMessage incoming;
+        static typename Set< Package >::ThreadData td;
+        InputMessage incoming;
         Package p;
         incoming >> p;
         channel->receive( incoming );
@@ -145,37 +127,39 @@ struct Shared : Worker< Shared > {
     }
 };
 
-struct Dedicated : Worker< Dedicated > {
-    using Worker< Dedicated >::Worker;
+template< typename Package >
+struct Dedicated : Worker< Dedicated, Package > {
+    using Worker< Dedicated::template Dedicated, Package >::Worker;
+    using Common = Common< Package >;
 
     void main() {
 
-        while ( !quit() ) {
+        while ( !this->quit() ) {
             Package p;
-            if ( pop( p ) ) {
-                successors( p, [this]( Package p ) {
-                    process( p, id() );
+            if ( this->pop( p ) ) {
+                this->successors( p, [this]( Package p ) {
+                    this->process( p, this->id() );
                 } );
             }
             Daemon::instance().probe( [&,this]( Channel channel ) {
                     receive( channel );
                 },
-                id(),
+                this->id(),
                 0
             );
         }
     }
 
     void receive( Channel channel ) {
-        brick::net::InputMessage incoming;
+        InputMessage incoming;
         Package p;
         incoming >> p;
         channel->receive( incoming );
-        expand( p, id() );
+        this->expand( p, this->id() );
     }
 
     static void processDispatch( Common &common, Channel channel ) {
-        brick::net::InputMessage incoming;
+        InputMessage incoming;
         channel->receiveHeader( incoming );
         if ( incoming.tag< Tag >() == Tag::Done )
             common.done();

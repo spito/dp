@@ -166,6 +166,30 @@ struct IOvector : iovec {
     }
 };
 
+struct MessageStorageException : NetException {
+    MessageStorageException( size_t count, const uint32_t *expected, const std::vector< IOvector > &given )
+    {
+        _what += "Wrong size of message storage: expected=[";
+        for ( size_t i = 0; i < count; ++i ) {
+            if ( i )
+                _what += ", ";
+            _what += std::to_string( expected[ i ] );
+        }
+        _what += "] given=[";
+        for ( size_t i = 1; i < given.size(); ++i ) {
+            if ( i - 1 )
+                _what += ", ";
+            _what += std::to_string( given[ i ].size() );
+        }
+        _what += "]";
+    }
+    const char *what() const noexcept override {
+        return _what.c_str();
+    }
+private:
+    std::string _what;
+};
+
 struct PollFD : pollfd {
     PollFD( int fd, int events ) {
         this->fd = fd;
@@ -190,11 +214,10 @@ class Message {
             std::memset( this, 0, sizeof( Header ) );
         }
 
-        static constexpr const size_t PROPERTIES = 2;
         static constexpr const size_t SEGMENTS = 255;
         static constexpr const size_t HEAD =
             sizeof( uint8_t ) + sizeof( uint8_t ) + // category + count
-            sizeof( uint8_t ) + sizeof( uint8_t ) + // id + padding
+            sizeof( uint8_t ) + sizeof( uint8_t ) + // from + to
             sizeof( int32_t );                      // tag
         static constexpr const size_t SIZE =
             HEAD + sizeof( uint32_t ) * SEGMENTS;
@@ -422,16 +445,22 @@ struct InputMessage : Message {
         // only prepare strings
         else {
             uint32_t *segmentSize = header().segments;
+            if ( data().size() != count() + 1 )
+                throw MessageStorageException( count(), segmentSize, data() );
+
             for ( IOvector &v : make_adaptor( data().begin() + 1, data().end() ) ) {
                 if ( v.size() == 0 ) {// handle string separately
                     std::string *string = v.data< std::string >();
                     string->reserve( *segmentSize );
                     string->assign( *segmentSize, ' ' );
                     v.data( &string->front() );
+                    v.size( *segmentSize );
                 }
 
-                if ( *segmentSize != v.size() )
+                if ( *segmentSize < v.size() )
                     v.size( *segmentSize );
+                if ( *segmentSize > v.size() )
+                    throw MessageStorageException( count(), header().segments, data() );
                 ++segmentSize;
             }
         }
@@ -722,7 +751,7 @@ struct Network {
         typename I, // Incoming
         typename P  // Process
     >
-    int poll( const std::vector< S > &toWait, I incoming, P process, bool listen, int timeout ) {
+    int poll( const std::vector< S > &toWait, I incoming, P process, int timeout, bool listen ) {
         std::vector< PollFD > fds;
 
         fds.reserve( toWait.size() + 1 );
@@ -733,12 +762,17 @@ struct Network {
         for ( const auto &s : toWait )
             fds.emplace_back( s->fd(), POLLIN );
 
-        int r = ::poll( static_cast< pollfd * >( &fds.front() ), fds.size(), timeout );
+
+        int r;
+        do {
+            r = ::poll( static_cast< pollfd * >( &fds.front() ), fds.size(), timeout );
+        } while ( r == -1 && errno == EINTR );
+
+        if ( r == 0 || ( r == -1 && errno == EAGAIN ) )
+            return 0;
 
         if ( r == -1 )
             throw SystemException( "poll" );
-        if ( r == 0 )
-            return r;
 
         if ( listen && _ear && fds.front().revents ) {
             Socket newSocket{ ::accept( _ear.fd(), nullptr, nullptr ) };
@@ -1214,6 +1248,33 @@ struct Message {
         i >> data;
         in.receive( i );
         ASSERT_EQ( 10, i.tag() );
+    }
+
+    void receive( Socket &in, int category, int tag, int data ) {
+        int incoming;
+        InputMessage i;
+        i >> incoming;
+        in.receive( i );
+
+        ASSERT_EQ( category, i.category() );
+        ASSERT_EQ( tag, i.tag() );
+        ASSERT_EQ( data, incoming );
+    }
+
+    TEST_FAILING( underfilled ) {
+        Socket in, out;
+        std::tie( in, out ) = Network::socketPair();
+
+        OutputMessage o( 0 );
+        o.tag( 10 );
+        int data = 6;
+        o << data << data;
+
+        out.send( o );
+        out.send( o );
+
+        receive( in, 0, 10, 6 );
+        receive( in, 0, 10, 6 );
     }
 
     TEST( redirector ) {

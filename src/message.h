@@ -24,33 +24,31 @@ enum class Output {
 
 // TAG (Control)
 enum class Code {
-    NoOp = 0,
     OK = 6,
-    Success,
     Refuse,
-    Enslave,
-    ID, // %D // dead
-    ConnectTo, // %S %D
-    DataLine, // %D (%D)
-    Join,
+    Enslave,// %D %S %D
     Disconnect,
     Peers, // %D
-    Leave,
+    ConnectTo, // %D %S %S
+    Join, // %D %S
+    DataLine, // %D %D
     Grouped,
-    PrepareToLeave,
-    Shutdown,
-    ForceShutdown,
-    CutRope,
     InitialData,
     Run,
     Start,
     Done,
+    PrepareToLeave,
+    Leave,
+    CutRope,
 
 
     Error = 32,
     Renegade,
 
     Status = 64,
+    Shutdown,
+    ForceShutdown,
+    ForceReset,
 };
 
 const char *codeToString( Code code );
@@ -97,6 +95,14 @@ struct SendAllException : brick::net::NetException {
     }
 private:
     const char *_what;
+};
+
+using InputMessage = brick::net::InputMessage;
+
+struct OutputMessage : brick::net::OutputMessage {
+    OutputMessage() :
+        brick::net::OutputMessage( MessageType::Data )
+    {}
 };
 
 struct Address {

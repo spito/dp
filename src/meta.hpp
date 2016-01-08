@@ -11,6 +11,7 @@ enum class Command {
     Status,
     Shutdown,
     ForceShutdown,
+    ForceReset,
     Restart,
     Daemon,
     Run,
@@ -20,6 +21,8 @@ enum class Algorithm {
     None,
     LoadShared,
     LoadDedicated,
+    LongLoadShared,
+    LongLoadDedicated,
     PingShared,
     PingDedicated,
     Table,
@@ -33,6 +36,7 @@ struct Meta {
     int threads;
     int workLoad;
     int selection;
+    bool detach;
     std::string port;
     std::string logFile;
     std::vector< std::string > hosts;

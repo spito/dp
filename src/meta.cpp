@@ -115,6 +115,7 @@ Meta::Meta( int argc, char **argv, bool ignoreFostFile ) :
     threads( 1 ),
     workLoad( 10 ),
     selection( 1 ),
+    detach( true ),
     port( "41813" )
 {
 
@@ -161,7 +162,9 @@ Meta::Meta( int argc, char **argv, bool ignoreFostFile ) :
             command = Command::Shutdown;
         else if ( argv[ i ] == "forceshutdown"_s || argv[ i ] == "k"_s )
             command = Command::ForceShutdown;
-        else if ( argv[ i ] == "restart"_s || argv[ i ] == "r"_s )
+        else if ( argv[ i ] == "reset"_s || argv[ i ] == "r"_s )
+            command = Command::ForceReset;
+        else if ( argv[ i ] == "restart"_s || argv[ i ] == "rs"_s )
             command = Command::Restart;
         else if ( argv[ i ] == "daemon"_s || argv[ i ] == "d"_s  )
             command = Command::Daemon;
@@ -180,6 +183,12 @@ Meta::Meta( int argc, char **argv, bool ignoreFostFile ) :
             if ( algorithm == Algorithm::PingShared )
                 algorithm = Algorithm::PingDedicated;
         }
+        else if ( argv[ i ] == "long"_s ) {
+            if ( algorithm == Algorithm::LoadDedicated )
+                algorithm = Algorithm::LongLoadDedicated;
+            if ( algorithm == Algorithm::LoadShared )
+                algorithm = Algorithm::LongLoadShared;
+        }
         else if ( argv[ i ] == "-h"_s )
             hf.on();
         else if ( argv[ i ] == "-n"_s )
@@ -192,6 +201,8 @@ Meta::Meta( int argc, char **argv, bool ignoreFostFile ) :
             sel.on();
         else if ( argv[ i ] == "-p"_s )
             p.on();
+        else if ( argv[ i ] == "--no-detach"_s )
+            detach = false;
     }
 
 }
@@ -203,6 +214,7 @@ Meta::Meta( char *block, size_t size ) {
         .get( threads )
         .get( workLoad )
         .get( selection )
+        .get( detach )
         .get( port )
         .get( logFile )
         .get( hosts );
@@ -241,6 +253,7 @@ MetaBlock Meta::block() const {
         .set( threads )
         .set( workLoad )
         .set( selection )
+        .set( detach )
         .set( port )
         .set( logFile )
         .set( hosts );

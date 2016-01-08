@@ -2,40 +2,24 @@
 
 const char *codeToString( Code code ) {
     switch( code ) {
-    case Code::NoOp:
-        return "No";
     case Code::OK:
         return "OK";
-    case Code::Success:
-        return "Success";
     case Code::Refuse:
         return "Refuse";
     case Code::Enslave:
         return "Enslave";
-    case Code::ID: // %D
-        return "ID";
-    case Code::ConnectTo: // %S %D
-        return "ConnectTo";
-    case Code::DataLine: // %D
-        return "DataLine";
-    case Code::Join:
-        return "Join";
     case Code::Disconnect:
         return "Disconnect";
-    case Code::Peers: // %D
+    case Code::Peers:
         return "Peers";
-    case Code::Leave:
-        return "Leave";
+    case Code::ConnectTo:
+        return "ConnectTo";
+    case Code::Join:
+        return "Join";
+    case Code::DataLine:
+        return "DataLine";
     case Code::Grouped:
         return "Grouped";
-    case Code::PrepareToLeave:
-        return "PrepareToLeave";
-    case Code::Shutdown:
-        return "Shutdown";
-    case Code::ForceShutdown:
-        return "ForceShutdown";
-    case Code::CutRope:
-        return "CutRope";
     case Code::InitialData:
         return "InitialData";
     case Code::Run:
@@ -44,12 +28,24 @@ const char *codeToString( Code code ) {
         return "Start";
     case Code::Done:
         return "Done";
+    case Code::PrepareToLeave:
+        return "PrepareToLeave";
+    case Code::Leave:
+        return "Leave";
+    case Code::CutRope:
+        return "CutRope";
     case Code::Error:
         return "Error";
     case Code::Renegade:
         return "Renegade";
     case Code::Status:
         return "Status";
+    case Code::Shutdown:
+        return "Shutdown";
+    case Code::ForceShutdown:
+        return "ForceShutdown";
+    case Code::ForceReset:
+        return "ForceReset";
     default:
         return "<unknown code>";
     }

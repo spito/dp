@@ -4,8 +4,13 @@
 #include <sys/types.h>
 #include <chrono>
 #include <algorithm>
+#include <future>
 
 #include "daemon.h"
+
+constexpr std::chrono::milliseconds operator""_ms( unsigned long long ms ) {
+    return std::chrono::milliseconds{ ms };
+}
 
 std::unique_ptr< Daemon > Daemon::_self;
 
@@ -62,10 +67,10 @@ void Daemon::exit( int code ) {
     ::exit( code );
 }
 
-void Daemon::run() {
+void Daemon::run( bool detach ) {
     NOTE();
 
-    if ( !daemonize() )
+    if ( detach && !daemonize() )
          return;
 
     loop();
@@ -171,8 +176,13 @@ void Daemon::runMain() {
     brick::net::Redirector stdError( STDERR_FILENO, [this] ( char *s, size_t length ) {
         this->redirectOutput( s, length, Output::Error );
     } );
-
-    _main( args.size(), &args.front() );
+    try {
+        _main( args.size(), &args.front() );
+    } catch ( const std::exception &e ) {
+        std::cerr << "Uncaught exception: " << e.what() << std::endl;
+    } catch ( ... ) {
+        std::cerr << "Uncaught unknown exception." << std::endl;
+    }
 }
 
 bool Daemon::processControl( Channel channel ) {
@@ -188,45 +198,43 @@ bool Daemon::processControl( Channel channel ) {
     case Code::Enslave:
         enslave( message, std::move( channel ) );
         break;
+    case Code::Disconnect:
+        cleanup();
+        release( std::move( channel ) );
+        break;
     case Code::Peers:
         startGrouping( message, std::move( channel ) );
         break;
     case Code::ConnectTo:
         connecting( message, std::move( channel ) );
         break;
-    case Code::DataLine:
-        addDataLine( message, std::move( channel ) );
-        break;
     case Code::Join:
         join( message, std::move( channel ) );
+        break;
+    case Code::DataLine:
+        addDataLine( message, std::move( channel ) );
         break;
     case Code::Grouped:
         cleanup();
         grouped( std::move( channel ) );
         break;
+    case Code::InitialData:
+        initData( message, std::move( channel ) );
+        break;
+    case Code::Run:
+        run( message, std::move( channel ) );
+        break;
     case Code::PrepareToLeave:
         cleanup();
         prepare( std::move( channel ) );
-        break;
-    case Code::Leave:
-        cleanup();
-        leave( std::move( channel ) );
-        break;
-    case Code::Disconnect:
-        cleanup();
-        release( std::move( channel ) );
         break;
     case Code::CutRope:
         cleanup();
         cutRope( std::move( channel ) );
         break;
-    case Code::Shutdown:
+    case Code::Leave:
         cleanup();
-        shutdown( std::move( channel ) );
-        break;
-    case Code::ForceShutdown:
-        cleanup();
-        forceShutdown();
+        leave( std::move( channel ) );
         break;
     case Code::Error:
         cleanup();
@@ -239,30 +247,38 @@ bool Daemon::processControl( Channel channel ) {
         cleanup();
         status( std::move( channel ) );
         break;
-    case Code::InitialData:
-        initData( message, std::move( channel ) );
+    case Code::Shutdown:
+        cleanup();
+        shutdown( std::move( channel ) );
         break;
-    case Code::Run:
-        run( message, std::move( channel ) );
+    case Code::ForceShutdown:
+        cleanup();
+        forceShutdown();
         break;
+    case Code::ForceReset:
+        cleanup();
+        forceReset();
+        return false;
     default:
         cleanup();
         throw ResponseException( {
             Code::Enslave,
+            Code::Disconnect,
             Code::Peers,
             Code::ConnectTo,
-            Code::DataLine,
             Code::Join,
+            Code::DataLine,
             Code::Grouped,
-            Code::PrepareToLeave,
-            Code::Leave,
-            Code::Disconnect,
-            Code::CutRope,
-            Code::Shutdown,
-            Code::Error,
-            Code::Renegade,
             Code::InitialData,
             Code::Run,
+            Code::PrepareToLeave,
+            Code::Leave,
+            Code::CutRope,
+            Code::Error,
+            Code::Renegade,
+            Code::Shutdown,
+            Code::ForceShutdown,
+            Code::ForceReset,
         }, code );
         break;
     }
@@ -316,7 +332,7 @@ void Daemon::enslave( InputMessage &message, Channel channel ) {
     response.tag( Code::OK );
     channel->send( response );
 
-    id( i );
+    rank( i );
     name( selfName );
     channels( openChannels );
 
@@ -330,6 +346,21 @@ void Daemon::enslave( InputMessage &message, Channel channel ) {
 
     connections().lockedInsert( 0, std::move( master ) ); // zero for master
     _state = State::Enslaved;
+}
+
+void Daemon::release( Channel channel ) {
+    NOTE();
+    OutputMessage response( MessageType::Control );
+    if ( _state != State::Enslaved ) {
+        response.tag( Code::Refuse );
+        channel->send( response );
+        return;
+    }
+    response.tag( Code::OK );
+    channel->send( response );
+
+    setDefault();
+    return;
 }
 
 void Daemon::startGrouping( InputMessage &message, Channel channel ) {
@@ -394,59 +425,10 @@ void Daemon::connecting( InputMessage &message, Channel channel ) {
 
         if ( ok ) {
             connections().lockedInsert( peerId, std::move( peer ) );
-            response.tag( Code::Success );
-        }
-    }
-
-    channel->send( response );
-}
-
-Channel Daemon::connectLine( Address &address, LineType type, int channelId ) {
-    OutputMessage request( MessageType::Control );
-    std::string name = this->name();
-    int id = this->id();
-
-    switch( type ){
-    case LineType::Master:
-        request.tag( Code::Join );
-        request << id << name;
-        break;
-    case LineType::Data:
-        request.tag( Code::DataLine );
-        request << id << channelId;
-        break;
-    }
-
-    Channel channel = connect( address );
-    channel->send( request );
-
-    InputMessage response;
-    channel->receive( response );
-    if ( response.tag< Code >() == Code::OK )
-        return channel;
-    if ( response.tag< Code >() == Code::Refuse )
-        return Channel();
-    throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
-}
-
-void Daemon::addDataLine( InputMessage &message, Channel channel ) {
-    NOTE();
-
-    OutputMessage response( MessageType::Control );
-    response.tag( Code::Refuse );
-
-    int peerId;
-    int channelId;
-    message >> peerId >> channelId;
-    channel->receive( message );
-
-    if ( _state == State::FormingGroup ) {
-        Line peer = connections().lockedFind( peerId );
-        if ( peer ) {
-            peer->openDataChannel( channel, channelId );
             response.tag( Code::OK );
         }
     }
+
     channel->send( response );
 }
 
@@ -480,6 +462,27 @@ void Daemon::join( InputMessage &message, Channel channel ) {
     connections().lockedInsert( peerId, std::move( peer ) );
 }
 
+void Daemon::addDataLine( InputMessage &message, Channel channel ) {
+    NOTE();
+
+    OutputMessage response( MessageType::Control );
+    response.tag( Code::Refuse );
+
+    int peerId;
+    int channelId;
+    message >> peerId >> channelId;
+    channel->receive( message );
+
+    if ( _state == State::FormingGroup ) {
+        Line peer = connections().lockedFind( peerId );
+        if ( peer ) {
+            peer->openDataChannel( channel, channelId );
+            response.tag( Code::OK );
+        }
+    }
+    channel->send( response );
+}
+
 void Daemon::grouped( Channel channel ) {
     NOTE();
 
@@ -492,8 +495,6 @@ void Daemon::grouped( Channel channel ) {
 
     Channel top, bottom;
     std::tie( top, bottom ) = Communicator::socketPair();
-    top->shutdown( brick::net::Shutdown::Write );
-    bottom->shutdown( brick::net::Shutdown::Read );
 
     response.tag( Code::OK );
     channel->send( response );
@@ -507,114 +508,6 @@ void Daemon::grouped( Channel channel ) {
         _childPid = pid;
         becomeParent( std::move( top ) );
     }
-}
-
-void Daemon::prepare( Channel channel ) {
-    NOTE();
-    OutputMessage response( MessageType::Control );
-    if ( _state != State::Grouped && _state != State::FormingGroup ) {
-        response.tag( Code::Refuse );
-        channel->send( response );
-        return;
-    }
-    response.tag( Code::OK );
-    channel->send( response );
-    _state = State::Leaving;
-}
-
-void Daemon::leave( Channel channel ) {
-    NOTE();
-
-    OutputMessage response( MessageType::Control );
-    if ( _state != State::Leaving ) {
-        response.tag( Code::Refuse );
-        channel->send( response );
-        return;
-    }
-
-    response.tag( Code::OK );
-    channel->send( response );
-
-    response.tag( Code::CutRope );
-    _rope->send( response );
-
-    worldSize( 0 );
-    _quit = true;
-}
-
-void Daemon::release( Channel channel ) {
-    NOTE();
-    OutputMessage response( MessageType::Control );
-    if ( _state != State::Enslaved ) {
-        response.tag( Code::Refuse );
-        channel->send( response );
-        return;
-    }
-    response.tag( Code::OK );
-    channel->send( response );
-
-    setDefault();
-    return;
-}
-
-void Daemon::cutRope( Channel channel ) {
-    NOTE();
-    if ( _state != State::Supervising || channel != _rope ) {
-        Logger::log( "command CutRope came from bad source or in a bad moment" );
-        return;
-    }
-    setDefault( true );
-    return;
-}
-
-void Daemon::shutdown( Channel channel ) {
-    NOTE();
-    OutputMessage response( MessageType::Control );
-    if ( _state != State::Free ) {
-        response.tag( Code::Refuse );
-        channel->send( response );
-        return;
-    }
-    response.tag( Code::OK );
-    channel->send( response );
-    reset();
-    ::exit( 0 );
-}
-
-void Daemon::forceShutdown() {
-    NOTE();
-    reset();
-    ::exit( 0 );
-}
-
-void Daemon::error( Channel channel ) {
-    Logger::log( info( channel ) + " got itself into error state" );
-    Line peer = connections().lockedFind( channel->id() );
-    if ( peer )
-        reset( peer->address() );
-    else
-        reset();
-}
-
-void Daemon::renegade( InputMessage &message, Channel channel ) {
-    Address culprit;
-
-    message >> culprit;
-    channel->receive( message );
-
-    Logger::log( std::string( "peer " ) + culprit.value() + " got itself into error state" );
-    reset( culprit );
-}
-
-void Daemon::status( Channel channel ) {
-    NOTE();
-
-    OutputMessage response( MessageType::Control );
-    response.tag( Code::Status );
-    std::string description = status();
-
-    response << description;
-    channel->send( response );
 }
 
 void Daemon::initData( InputMessage &message, Channel channel ) {
@@ -662,6 +555,117 @@ void Daemon::run( InputMessage &message, Channel channel ) {
     _runMain = true;
 }
 
+void Daemon::prepare( Channel channel ) {
+    NOTE();
+    OutputMessage response( MessageType::Control );
+    if ( _state != State::Grouped && _state != State::FormingGroup ) {
+        response.tag( Code::Refuse );
+        channel->send( response );
+        return;
+    }
+    response.tag( Code::OK );
+    channel->send( response );
+    _state = State::Leaving;
+}
+
+void Daemon::leave( Channel channel ) {
+    NOTE();
+
+    OutputMessage response( MessageType::Control );
+    if ( _state != State::Leaving ) {
+        response.tag( Code::Refuse );
+        channel->send( response );
+        return;
+    }
+
+    response.tag( Code::CutRope );
+    _rope->send( response );
+
+    // we do not care about the message, we just need to asure
+    // the message was read before we respond to the master
+    InputMessage acknowledgement;
+    _rope->receiveHeader( acknowledgement );
+
+    response.tag( Code::OK );
+    channel->send( response );
+
+    worldSize( 0 );
+    _quit = true;
+}
+
+void Daemon::cutRope( Channel channel ) {
+    NOTE();
+    OutputMessage response( MessageType::Control );
+    if ( _state != State::Supervising || channel != _rope ) {
+        Logger::log( "command CutRope came from bad source or in a bad moment" );
+        response.tag( Code::Refuse );
+        channel->send( response );
+        return;
+    }
+    response.tag( Code::OK );
+    channel->send( response );
+
+    setDefault( true );
+    return;
+}
+
+
+void Daemon::error( Channel channel ) {
+    Logger::log( info( channel ) + " got itself into error state" );
+    Line peer = connections().lockedFind( channel->rank() );
+    if ( peer )
+        reset( peer->address() );
+    else
+        reset();
+}
+
+void Daemon::renegade( InputMessage &message, Channel channel ) {
+    Address culprit;
+
+    message >> culprit;
+    channel->receive( message );
+
+    Logger::log( std::string( "peer " ) + culprit.value() + " got itself into error state" );
+    reset( culprit );
+}
+
+void Daemon::status( Channel channel ) {
+    NOTE();
+
+    OutputMessage response( MessageType::Control );
+    response.tag( Code::Status );
+    std::string description = status();
+
+    response << description;
+    channel->send( response );
+}
+
+void Daemon::shutdown( Channel channel ) {
+    NOTE();
+    OutputMessage response( MessageType::Control );
+    if ( _state != State::Free ) {
+        response.tag( Code::Refuse );
+        channel->send( response );
+        return;
+    }
+    response.tag( Code::OK );
+    channel->send( response );
+    setDefault();
+    ::exit( 0 );
+}
+
+void Daemon::forceShutdown() {
+    NOTE();
+    setDefault();
+    ::exit( 0 );
+}
+
+void Daemon::forceReset() {
+    NOTE();
+    if ( _state != State::Free )
+        reset();
+}
+
 void Daemon::reset() {
     Logger::log( "forced to reset by circumstances" );
     OutputMessage message( MessageType::Control );
@@ -689,37 +693,69 @@ void Daemon::setDefault( bool wait ) {
         _quit = true;
     _state = State::Free;
     if ( _childPid != NoChild ) {
-        Logger::log( "waiting for child" );
-
-        int status = 0;
-        int options = 0;
-        if ( !wait )
-            options = WNOHANG;
-
-        // hope for C++14
-        // std::this_thread::sleep_for( 100ms );
-        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
-        int r = ::waitpid( _childPid, &status, options );
-
-        if ( r == _childPid && ( WIFEXITED( status ) || WIFSIGNALED( status ) ) ) {
-            Logger::log( "child was buried" );
-        }
-        else {
-            Logger::log( "kill child" );
-            ::kill( _childPid, 9 ); // just kill our child
-            ::waitpid( _childPid, &status, 0 );
-        }
+        waitForChild( wait );
         _childPid = NoChild;
     }
-    id( 0 );
+    rank( 0 );
     worldSize( 0 );
+}
+
+void Daemon::waitForChild( bool wait ) {
+    std::future< bool > future = std::async( std::launch::async, [&,this] {
+        int status = 0;
+        int r = ::waitpid( _childPid, &status, 0 );
+        return r == _childPid && ( WIFEXITED( status ) || WIFSIGNALED( status ) );
+    } );
+
+    if ( wait ) {
+        Logger::log( "waiting for child" );
+
+        if ( future.wait_for( 100_ms ) == std::future_status::ready && future.get() ) {
+            Logger::log( "child was buried" );
+            return;
+        }
+    }
+
+    Logger::log( "killing child..." );
+    if ( ::kill( _childPid, 9 ) == 0 || errno == ESRCH )
+        Logger::log( "child killed and buried" );
+    else
+        Logger::log( "could not..." );
+}
+
+Channel Daemon::connectLine( Address &address, LineType type, int channelId ) {
+    OutputMessage request( MessageType::Control );
+    std::string name = this->name();
+    int r = rank();
+
+    switch( type ){
+    case LineType::Master:
+        request.tag( Code::Join );
+        request << r << name;
+        break;
+    case LineType::Data:
+        request.tag( Code::DataLine );
+        request << r << channelId;
+        break;
+    }
+
+    Channel channel = connect( address );
+    channel->send( request );
+
+    InputMessage response;
+    channel->receive( response );
+    if ( response.tag< Code >() == Code::OK )
+        return channel;
+    if ( response.tag< Code >() == Code::Refuse )
+        return Channel();
+    throw ResponseException( { Code::OK, Code::Refuse }, response.tag< Code >() );
 }
 
 void Daemon::becomeChild( Channel rope ) {
     net().unbind();
     _state = State::Grouped;
     _rope = std::move( rope );
-    _rope->id( id() );
+    _rope->rank( rank() );
     Logger::becomeChild();
     Logger::log( "child born" );
     buildCache();
@@ -729,7 +765,7 @@ void Daemon::becomeParent( Channel rope ) {
     connections().lockedClear();
     _state = State::Supervising;
     _rope = std::move( rope );
-    _rope->id( id() );
+    _rope->rank( rank() );
     Logger::log( "parent arise" );
 }
 
@@ -788,10 +824,10 @@ void Daemon::buildCache()
 
 void Daemon::table() {
     std::ostringstream out;
-    out << "==[" << name() << " (" << id() << ")]==" << std::endl;
+    out << "==[" << name() << " (" << rank() << ")]==" << std::endl;
     std::lock_guard< std::mutex > _{ connections().mutex() };
     for ( Line &line : connections().values() ) {
-        out << "id: " << line->id() << " name: " << line->name() << std::endl;
+        out << "id: " << line->rank() << " name: " << line->name() << std::endl;
         out << "\tmaster: " << line->master()->fd() << std::endl;
         int i = 0;
         for ( const Channel &channel : line->data() ) {

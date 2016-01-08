@@ -31,27 +31,31 @@ struct Package {
     }
 };
 
-struct LongPackage {
-
+struct LongPackage : Package {
+    char padding[1024];
 };
 
 using brick::hash::hash128_t;
+
+template< typename Package >
 struct Hasher {
-    hash128_t hash( Package p ) const {
+    hash128_t hash( Package &p ) const {
         return { p.hash(), p.hash( ~0u ) };
     }
-    bool valid( Package ) const {
+    bool valid( Package & ) const {
         return true;
     }
-    bool equal( Package lhs, Package rhs ) const {
+    bool equal( Package &lhs, Package &rhs ) const {
         return
             lhs.first == rhs.first &&
             lhs.second == rhs.second;
     }
 };
 
-using Set = brick::hashset::FastConcurrent< Package, Hasher >;
+template< typename Package >
+using Set = brick::hashset::FastConcurrent< Package, Hasher< Package > >;
 
+template< typename Package >
 struct Common {
     Common( int workLoad, int selection, int rank, int worldSize ) :
         _workLoad{ workLoad },
@@ -63,7 +67,7 @@ struct Common {
     {
         _set.setSize( 1024 );
     }
-    void push( Package p ) {
+    void push( const Package &p ) {
         std::lock_guard< std::mutex > _( _m );
         _queue.push( p );
     }
@@ -88,7 +92,7 @@ struct Common {
         return _processed;
     }
 
-    Set::WithTD withTD( Set::ThreadData &td ) {
+    typename Set< Package >::WithTD withTD( typename Set< Package >::ThreadData &td ) {
         return _set.withTD( td );
     }
 
@@ -126,14 +130,16 @@ private:
     std::queue< Package > _queue;
     std::atomic< bool > _done;
     std::atomic< unsigned > _processed;
-    Set _set;
+    Set< Package > _set;
 };
 
+template< template< typename > class S, typename Package >
 struct BaseWorker {
+    using Self = S< Package >;
 
-    BaseWorker( int id, Common &common ) :
+    BaseWorker( int id, Common< Package > &common ) :
         _id{ id },
-        _common{ common }
+        _common( common )
     {}
 
     int id() const {
@@ -144,8 +150,19 @@ struct BaseWorker {
         return _common.workLoad();
     }
 
-    // void wait()
-    // void start()
+    void start() {
+        _handle = std::async( std::launch::async, [this] {
+            try {
+                this->self().main();
+            } catch ( const std::exception &e ) {
+                std::cerr << "exception: " << e.what() << std::endl;
+            }
+        } );
+    }
+    void wait() {
+        _handle.get();
+    }
+
     // void notifyAll( Common & )
     // bool isMaster()
     // void dispatcher( Common &, std::vector< Self > & )
@@ -165,10 +182,10 @@ protected:
     unsigned processed() const {
         return _common.processed();
     }
-    Set::WithTD withTD() {
+    typename Set< Package >::WithTD withTD() {
         return _common.withTD( _td );
     }
-    const Common &common() {
+    const Common< Package > &common() {
         return _common;
     }
     int F() {
@@ -178,13 +195,21 @@ protected:
         _common.progress();
     }
 private:
+    Self &self() {
+        return *static_cast< Self * >( this );
+    }
+
     int _id;
-    Common &_common;
-    Set::ThreadData _td;
+    Common< Package > &_common;
+    typename Set< Package >::ThreadData _td;
+    std::future< void > _handle;
 };
 
-template< typename W >
+template< template< typename > class WT, typename Package >
 struct Workers {
+
+    using W = WT< Package >;
+
     Workers( int workers, int workLoad, int selection ) :
         _common{ workLoad, selection, W::rank(), W::worldSize() }
     {
@@ -217,5 +242,5 @@ struct Workers {
     }
 private:
     std::vector< W > _workers;
-    Common _common;
+    Common< Package > _common;
 };

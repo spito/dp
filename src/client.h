@@ -8,8 +8,11 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-struct Client : Communicator {
+class Client : public Communicator {
+    using InputMessage = brick::net::InputMessage;
+    using OutputMessage = brick::net::OutputMessage;
 
+public:
     Client( const char *port, int channels = 1 ) :
         Communicator( port, false )
     {
@@ -23,6 +26,7 @@ struct Client : Communicator {
     void quit();
     bool shutdown( const std::string & );
     void forceShutdown( const std::string & );
+    void forceReset( const std::string & );
     std::vector< bool > start( const std::vector< std::string > & );
 
     bool add( std::string, std::string * = nullptr );
@@ -54,11 +58,17 @@ private:
     void refreshCache();
     static void discardMessage( Channel );
 
+    void registerSignalHandler();
+    static void handleSignal( int );
 
     int _idCounter = 1;
     int _done = 0;
+    static int _signal;
     bool _quit = false;
     bool _established = false;
+
+    static Channel _flag;
+    Channel _watchDog;
 
     std::unordered_map< std::string, int > _names;
     std::vector< Channel > _cache;

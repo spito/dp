@@ -61,42 +61,30 @@ private:
     long long _elapsed;
 };
 
-template< typename Self >
-struct Worker : BaseWorker {
+template< template< typename > class S, typename Package >
+struct Worker : BaseWorker< S, Package > {
+    using Self = S< Package >;
 
-    Worker( int id, Common &common ) :
-        BaseWorker{ id, common },
+    Worker( int id, Common< Package > &common ) :
+        BaseWorker< S, Package >{ id, common },
         _generator{ std::random_device{}() },
         _distribution{ 1, common.worldSize() - 1 },
         _seed( std::random_device{}() )
     {}
 
-    void start() {
-        _handle = std::async( std::launch::async, [this] {
-            try {
-                this->self().main();
-            } catch ( const std::exception &e ) {
-                std::cerr << "exception: " << e.what() << std::endl;
-            }
-        } );
-    }
-    void wait() {
-        _handle.get();
-    }
-
-    static void notifyAll( Common &common ) {
+    static void notifyAll( Common< Package > &common ) {
         common.progress();
-        brick::net::OutputMessage msg( MessageType::Data );
+        OutputMessage msg;
         msg.tag( Tag::Done );
 
         Daemon::instance().sendAll( msg );
     }
 
-    static bool isMaster( Common &common ) {
+    static bool isMaster( Common< Package > &common ) {
         return common.rank() == Daemon::MainSlave;
     }
 
-    static void dispatcher( Common &common, std::vector< Self > &workers ) {
+    static void dispatcher( Common< Package > &common, std::vector< Self > &workers ) {
         while ( common.processed() < common.worldSize() ) {
             Daemon::instance().probe( [&]( Channel channel ) {
                     Self::processDispatch( common, workers, channel );
@@ -107,7 +95,7 @@ struct Worker : BaseWorker {
         }
     }
     static int rank() {
-        return Daemon::instance().id();
+        return Daemon::instance().rank();
     }
     static int worldSize() {
         return Daemon::instance().worldSize();
@@ -115,34 +103,35 @@ struct Worker : BaseWorker {
 protected:
     inline int owner( Package p ) {
         int o;
-        switch ( common().selection() ) {
+        switch ( this->common().selection() ) {
         default:
         case 1:
-            o = p.hash() % ( common().worldSize() - 1 ) + 1;
+            o = p.hash() % ( this->common().worldSize() - 1 ) + 1;
+            break;
         case 2:
-            return common().rank() % common().worldSize() + 1;
+            return this->common().rank() % this->common().worldSize() + 1;
         case 3:
             o = _distribution( _generator );
             break;
         case 4:
-            o = _generator() % ( common().worldSize() - 1 ) + 1;
+            o = _generator() % ( this->common().worldSize() - 1 ) + 1;
             break;
         case 5:
-            o = ::rand_r( &_seed ) % ( common().worldSize() - 1 ) + 1;
+            o = ::rand_r( &_seed ) % ( this->common().worldSize() - 1 ) + 1;
             break;
         }
 
-        if ( o >= common().rank() )
+        if ( o >= this->common().rank() )
             ++o;
         return o;
     }
 
     bool quit() const {
-        return processed() == common().worldSize();
+        return this->processed() == this->common().worldSize();
     }
 
     static void request( int from, Package p ) {
-        brick::net::OutputMessage o( MessageType::Data );
+        OutputMessage o;
         o.tag( Tag::Response );
 
         p.first *= -1;
@@ -153,14 +142,9 @@ protected:
 
 private:
 
-    Self &self() {
-        return *static_cast< Self * >( this );
-    }
-
     std::ranlux24 _generator;
     std::uniform_int_distribution<> _distribution;
     unsigned _seed;
-    std::future< void > _handle;
 };
 
 
@@ -193,14 +177,14 @@ private:
     std::condition_variable _cv;
 };
 
+template< typename Package >
+struct Shared : Worker< Shared, Package > {
+    using Worker = Worker< Shared::template Shared, Package >;
 
-struct Shared : Worker< Shared > {
-
-    Shared( int id, Common &common ) :
-        Worker< Shared >{ id, common },
+    Shared( int id, Common< Package > &common ) :
+        Worker{ id, common },
         _box{ new Box }
     {}
-
     Shared( const Shared & ) = delete;
     Shared( Shared && ) = default;
 
@@ -213,18 +197,18 @@ struct Shared : Worker< Shared > {
     }
 
     void main() {
-        for ( int i = 0; i < common().workLoad(); ++i ) {
-            brick::net::OutputMessage msg( MessageType::Data );
+        for ( int i = 0; i < this->common().workLoad(); ++i ) {
+            OutputMessage msg;
             Package p;
             p.first = i + 13;
-            p.second = id();
+            p.second = this->id();
 
             msg.tag( Tag::Request );
             msg << p;
-            int target = owner( p );
+            int target = this->owner( p );
 
             if ( !Daemon::instance().sendTo( target, msg ) )
-                std::cout << target << "fail" << std::endl;
+                std::cout << target << " fail" << std::endl;
             else {
                 int response = _box->wait();
 
@@ -234,15 +218,15 @@ struct Shared : Worker< Shared > {
         }
     }
 
-    static void processDispatch( Common &common, std::vector< Shared > &workers, Channel channel ) {
+    static void processDispatch( Common< Package > &common, std::vector< Shared > &workers, Channel channel ) {
         Package p;
-        brick::net::InputMessage incoming;
+        InputMessage incoming;
         incoming >> p;
         channel->receive( incoming );
 
         switch ( incoming.tag< Tag >() ) {
         case Tag::Request:
-            request( incoming.from(), p );
+            Worker::request( incoming.from(), p );
             break;
         case Tag::Response:
             workers[ p.second ].push( p.first );
@@ -258,48 +242,53 @@ private:
     std::unique_ptr< Box > _box;
 };
 
-struct Dedicated : Worker< Dedicated > {
-    Dedicated( int id, Common &common ) :
-        Worker{ id, common }
-    {}
+template< typename Package >
+struct Dedicated : Worker< Dedicated, Package > {
+    using Worker = Worker< Dedicated::template Dedicated, Package >;
+
+    using Worker::Worker;
 
     static ChannelID channel( int ch ) {
         return ch;
     }
 
     void main() {
-        for ( int i = 0; i < common().workLoad(); ++i ) {
-            brick::net::OutputMessage msg( MessageType::Data );
+        for ( int i = 0; i < this->common().workLoad(); ++i ) {
+            OutputMessage msg;
             Package p;
             p.first = i + 13;
-            p.second = id();
+            p.second = this->id();
 
             msg.tag( Tag::Request );
             msg << p;
 
-            int target = owner( p );
-            Daemon::instance().sendTo( target, msg );
+            int target = this->owner( p );
+            if ( !Daemon::instance().sendTo( target, msg ) )
+                std::cout << target << " fail" << std::endl;
 
-            brick::net::InputMessage input;
+            InputMessage input;
 
             Package incoming;
             input >> incoming;
-            Daemon::instance().receive( target, input, channel( id() ) );
+            if ( !Daemon::instance().receive( target, input, channel( this->id() ) ) )
+                std::cout << target << " fail " << channel( this->id() ) << std::endl;
 
-            if ( incoming.first != -p.first )
+
+            if ( incoming.first != -p.first ) {
                 std::cout << incoming.first << " != " << -p.first << std::endl;
+            }
 
         }
     }
-    static void processDispatch( Common &common, std::vector< Dedicated > &, Channel channel ) {
+    static void processDispatch( Common< Package > &common, std::vector< Dedicated > &, Channel channel ) {
         Package p;
-        brick::net::InputMessage incoming;
+        InputMessage incoming;
         incoming >> p;
         channel->receive( incoming );
 
         switch ( incoming.tag< Tag >() ) {
         case Tag::Request:
-            request( incoming.from(), p );
+            Worker::request( incoming.from(), p );
             break;
         case Tag::Done:
             common.progress();

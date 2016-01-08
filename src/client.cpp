@@ -3,13 +3,17 @@
 #include <sstream>
 #include <cstring>
 #include <iomanip>
+#include <signal.h>
 
 #include "client.h"
 #include "message.h"
 
+int Client::_signal = 0;
+Channel Client::_flag;
+
 void Client::quit() {
 
-    if ( !connections().lockedEmpty() ) {
+    if ( !connections().empty() ) {
         if ( _established )
             dissolve();
         else
@@ -52,6 +56,15 @@ void Client::forceShutdown( const std::string &machine ) {
     channel->send( message );
 }
 
+void Client::forceReset( const std::string &machine ) {
+    Channel channel = connect( machine.c_str() );
+
+    OutputMessage message( MessageType::Control );
+    message.tag( Code::ForceReset );
+
+    channel->send( message );
+}
+
 std::vector< bool > Client::start( const std::vector< std::string > &machines ) {
 
     std::vector< std::future< bool > > handles;
@@ -70,7 +83,7 @@ std::vector< bool > Client::start( const std::vector< std::string > &machines ) 
         handles.emplace_back( std::async( std::launch::async, [&] {
             std::ostringstream os;
             os  << "ssh -T " << m << "<<'ENDSSH'\n"
-                << path << " d -l " << m << "\n"
+                << path << " d -l " << m << " -p " << net().port() << "\n"
                 << "ENDSSH";
             std::string command{ os.str() };
             return ::system( command.c_str() ) == 0;
@@ -175,10 +188,11 @@ void Client::run( int argc, char **argv, const void *initData, size_t initDataLe
         }
 
         _quit = false;
+        registerSignalHandler();
         refreshCache();
 
         while ( !_quit ) {
-            probe( _cache, &Client::discardMessage, 2000, false );
+            probe( _cache, &Client::discardMessage, -1, false );
         }
         dissolve();
     } catch ( brick::net::NetException &e ) {
@@ -212,7 +226,7 @@ bool Client::establish( int argc, char **argv, const void *initData, size_t init
 
 bool Client::dissolve() {
 
-    if ( !_established )
+    if ( !_established || _signal )
         return false;
 
     _established = false;
@@ -282,20 +296,20 @@ bool Client::connectAll() {
         auto p = i;
         ++p;
         for ( ; p != connections().end(); ++p ) {
-            int id = (*p)->id();
+            int rank = (*p)->rank();
             std::string slaveName = (*p)->name();
             Address address = (*p)->address();
 
             OutputMessage message( MessageType::Control );
             message.tag( Code::ConnectTo );
-            message << id << slaveName << address;
+            message << rank << slaveName << address;
 
             (*i)->master()->send( message );
             InputMessage response;
             (*i)->master()->receiveHeader( response );
 
             switch( response.tag< Code >() ) {
-            case Code::Success:
+            case Code::OK:
                 break;
             case Code::Refuse:
                 return false;
@@ -376,11 +390,8 @@ void Client::reset( Address address ) {
     OutputMessage message( MessageType::Control );
     message.tag( Code::Renegade );
     message << address;
-    {
-        std::lock_guard< std::mutex > lock( connections().mutex() );
-        for ( const auto &slave : connections().values() ) {
-            slave->master()->send( message, true );
-        }
+    for ( const auto &slave : connections().values() ) {
+        slave->master()->send( message, true );
     }
     reset();
 }
@@ -407,8 +418,15 @@ bool Client::processControl( Channel channel ) {
 }
 
 void Client::processDisconnected( Channel channel ) {
-    std::cerr << "closed connection to " << info( channel ) << std::endl;
-    reset();
+    if ( channel != _watchDog ) {
+        std::cerr << "closed connection to " << info( channel ) << std::endl;
+        reset();
+        return;
+    }
+    _quit = true;
+    std::cerr << "\nEmergency exit: received signal " << _signal << '.' << std::endl;
+    for ( const auto &n : _names )
+        forceReset( n.first );
 }
 
 void Client::processOutput( Channel channel ) {
@@ -460,23 +478,48 @@ void Client::refreshCache() {
         if ( line->masterChannel() )
             cache.push_back( line->master() );
     }
+    cache.push_back( _watchDog );
     _cache.swap( cache );
 }
 
 void Client::discardMessage( Channel channel ) {
     InputMessage message;
+#if 1
     channel->receiveHeader( message );
-    // channel->receive( message );
-    // std::cout << "discarded message ("
-    //     << "from: " << message.from() << ", "
-    //     << "to: " << message.to() << ", "
-    //     << "count: " << message.count() << ", "
-    //     << "tag:" << message.tag() << ")" << std::endl;
-    // message.process( []( char *data, size_t s ) {
-    //     std::cout << "@ " << std::hex << std::setfill( '0' );
-    //     for ( int i = 0; i < s; ++i )
-    //         std::cout << std::setw( 2 ) << int( data[ i ] );
-    //     std::cout << std::dec << std::setfill( ' ' ) << std::endl;
-    // } );
-    // message.cleanup< char >( []( char *d ){ delete[] d; } );
+#else
+    channel->receive( message );
+    std::cout << "discarded message ("
+        << "from: " << message.from() << ", "
+        << "to: " << message.to() << ", "
+        << "count: " << message.count() << ", "
+        << "tag: " << message.tag() << ")" << std::endl;
+    message.process( []( char *data, size_t s ) {
+        std::cout << "@ " << std::hex << std::setfill( '0' );
+        for ( int i = 0; i < s; ++i )
+            std::cout << std::setw( 2 ) << int( data[ i ] );
+        std::cout << std::dec << std::setfill( ' ' ) << std::endl;
+    } );
+    message.cleanup< char >( []( char *d ){ delete[] d; } );
+#endif
+}
+
+void Client::registerSignalHandler() {
+    struct sigaction sa;
+    sa.sa_handler = &handleSignal;
+    sa.sa_flags = SA_RESTART;
+    ::sigfillset( &sa.sa_mask );
+
+    for ( auto s : { SIGINT, SIGTERM, SIGALRM } ) {
+        if ( ::sigaction( s, &sa, nullptr ) == -1 )
+            throw brick::net::SystemException( "sigaction" );
+    }
+    std::tie( _flag, _watchDog ) = Communicator::socketPair();
+}
+
+void Client::handleSignal( int signal ) {
+    if ( !_signal ) {
+        _signal = signal;
+
+        _flag->close();
+    }
 }

@@ -21,67 +21,18 @@ protected:
     using InputMessage = brick::net::InputMessage;
 
     enum { ALL = 255 };
+	enum { Master = 0 };
 public:
 
     Communicator( const char *port, bool autobind ) :
-        _id( 0 ),
+        _rank( 0 ),
         _worldSize( 0 ),
         _net( port, autobind )
     {}
     virtual ~Communicator() = default;
 
-    bool sendTo( int id, OutputMessage &message, ChannelID chID = ChannelType::Master ) {
-        return sendTo( findChannel( id, chID ), message );
-    }
-    bool sendTo( Channel channel, OutputMessage &message ) {
-        if ( !channel || !*channel )
-            return false;
-        message.from( _id );
-        message.to( channel->id() );
-        std::lock_guard< std::mutex > _{ channel->writeMutex() };
-        channel->send( message );
-        return true;
-    }
-
-    bool receive( int id, InputMessage &message, ChannelID chID = ChannelType::Master ) {
-        return receive( findChannel( id, chID ), message );
-    }
-    bool receive( Channel channel, InputMessage &message ) {
-        if ( !channel )
-            return false;
-        std::lock_guard< std::mutex > _{ channel->readMutex() };
-        channel->receive( message );
-        return true;
-    }
-
-    template< typename Al, typename D, typename C, typename Ap >
-    bool receive( int id, Al allocator, D deallocator, C convertor, Ap applicator, ChannelID chID = ChannelType::Master ) {
-        Channel channel = findChannel( id, chID );
-        if ( !channel )
-            return false;
-
-        InputMessage message;
-        std::vector< typename std::result_of< Al( size_t ) >::type > handles;
-
-        {
-            std::lock_guard< std::mutex > _{ channel->readMutex() };
-            channel->receive( message, [&] ( size_t size ) -> char * {
-                handles.emplace_back( allocator( size ) );
-                return convertor( handles.back() );
-            } );
-        }
-        for ( auto &h : handles )
-            applicator( h );
-
-        message.cleanup< char >( deallocator );
-        return true;
-    }
-
-    bool master() const {
-        return id() == 0;
-    }
-    int id() const {
-        return _id;
+    int rank() const {
+        return _rank;
     }
     int worldSize() const {
         return _worldSize;
@@ -106,29 +57,8 @@ protected:
     bool sendAll( OutputMessage &, ChannelID = ChannelType::Master );
     bool sendAll( OutputMessage &, std::vector< Channel > & );
 
-
-    Channel findChannel( int id, ChannelID chID ) {
-        Line peer = connections().lockedFind( id );
-        Channel channel;
-        if ( !peer )
-            return channel;
-        switch ( chID.asType() ) {
-        case ChannelType::Master:
-            if ( peer->masterChannel() )
-                channel = peer->master();
-            break;
-        case ChannelType::All:
-            break;
-        default:
-            if ( peer->dataChannel( chID ) )
-                channel = peer->data( chID );
-            break;
-        }
-        return channel;
-    }
-
-    void id( int i ) {
-        _id = i;
+    void rank( int r ) {
+        _rank = r;
     }
     void worldSize( int ws ) {
         _worldSize = ws;
@@ -156,22 +86,22 @@ protected:
     }
 
     std::string info( Channel channel ) {
-        Line line = connections().lockedFind( channel->id() );
+        Line line = connections().lockedFind( channel->rank() );
         if ( line )
             return info( line );
-        return '#' + std::to_string( channel->id() );
+        return '#' + std::to_string( channel->rank() );
     }
     std::string info( Line line ) {
         if ( !line )
             return "unknown line";
         return
-            '#' + std::to_string( line->id() ) +
+            '#' + std::to_string( line->rank() ) +
             ' ' + line->name() +
             " [" + line->address().value() + "]";
     }
 
     template< typename Ap >
-    void probe( std::vector< Channel > &channels, Ap applicator, int timeout, bool listen ) {
+    int probe( std::vector< Channel > &channels, Ap applicator, int timeout, bool listen ) {
 
         brick::types::Defer d( [&] {
             for ( auto &channel : channels )
@@ -181,23 +111,25 @@ protected:
         for ( auto &channel : channels )
             channel->readMutex().lock();
 
+        int processed = 0;
         _net.poll(
             channels,
             [this] ( brick::net::Socket s ) {
                 processIncoming( std::make_shared< Socket >( std::move( s ) ) );
             },
             [&,this] ( Channel channel ) {
-                return process( channel, applicator );
+                return process( channel, processed, applicator );
             },
             timeout,
             listen
         );
+        return processed;
     }
 
 private:
 
     template< typename Ap >
-    bool process( Channel channel, Ap applicator ) {
+    bool process( Channel channel, int &processed, Ap applicator ) {
         if ( channel->closed() ) {
             processDisconnected( std::move( channel ) );
             return true;
@@ -207,6 +139,7 @@ private:
 
         switch ( message.category< MessageType >() ) {
         case MessageType::Data:
+            ++processed;
             if ( !takeBool( applicator, std::move( channel ) ) )
                 return false;
             break;
@@ -235,7 +168,7 @@ private:
         channel->receiveHeader( message );
     }
     virtual void processDisconnected( Channel channel ) {
-        connections().lockedErase( channel->id() );
+        connections().lockedErase( channel->rank() );
     }
 
     template< typename Ap >
@@ -266,7 +199,7 @@ private:
     }
 
 
-    int _id;
+    int _rank;
     int _worldSize;
     int _channels;
     Connections _connections;

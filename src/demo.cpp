@@ -18,18 +18,18 @@
 #if 0
 void dummyMain() {
     Daemon &d = Daemon::instance();
-    std::cout << "id: " << d.id() << std::endl;
+    std::cout << "rank: " << d.rank() << std::endl;
     std::cout << "data: " << ( d.data() ? "yes" : "no" ) << std::endl;
 
 
-    if ( d.id() == 1 ) {
+    if ( d.rank() == 1 ) {
         int time = 1259;
         brick::net::OutputMessage m( MessageType::Data );
         m << time;
         bool b = d.sendTo( 2, m );
         std::cout << (b ? "ok" : "fail") << std::endl;
     }
-    if ( d.id() == 2 ) {
+    if ( d.rank() == 2 ) {
         int time;
         d.receive(
             1,
@@ -108,9 +108,27 @@ void forceShutdown( const Meta &meta ) {
     }
 }
 
-template< typename W >
+void forceReset( const Meta &meta ) {
+    Client c{ meta.port.c_str() };
+
+    for ( const auto &host : meta.hosts ) {
+        std::cout << host << ": ";
+        try {
+            c.forceReset( host );
+            std::cout << "reset";
+        } catch ( const std::exception &e ) {
+            std::cout << e.what();
+        }
+        std::cout << std::endl;
+    }
+}
+
+template<
+    template< typename > class W,
+    typename Package
+>
 void startWorker( const Meta &meta ) {
-    Workers< W > w( meta.threads, meta.workLoad, meta.selection );
+    Workers< W, Package > w( meta.threads, meta.workLoad, meta.selection );
     w.run();
 }
 
@@ -121,17 +139,24 @@ int mainD( int argc, char **argv ) {
 
     switch ( meta.algorithm ) {
     case Algorithm::LoadDedicated:
-        startWorker< load::Dedicated >( meta );
+        startWorker< load::Dedicated, Package >( meta );
         break;
     case Algorithm::LoadShared:
-        startWorker< load::Shared >( meta );
+        startWorker< load::Shared, Package >( meta );
         break;
     case Algorithm::PingDedicated:
-        startWorker< ping::Dedicated >( meta );
+        startWorker< ping::Dedicated, Package >( meta );
         break;
     case Algorithm::PingShared:
-        startWorker< ping::Shared >( meta );
+        startWorker< ping::Shared, Package >( meta );
         break;
+    case Algorithm::LongLoadDedicated:
+        startWorker< load::Dedicated, LongPackage >( meta );
+        break;
+    case Algorithm::LongLoadShared:
+        startWorker< load::Shared, LongPackage >( meta );
+        break;
+
     case Algorithm::Table:
         Daemon::instance().table();
         break;
@@ -180,12 +205,15 @@ int main( int argc, char **argv ) {
         case Command::ForceShutdown:
             forceShutdown( meta );
             break;
+        case Command::ForceReset:
+            forceReset( meta );
+            break;
         case Command::Restart:
             forceShutdown( meta );
             start( meta );
             break;
         case Command::Daemon:
-            Daemon::instance( meta.port.c_str(), &mainD, meta.logFile ).run();
+            Daemon::instance( meta.port.c_str(), &mainD, meta.logFile ).run( meta.detach );
             break;
         case Command::Run:
             run( argc, argv, meta );
