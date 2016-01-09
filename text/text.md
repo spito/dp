@@ -304,7 +304,11 @@ Z\ pohledu použití spojitých socketů v\ programu \v síťové komunikační 
 1.  Vytvoření socketu pomocí funkce [`socket`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/socket.html).
 2.  Požádání o spojení funkcí [`connect`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/connect.html).
 
-**[diagram]**
+\begin{figure}[h]
+    \includegraphics[trim=0cm 20.5cm 10.5cm 0cm,width=\textwidth] {TCP-connect.pdf}
+    \caption{Diagram ustanovení spojení}
+    \label{TCP-conn}
+\end{figure}
 
 Po\ navázání spojení si\ jsou klient i\ server rovni a\ oba mohou používat funkce pro\ odesílání i\ přijímání dat. Spojité sockety je\ možné na\ libovolné straně kdykoliv uzavřít, či\ přivřít. Zavřít socket je\ možné voláním funkce [`shutdown`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/shutdown.html), která v\ případě TCP provede čtyřkrokové rozvázání spojení. Standardním voláním funkce [`close`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html) dojde k\ uvolnění popisovače souboru, ale\ až\ poslední volání nad\ daným socketem funkce [`close`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html) zavolá funkci [`shutdown`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/shutdown.html).
 
@@ -338,8 +342,6 @@ Vzhledem k\ nemožnosti použít sekvenční sockety v\ síťové komunikační 
 4.  Nastavení socketu jako připraveného a\ nastavení maximální fronty čekajících spojení funkcí [`listen`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/listen.html).
 5.  Čekání na\ příchozí spojení na\ připraveném socketu pomocí funkce [`accept`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/accept.html).
 6.  Po\ přijetí a\ zpracování příchozího spojení opakovat krok 5.
-
-**[diagram]**
 
 ### Nespojité sockety
 
@@ -390,7 +392,12 @@ Ukázka použití v unixové komunikační doméně[^note-site]:
 4.  Čekat na\ příchozí zprávu pomocí funkcí [`select`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/select.html) či [`poll`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/poll.html).
 5.  Přečíst a zpracovat zprávu.
 
-**[diagram]**
+\begin{figure}[h]
+    \includegraphics[trim=0cm 21.5cm 11.5cm 0cm,width=\textwidth] {UDP-communication.pdf}
+    \caption{Komunikace skrz UDP}
+    \label{UDP-comm}
+\end{figure}
+
 
 [^note-site]: Pro nasazení do\ síťové komunikační domény by\ postačilo vynechat krok 2 -- smazání případného souboru.
 
@@ -422,7 +429,7 @@ Vztah knihoven obsažených v\ Boostu a\ STD je\ v\ některých případech velm
 
 ## Knihovna Asio
 
- Hlavním přínosem knihovny Asio je její pojetí asynchronních volání. Asynchronní volání se\ v\ posledních několika letech stávají populární především možností použít ho v\ rozšířených programovacích jazycích, jako je\ například  Java^[<https://docs.oracle.com/javase/6/docs/api/java/util/concurrent/FutureTask.html>] nebo C#^[<https://msdn.microsoft.com/en-us/library/hh873175%28v=vs.110%29.aspx>]. V\ poslední velké revizi jazyka C++ se\ asynchronní volání objevily také v\ podobě funkce `std::async`. Asynchronní volání ve\ zkratce znamená, že\ namísto běžného volání funkce poznačíme, že\ požadujeme provedené té které funkce, a\ až v\ místě, kde potřebujeme znát výsledek, si\ o\ něho požádáme. Je\ pak na\ možnostech jazyka a\ běhového prostředí, aby se\ postaralo o\ vyhodnocení asynchronně volané funkce. Možností je\ zde více, namátkou například spuštění asynchronní funkce v\ samostatném vlákně, nebo prolnutí funkcí během překladu do\ strojového kódu či\ mezikódu.
+ Hlavním přínosem knihovny Asio je její pojetí asynchronních volání. Asynchronní volání se\ v\ posledních několika letech stávají populární především možností použít ho v\ rozšířených programovacích jazycích, jako je\ například  Java^[<https://docs.oracle.com/javase/6/docs/api/java/util/concurrent/FutureTask.html>] nebo C#^[<https://msdn.microsoft.com/en-us/library/hh873175%28v=vs.110%29.aspx>]. Také v\ poslední velké revizi jazyka C++ se\ asynchronní volání objevily -- v\ podobě funkce `std::async`. Asynchronní volání ve\ zkratce znamená, že\ namísto běžného volání funkce poznačíme, že\ požadujeme provedené té které funkce, a\ až v\ místě, kde potřebujeme znát výsledek, si\ o\ něho požádáme. Je\ pak na\ možnostech jazyka a\ běhového prostředí, aby se\ postaralo o\ vyhodnocení asynchronně volané funkce. Možností je\ zde více, namátkou například spuštění asynchronní funkce v\ samostatném vlákně, nebo prolnutí funkcí během překladu do\ strojového kódu či\ mezikódu.
 
 Další neméně důležitou součástí jsou vstupně-výstupní operace. STD poskytuje rozhraní pro práci se\ standardním vstupem a\ výstupem a\ také rozhraní pro práci se\ soubory. Co\ už\ ale STD knihovna nenabízí, je\ práce se\ sítí, kterou naopak knihovna Asio poskytuje. Poskytnuté funkce a\ třídy jsou navíc psány v\ obdobných konvencích jako STD.
 
@@ -569,8 +576,6 @@ Oproti tomu použití nespojitých socketů umožňuje využít malou režii a\ 
 2.  V\ případě paralelního přístupu by\ bylo potřeba navíc použít zámky pro paralelní přístup v\ uživatelském prostoru. Další zámky mohou hypoteticky snížit rychlost zpracování dat. V\ případě použití dedikovaného vlákna pro zpracování příchozích spojení pak musíme řešit navíc mezivláknovou komunikaci, kde se\ pravděpodobně také použijí zámky. Povšimněte si, že\ k\ zamykání systémových zámků dochází i\ při tomto přístupu.
 3.  Další vrstva vyrovnávacích pamětí, kterou je\ potřeba použít, způsobí, že\ bloky dat nebudou před přijetím kopírovány dvakrát, ale třikrát.
 4.  U čerstvě vytvořeného protokolu hrozí vyšší riziko chyb -- jak návrhové chyby, tak implementační.
-
-**[obrázek práce s pamětí - TCP vs UDP+buffer]**
 
 Z\ tohoto shrnutí se\ mi jeví jako vhodné použít spojité sockety spolu s\ TCP. Druhá možnost by\ znamenala dle mého názoru vyvýjet již vynalezenou věc znovu s\ nejistým výsledkem, zda bude rychlejší (a\ zda bude korektní).
 
@@ -766,45 +771,53 @@ Každý prvek z\ tohoto výčtu má\ svoji číselnou hodnotu, která je\ přiř
 
 Server se\ může v\ průběhu svého běhu nacházet v\ jednom z\ následujích stavů:
 
-1.  *Volný*. Server je\ k\ dispozici.
-2.  *Zotročený*. Server byl osloven klientem a\ podřídil se\ mu.
-3.  *Formující skupinu*. Server je ve\ fázi vytváření spojení ke\ všem ostatním serverům ve\ skupině.
-4.  *Zformován*. Všechny servery jsou navzájem spojeny a\ došlo k\ vytvoření výkonného procesu.
-5.  *Dohlížející*. Hlavní proces začal dohlížet na\ výkonný proces.
-6.  *Běžící*. Výkonný server spustil distribuovaný algoritmus.
-7.  *Ukončující*. Výkonný server započal ukončující fázi.
+1.  *Free*. Server je\ k\ dispozici.
+2.  *Enslaved*. Server byl osloven klientem a\ podřídil se\ mu.
+3.  *FormingGroup*. Server je ve\ fázi vytváření spojení ke\ všem ostatním serverům ve\ skupině.
+4.  *Grouped*. Všechny servery jsou navzájem spojeny a\ došlo k\ vytvoření výkonného procesu.
+5.  *Supervising*. Hlavní proces začal dohlížet na\ výkonný proces.
+6.  *Running*. Výkonný server spustil distribuovaný algoritmus.
+7.  *Leaving*. Výkonný server započal ukončující fázi.
 
-Některé stavy jsou vyhrazeny pouze pro hlavní proces (*volný*, *zotročený*, *formující skupinu*, *dohlížející*). Do zbývajících stavů se\ může dostat pouze výkonné vlákno. Pokud se\ klient dotáže serveru na\ to, v\ jakém je\ stavu, jako odpověď dostane jeden ze\ stavů hlavního procesu. Zjistit stav výkonného procesu není možné.
+Některé stavy jsou vyhrazeny pouze pro hlavní proces (*Free*, *Enslaved*, *FormingGroup*, *Supervising*). Do zbývajících stavů se\ může dostat pouze výkonné vlákno. Pokud se\ klient dotáže serveru na\ to, v\ jakém je\ stavu, jako odpověď dostane jeden ze\ stavů hlavního procesu. Zjistit stav výkonného procesu není možné.
 
-**[přechodový diagram stavů]**
+\begin{figure}[h]
+    \includegraphics[trim=0 14.5cm 15cm 0,width=\textwidth] {States.pdf}
+    \caption{Přechodový diagram stavů}
+    \label{states}
+\end{figure}
 
-Server může měnit svůj stav na\ základě příkazu od\ klienta. Na\ základě jakého příkazu, případně události, server změní svůj stav je\ popsáno na\ uvedeném přechodovém diagramu stavů. Dále zde platí to, že\ téměř všechny příkazy od\ klienta může server akceptovat, pouze pokud je\ ve\ správném stavu. Přechody mezi jednotlivými stavy jsou tak primárně kontrolní mechanizmus.
+Server může měnit svůj stav na\ základě příkazu od\ klienta. Na\ základě jakého příkazu, případně události, server změní svůj stav je\ popsáno na\ \ref{states}. Dále zde platí to, že\ téměř všechny příkazy od\ klienta může server akceptovat, pouze pokud je\ ve\ správném stavu. Přechody mezi jednotlivými stavy jsou tak primárně kontrolní mechanizmus.
 
 ## Ustanovení sítě
 
-Jak již bylo lehce zmíněno, ustanovení sítě probíhá ve\ třech fázích: navázání spojení, propojení a\ spuštění. Na\ ilustračním obrázku je\ zakreslen průběh úspěšného ustanovení sítě. Jednotlivé fáze jsou pak rozepsány níže.
+Jak již bylo lehce zmíněno, ustanovení sítě probíhá ve\ třech fázích: navázání spojení, propojení a\ spuštění. Na\ \ref{establish} je\ zakreslen průběh úspěšného ustanovení sítě. Jednotlivé fáze jsou pak rozepsány níže.
 
-**[diagram ustanovení sítě]**
+\begin{figure}[h!]
+    \includegraphics[trim=0 3cm 14cm 0,width=\textwidth] {Establishing.pdf}
+    \caption{Ustanovení sítě}
+    \label{establish}
+\end{figure}
 
 ### Navázání spojení
 
-Klient postupně otevírá spojení na\ každý stroj ze\ seznamu strojů. Po každém úspěšném připojení klient zašle serveru příkaz `Enslave`, na\ nějž může server odpovědět třemi způsoby. Pokud je\ ve\ stavu *volný*, může příkaz akceptovat, čímž sám sebe přepne do\ stavu *zotročený*. Nebo může server zamítnout zotročení v\ případě, že se\ nachází v\ jiném stavu než *volný*. Pokud server odpoví jinak, je\ odpověď nahlášena jako chybná a\ řeší se\ jako chybový stav.
+Klient postupně otevírá spojení na\ každý stroj ze\ seznamu strojů. Po každém úspěšném připojení klient zašle serveru příkaz `Enslave`, na\ nějž může server odpovědět třemi způsoby. Pokud je\ ve\ stavu *Free*, může příkaz akceptovat, čímž sám sebe přepne do\ stavu *Enslaved*. Nebo může server zamítnout zotročení v\ případě, že se\ nachází v\ jiném stavu než *Free*. Pokud server odpoví jinak, je\ odpověď nahlášena jako chybná a\ řeší se\ jako chybový stav.
 
-Pokud se\ klient není schopný k\ některému stroji připojit, případně dostane zamítavou odpověď, rozešle všem již připojeným serverům zprávu `Disconnect`, počká na\ odpověď a\ ukončí všechna spojení. Zpráva `Disconnect` způsobí, že\ server pošle akceptující odpověď, přejde zpět ze\ stavu *zotročený* do\ stavu *volný* a\ smaže všechny nabyté znalosti. V\ opačném případě -- podařilo se\ vytvořit spojení se\ všemi stroji -- pokračuje klient druhou fází: propojením.
+Pokud se\ klient není schopný k\ některému stroji připojit, případně dostane zamítavou odpověď, rozešle všem již připojeným serverům zprávu `Disconnect`, počká na\ odpověď a\ ukončí všechna spojení. Zpráva `Disconnect` způsobí, že\ server pošle akceptující odpověď, přejde zpět ze\ stavu *Enslaved* do\ stavu *Free* a\ smaže všechny nabyté znalosti. V\ opačném případě -- podařilo se\ vytvořit spojení se\ všemi stroji -- pokračuje klient druhou fází: propojením.
 
 ### Propojení
 
-V\ této fázi klient rozešle všem zotročeným serverům příkaz `Peers` spolu s\ jedním parametrem velikosti světa. Přijetím tohoto příkazu se\ server přepne ze\ stavu *zotročený* do\ *formující skupinu* a\ zapamatuje si\ velikost světa.
+V\ této fázi klient rozešle všem zotročeným serverům příkaz `Peers` spolu s\ jedním parametrem velikosti světa. Přijetím tohoto příkazu se\ server přepne ze\ stavu *Enslaved* do\ *FormingGroup* a\ zapamatuje si\ velikost světa.
 
-Server neakceptuje příkaz `Peers` pouze v\ případě, že\ se\ nenachází ve\ stavu *zotročený*. Tato situace je\ řešena jako chybový stav, neboť k\ ní\ může dojít pouze chybou v\ protokolu samotném.
+Server neakceptuje příkaz `Peers` pouze v\ případě, že\ se\ nenachází ve\ stavu *Enslaved*. Tato situace je\ řešena jako chybový stav, neboť k\ ní\ může dojít pouze chybou v\ protokolu samotném.
 
 Po\ obeznámení všech serverů s\ velikostí světa posílá klient postupně jednotlivým serverům žádosti o\ spojení s\ dalšími servery, což provádí příkazem `ConnectTo`. Na\ základě žádosti požádaný server **A** postupně pomocí příkazů `Join` a\ `DataLine` ustanoví spojení s\ cílovým serverem **B**. Počet zaslání příkazů `DataLine` zavisí na\ počtu požadovaných otevřených datových kanálů. Pokud se\ podaří navázat všechna spojení, pošle server **A** klienovi odpověď `OK`, v\ opačném případě odpoví `Refuse`.
 
-Pokud klient obdrží od\ některého serveru odpověď `Refuse`, řeší se\ nastalá situace jako chybový stav. Jinak klient zašle serverům příkaz `Grouped`, který způsobí, že\ na\ každém serveru hlavní proces vytvoří výkonný proces. Možnost přijímat příchozí spojení zůstane pouze hlavnímu procesu, naopak výkonný proces dostane na\ starost všechny již otevřená spojení. Výkonný a\ hlavní proces spolu zůstanou v\ kontaktu pomocí anonymního páru socketů vytvořených funkcí [`socketpair`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/kill.html). Hlavní proces se\ přepne do\ stavu *dohlížející*, zatímco výkonný proces se\ přepne do\ stavu *zformován*. Od\ tohoto okamžiku klient komunikuje pouze s\ výkonným procesem.
+Pokud klient obdrží od\ některého serveru odpověď `Refuse`, řeší se\ nastalá situace jako chybový stav. Jinak klient zašle serverům příkaz `Grouped`, který způsobí, že\ na\ každém serveru hlavní proces vytvoří výkonný proces. Možnost přijímat příchozí spojení zůstane pouze hlavnímu procesu, naopak výkonný proces dostane na\ starost všechny již otevřená spojení. Výkonný a\ hlavní proces spolu zůstanou v\ kontaktu pomocí anonymního páru socketů vytvořených funkcí [`socketpair`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/kill.html). Hlavní proces se\ přepne do\ stavu *Supervising*, zatímco výkonný proces se\ přepne do\ stavu *Grouped*. Od\ tohoto okamžiku klient komunikuje pouze s\ výkonným procesem.
 
 ### Spuštění
 
-Poslední fází k\ započetí distribuovaného algoritmu je\ spuštění. Před samotným spuštění může klient rozeslat počáteční data všem výkonným procesům pomocí příkazu `InitialData`. Po něm již následuje zaslání příkazu `Run` spolu s\ parametry příkazové řádky, kterým se\ výkonný proces přepne ze\ stavu *zformován* do\ stavu *běžící*.
+Poslední fází k\ započetí distribuovaného algoritmu je\ spuštění. Před samotným spuštění může klient rozeslat počáteční data všem výkonným procesům pomocí příkazu `InitialData`. Po něm již následuje zaslání příkazu `Run` spolu s\ parametry příkazové řádky, kterým se\ výkonný proces přepne ze\ stavu *Grouped* do\ stavu *Running*.
 
 Samotný start algoritmu v\ sobě implementuje bariéru, kdy je\ až\ příkazem `Start` od\ klienta každý výkonný proces zpraven o\ skutečném odstartování. Tento krok je\ v\ protokolu použit, aby nedocházelo na\ jednom stroji k\ započetí výpočtu, když se\ klient ještě stará o\ rozeslání dat zbylým strojům.
 
@@ -812,23 +825,23 @@ Před samotným startem distribuovaného algoritmu se\ navíc spustí dvě vlák
 
 ## Rozpuštění sítě
 
-Rozpuštění sítě započne v\ okamžiku, kdy první stroj pošle oznámení `Done`, kterým informuje klienta o\ dokončení výpočtu. Až\ klient obdrží tato oznámení od\ všech strojů, přejde k\ samotnému ukončení. To\ zahrnuje rozeslání příkazu `PrepareToLeave` od\ klienta všem serverům, který způsobí, že\ se\ klient přepne ze\ stavu *běžící* do\ stavu *ukončující*. V\ tomto stavu přestává server hlásit případné výpadky spojení.
+Rozpuštění sítě započne v\ okamžiku, kdy první stroj pošle oznámení `Done`, kterým informuje klienta o\ dokončení výpočtu. Až\ klient obdrží tato oznámení od\ všech strojů, přejde k\ samotnému ukončení. To\ zahrnuje rozeslání příkazu `PrepareToLeave` od\ klienta všem serverům, který způsobí, že\ se\ klient přepne ze\ stavu *Running* do\ stavu *Leaving*. V\ tomto stavu přestává server hlásit případné výpadky spojení.
 
-Jakmile dostane klient odpověď od\ všech výkonných procesů, že\ přešly do\ stavu *ukončující*, rozešle jim příkaz `Leave`. Ten způsobí, že\ každý výkonný proces pošle oznámení `CutRope` svému hlavnímu procesu, po\ jehož přijetí se\ hlavní proces na\ každém serveru přepne ze\ stavu *dohlížející* do\ stavu *volný*. Souběžně s\ tím dojde na\ straně každého výkonného procesu k\ uzavření všech spojení a\ k\ ukončení činnosti.
+Jakmile dostane klient odpověď od\ všech výkonných procesů, že\ přešly do\ stavu *Leaving*, rozešle jim příkaz `Leave`. Ten způsobí, že\ každý výkonný proces pošle oznámení `CutRope` svému hlavnímu procesu, po\ jehož přijetí se\ hlavní proces na\ každém serveru přepne ze\ stavu *Supervising* do\ stavu *Free*. Souběžně s\ tím dojde na\ straně každého výkonného procesu k\ uzavření všech spojení a\ k\ ukončení činnosti.
 
-Na\ komunikaci mezi výkonným a\ dohlížejícím procesem je\ klíčové, aby si\ výkonný proces počkal na\ potvrzení přijetí oznámení `CutRope` od\ hlavního procesu. Vynecháním potvrzení totiž může docházet k\ situaci, kdy klient již ukončil svoji činnost, ale hlavní proces je\ stále ve\ stavu *dohlížející*, což může mít za\ následek, že\ další spuštění výpočtu za\ použití stejných serverů nebude možné provést okamžitě, ale až\ za\ nějaký časový moment.
+Na\ komunikaci mezi výkonným a\ dohlížejícím procesem je\ klíčové, aby si\ výkonný proces počkal na\ potvrzení přijetí oznámení `CutRope` od\ hlavního procesu. Vynecháním potvrzení totiž může docházet k\ situaci, kdy klient již ukončil svoji činnost, ale hlavní proces je\ stále ve\ stavu *Supervising*, což může mít za\ následek, že\ další spuštění výpočtu za\ použití stejných serverů nebude možné provést okamžitě, ale až\ za\ nějaký časový moment.
 
 ## Ostatní příkazy
 
 Klient může operovat s\ dalšími příkazy: `Status`, `Shutdown` a `ForceShutdown`.
 
-Pomocí dotazu `Status` může klient zjistit, v\ jakém stavu se\ nachází server. Běžně je\ pro zjištění stavu vytvořeno nové spojení na\ server. Ten po\ obdržení dotazu na\ svůj stav pošle zprávu s\ textovým popisem svého stavu. Server se\ nikterak nestará o\ nové spojení, které tím pádem zaniká. Server na\ dotaz na\ svůj stav odpoví vždy, ať\ už\ je v\ jakémkoliv stavu. Protože se\ ale klient dotazuje pouze hlavního procesu, může dostat jako odpověď pouze tyto stavy: *volný*, *zotročený*, *formující skupinu* a\ *dohlížející*.
+Pomocí dotazu `Status` může klient zjistit, v\ jakém stavu se\ nachází server. Běžně je\ pro zjištění stavu vytvořeno nové spojení na\ server. Ten po\ obdržení dotazu na\ svůj stav pošle zprávu s\ textovým popisem svého stavu. Server se\ nikterak nestará o\ nové spojení, které tím pádem zaniká. Server na\ dotaz na\ svůj stav odpoví vždy, ať\ už\ je v\ jakémkoliv stavu. Protože se\ ale klient dotazuje pouze hlavního procesu, může dostat jako odpověď pouze tyto stavy: *Free*, *Enslaved*, *FormingGroup* a\ *Supervising*.
 
-Příkaz `Shutdown` je\ zdvořilou žádostí o\ ukončení běhu serveru. Serveru tuto žádost akceptuje pouze v\ případě, že\ se\ nachází ve\ stavu *volný*.
+Příkaz `Shutdown` je\ zdvořilou žádostí o\ ukončení běhu serveru. Serveru tuto žádost akceptuje pouze v\ případě, že\ se\ nachází ve\ stavu *Free*.
 
 Příkaz `ForceShutdown` je\ silnější variantou předchozího příkazu, která zaručí, že\ server ukončí svoji činnost nezávisle na\ stavu, ve\ kterém se\ nachází. Navázaná spojení jsou ukončena bez zaslání jakékoliv zprávy a\ v\ případě, že\ je nastartován výkonný proces, je\ násilně ukončen.
 
-Poslední příkaz -- `ForceReset` -- slouží k\ tomu, aby hlavní proces přešel do\ stavu *volný*, ať\ už\ byl předtím v\ kterémkoliv jiném stavu, což zahrnuje také násilné ukončení výkonného procesu, pokud je\ spuštěn. Tento příkaz kromě explicitního vyžádání od\ uživatele použije klient v\ případě, že\ obdržel [signál](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_04), který by\ způsobil ukočení klienta. Zejména se\ jedná o\ signály `SIGALRM`, `SIGINT`[^SIGINT] a\ `SIGTERM`.
+Poslední příkaz -- `ForceReset` -- slouží k\ tomu, aby hlavní proces přešel do\ stavu *Free*, ať\ už\ byl předtím v\ kterémkoliv jiném stavu, což zahrnuje také násilné ukončení výkonného procesu, pokud je\ spuštěn. Tento příkaz kromě explicitního vyžádání od\ uživatele použije klient v\ případě, že\ obdržel [signál](http://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_04), který by\ způsobil ukočení klienta. Zejména se\ jedná o\ signály `SIGALRM`, `SIGINT`[^SIGINT] a\ `SIGTERM`.
 
 [^SIGINT]: Tento signál je\ na unixových systémech většinou generován prostřednictvím klávesové zkratky `Ctrl+C`.
 
@@ -838,7 +851,7 @@ Mnou navržený protokol je\ připraven řešit některé problémové situace, 
 
 Mnohé z\ potenciálně problematických operací jsou ošetřeny nastavením maximálního časového úseku, po\ který mohou operace blokovat provádění. Pokud ani po\ uplynutí časového úseku nebylo možné operaci dokončit, dojde ve\ většině případů k\ vyhození výjimky `WouldBlock`.
 
-Jakákoliv vyhozená výjimka je, pokud toto chování distribuovaný algoritmus neupraví, zachycena v\ nejvrchnější funkci, je\ reportována uživateli -- klient vypíše chybovou hlášku na\ obrazovku, server ji\ zaznamená do\ logů -- a\ program je\ ukončen. Odlišné chování má\ akorát hlavní serverový proces, který sice zachycenou výjimku zaznamená do\ logů, ovšem neukončí svoji činnost, ale uvolní veškeré alokované zdroje, případně násilně ukončí běh výkonného procesu, a\ přejde do\ stavu *volný*. Tento mechanizmus zpracování výjimek jsem zvolil, aby při nastalých problémech nedocházelo k\ uváznutí, a\ naopaka aby byl uživatel zpraven o\ nastalé chybě.
+Jakákoliv vyhozená výjimka je, pokud toto chování distribuovaný algoritmus neupraví, zachycena v\ nejvrchnější funkci, je\ reportována uživateli -- klient vypíše chybovou hlášku na\ obrazovku, server ji\ zaznamená do\ logů -- a\ program je\ ukončen. Odlišné chování má\ akorát hlavní serverový proces, který sice zachycenou výjimku zaznamená do\ logů, ovšem neukončí svoji činnost, ale uvolní veškeré alokované zdroje, případně násilně ukončí běh výkonného procesu, a\ přejde do\ stavu *Free*. Tento mechanizmus zpracování výjimek jsem zvolil, aby při nastalých problémech nedocházelo k\ uváznutí, a\ naopaka aby byl uživatel zpraven o\ nastalé chybě.
 
 Za\ chyby se\ v\ okruhu selhání síťových komponent považuje cokoliv od\ zamítnutí připojení až\ po\ rozpojení sítě během výpočtu. V\ mé implementaci protokolu většinu těchto problémů řeší objektová nadstavba nad POSIX rozhraním BSD socketů.
 
