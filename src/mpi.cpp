@@ -360,13 +360,17 @@ int main( int argc, char **argv ) {
     case Algorithm::LoadDedicated:
         startWorker< LoadWorker, Package >( meta );
         break;
+    case Algorithm::LongLoadDedicated:
+    case Algorithm::LongLoadShared:
+        startWorker< LoadWorker, LongPackage >( meta );
+        break;
     case Algorithm::PingDedicated:
     case Algorithm::PingShared:
         startWorker< PingWorker, Package >( meta );
         break;
-    case Algorithm::LongLoadDedicated:
-    case Algorithm::LongLoadShared:
-        startWorker< LoadWorker, LongPackage >( meta );
+    case Algorithm::LongPingDedicated:
+    case Algorithm::LongPingShared:
+        startWorker< PingWorker, LongPackage >( meta );
         break;
     default:
         break;

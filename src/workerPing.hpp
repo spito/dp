@@ -90,7 +90,7 @@ struct Worker : BaseWorker< S, Package > {
                     Self::processDispatch( common, workers, channel );
                 },
                 ChannelType::Master,
-                10000
+                100
             );
         }
     }
@@ -130,7 +130,7 @@ protected:
         return this->processed() == this->common().worldSize();
     }
 
-    static void request( int from, Package p ) {
+    static void request( int from, Package &p ) {
         OutputMessage o;
         o.tag( Tag::Response );
 

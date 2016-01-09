@@ -156,6 +156,12 @@ int mainD( int argc, char **argv ) {
     case Algorithm::LongLoadShared:
         startWorker< load::Shared, LongPackage >( meta );
         break;
+    case Algorithm::LongPingDedicated:
+        startWorker< ping::Dedicated, LongPackage >( meta );
+        break;
+    case Algorithm::LongPingShared:
+        startWorker< ping::Shared, LongPackage >( meta );
+        break;
 
     case Algorithm::Table:
         Daemon::instance().table();

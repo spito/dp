@@ -31,7 +31,7 @@ struct Worker : BaseWorker< S, Package > {
                     Self::processDispatch( common, channel );
                 },
                 ChannelType::Master,
-                10000
+                100
             );
         }
     }

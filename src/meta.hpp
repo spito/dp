@@ -25,6 +25,8 @@ enum class Algorithm {
     LongLoadDedicated,
     PingShared,
     PingDedicated,
+    LongPingShared,
+    LongPingDedicated,
     Table,
 };
 

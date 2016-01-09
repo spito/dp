@@ -32,7 +32,7 @@ struct Package {
 };
 
 struct LongPackage : Package {
-    char padding[1024];
+    char padding[10240];
 };
 
 using brick::hash::hash128_t;

@@ -188,6 +188,10 @@ Meta::Meta( int argc, char **argv, bool ignoreFostFile ) :
                 algorithm = Algorithm::LongLoadDedicated;
             if ( algorithm == Algorithm::LoadShared )
                 algorithm = Algorithm::LongLoadShared;
+            if ( algorithm == Algorithm::PingShared )
+                algorithm = Algorithm::LongPingShared;
+            if ( algorithm == Algorithm::PingDedicated )
+                algorithm = Algorithm::LongPingDedicated;
         }
         else if ( argv[ i ] == "-h"_s )
             hf.on();
