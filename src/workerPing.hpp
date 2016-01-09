@@ -253,43 +253,23 @@ struct Dedicated : Worker< Dedicated, Package > {
     }
 
     void main() {
-        for ( int i = 0; i < this->common().workLoad(); ++i ) {
-            OutputMessage msg;
-            Package p;
-            p.first = i + 13;
-            p.second = this->id();
+        ask();
 
-            msg.tag( Tag::Request );
-            msg << p;
-
-            int target = this->owner( p );
-            if ( !Daemon::instance().sendTo( target, msg ) )
-                std::cout << target << " fail" << std::endl;
-
-            InputMessage input;
-
-            Package incoming;
-            input >> incoming;
-            if ( !Daemon::instance().receive( target, input, channel( this->id() ) ) )
-                std::cout << target << " fail " << channel( this->id() ) << std::endl;
-
-
-            if ( incoming.first != -p.first ) {
-                std::cout << incoming.first << " != " << -p.first << std::endl;
-            }
-
+        while ( _finished < this->common().worldSize() ) {
+            Daemon::instance().probe( [&,this]( Channel channel ) {
+                    processMessage( channel );
+                },
+                this->id(),
+                -1
+            );
         }
     }
+
     static void processDispatch( Common< Package > &common, std::vector< Dedicated > &, Channel channel ) {
-        Package p;
         InputMessage incoming;
-        incoming >> p;
-        channel->receive( incoming );
+        channel->receiveHeader( incoming );
 
         switch ( incoming.tag< Tag >() ) {
-        case Tag::Request:
-            Worker::request( incoming.from(), p );
-            break;
         case Tag::Done:
             common.progress();
             break;
@@ -297,6 +277,59 @@ struct Dedicated : Worker< Dedicated, Package > {
             break;
         }
     }
+private:
+    void processMessage( Channel channel ) {
+        InputMessage msg;
+        Package p;
+
+        msg >> p;
+        channel->receive( msg );
+
+        switch ( msg.tag< Tag >() ) {
+        case Tag::Request:
+            response( channel, p );
+            break;
+        case Tag::Response:
+            if ( -p.first == this->common().workLoad() )
+                finish();
+            else
+                ask();
+            break;
+        case Tag::Done:
+            ++_finished;
+            break;
+        default:
+            break;
+        }
+    }
+    void ask() {
+        OutputMessage msg;
+        Package p;
+        p.first = ++_processing;
+
+        msg.tag( Tag::Request );
+        msg << p;
+
+        Daemon::instance().sendTo( this->owner( p ), msg, this->id() );
+    }
+    void response( Channel channel, Package p ) {
+        OutputMessage msg;
+        p.first *= -1;
+        msg.tag( Tag::Response );
+
+        msg << p;
+        channel->send( msg );
+    }
+    void finish() {
+        ++_finished;
+        OutputMessage msg;
+        msg.tag( Tag::Done );
+
+        Daemon::instance().sendAll( msg, this->id() );
+    }
+
+    int _finished = 0;
+    int _processing = 0;
 };
 
 } // namespace ping
