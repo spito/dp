@@ -85,8 +85,9 @@ if __name__ != '__main__':
 
 args = sys.argv
 
-if len( args ) != 2:
-    print( 'usage: {} batchFile'.format( args[0] ) )
+if len( args ) == 1:
+    print( 'usage: {} batchFile [batchFile [...]]'.format( args[0] ) )
     sys.exit( 2 )
 
-run( args[ 1 ] )
+for batchFile in args[1:]:
+    run( batchFile )

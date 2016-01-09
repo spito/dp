@@ -31,11 +31,11 @@ kindMpi = Kind( 'mpiexec', '-hostfile', OrderedDict( [
 ] ) )
 
 options = [
-    Option( 'loadShortDemo', kindDemo, hList(17, 6), {
-        'hosts': range( 1, 7 ),
+    Option( 'loadShortDemo', kindDemo, hList(1, 22), {
+        'hosts': range( 1, 23 ),
         'algorithms': [ 'load dedicated', 'load shared' ],
-        'workLoad': [ 240 ],
-        'selection': [ 1, 25 ]
+        'workLoad': [ 3000 ],
+        'selection': [ 1 ]
     } ),
     Option( 'loadLongDemo', kindDemo, hList(1), {
         'algorithms': [ 'load dedicated long', 'load shared long' ],
@@ -48,11 +48,11 @@ options = [
         'workLoad': [ 10000 ],
         'selection': [ 2 ]
     } ),
-    Option( 'loadShortMpi', kindMpi, hList(17, 6), {
-        'hosts': range( 1, 7 ),
+    Option( 'loadShortMpi', kindMpi, hList(1, 22), {
+        'hosts': range( 1, 23 ),
         'algorithms': [ 'load' ],
-        'workLoad': [ 240 ],
-        'selection': [ 1, 25 ]
+        'workLoad': [ 3000 ],
+        'selection': [ 1 ]
     } ),
     Option( 'loadLongMpi', kindMpi, hList(1), {
         'algorithms': [ 'load long' ],
