@@ -23,10 +23,6 @@ Orientovaný graf se\ liší tím, že\ hrany mají směr a\ že\ je\ možné gr
 
 > Orientovaný graf je\ dvojce $G = (V, E)$, kde $V$ je\ neprázdná množina vrcholů a\ $E$ je\ množina hran, pro kterou platí $E \subseteq V \times V$.
 
-Pro
-
-Tolik znalostí čtenáři postačí, aby se\ dále v\ textu neztrácel, takže oblast grafů prozatím opustím. Detailnějšímu rozboru problematiky grafů se\ věnuje obor matematické informatiky s\ názvem teorie grafů \cite{wiki:graphtheory}.
-
 # Paralelizmus
 
 \label{sec:intro:para}
@@ -67,7 +63,7 @@ Ověřování modelů lze obecně provádět dvěma způsoby -- symbolicky \cite
 
 Další zpracování se\ liší typem použité specifikační vlastnosti. Pro nejjedonušší typ -- *assert* -- postačí při vytváření stavového prostory označit ty\ vrcholy, v\ nichž požadované tvrzení neplatí. *Model checker* poté projde graf, k\ čemuž využije převážně algoritmy na\ procházení grafu do\ hloubky a\ do\ šířky, a\ pokud nalezne nějaký označený vrchol, nahlásí model za\ chybný. V\ opačném případě je\ model korektní.
 
-U\ obsáhlejších typů specifikačních vlastností je\ potřeba modifikovat graf a\ použít jiné algoritmy. Například v\ případě LTL formulí musí nejprve *model checker* z\ formule vytvořit její negaci, ze\ které následně vybuduje Büchi automat \cite{buchi1990decision}. Výsledný automat se\ vynásobí se\ stavovým prostorem, a\ poznačí se\ všechny stavy, ve\ kterých platí negovaná formule. *Model checker* prohlásí model systému za\ chybný, pokud ve\ stavovém prostoru nalzene cyklus, který obsahuje označený vrchol.
+U\ obsáhlejších typů specifikačních vlastností je\ potřeba modifikovat graf a\ použít jiné algoritmy. Například v\ případě LTL formulí musí nejprve *model checker* z\ formule vytvořit její negaci, ze\ které následně vybuduje Büchi automat \cite{buchi1990decision}. Výsledný automat se\ vynásobí se\ stavovým prostorem, a\ poznačí se\ všechny stavy, ve\ kterých platí negovaná formule. Pro zjištění, jestli je model systému správný, musí *model checker* použít sofistikovanější algoritmy prohledávání grafu, protože hledá cyklus, který obsahuje alespoň jeden poznačený cyklus. Model systému je\ platný, pokud se\ žádný takový cyklus ve\ stavovém prostoru nenachází.
 
 Postup, který jsem v\ předchozích odstavcích předestřel, je\ pouze funkční základ. Reálné *model checkery* ho\ rozšiřují o\ mnohá vylepšení, jako třeba *partial order reduction* \cite{peled1993all}. Stavový prostor dále bývá generovaný postupně, jak *model checker* prochází grafem a\ generuje následníky zpracovávaného vrcholu.  Jedním takovým reálným *model checkerem* je\ nástroj DIVINE.
 
@@ -77,7 +73,7 @@ Postup, který jsem v\ předchozích odstavcích předestřel, je\ pouze funkčn
 
 Nástroj DIVINE \cite{BBH+13, barnat2004distributed} je\ explicitní *model checker*, který zvládá verifikovat modely v\ jazycích jako LLVM \cite{llvm}, UPPAAL \cite{larsen1997uppaal}^[Formát pro vytváření časových automatů \cite{alur1994theory}.], nebo ve\ formátu [DVE](http://divine.fi.muni.cz/manual.html#the-dve-specification-language)^[Původní modelovací jazyk, ve\ kterém nástroj DIVINE uměl verifikovat modely.]. Specifikace vlastností lze zadávat jako *asserty* nebo vyjádřit pomocí LTL formulí. V\ současné době je\ snaha soustředit se\ na\ jazyk LLVM a\ postupně rušit podporu pro ostatní vstupní formáty.
 
-Proč tomu tak je? Jazyk LLVM je\ jednoduchým mezijazykem navrženým především pro snadnou implementaci optimalizací tak, aby zůstaly odstíněny od\ abstrakcí vyšších programovacích jazyků a\ zároveň aby nebyly omezovány prvky konkrétních architektur. První front-end, který překládal vyšší programovací jazyky do\ LLVM byl [Clang](http://clang.llvm.org/), který překládá jazyky C, C++ a\ Objective-C, posléze začaly vznikat front-endy i\ pro další jazyky, jako je\ Java, C#, Haskell a\ další. Pro velký úspěch byl adoptován společností Apple Inc. Jazyk LLVM je\ v\ nástroji DIVINE upřednostňován pro svoji jednoduchost, protože je\ pak poměrně snadné generovat stavy programu, a\ zároveň existenci mnoha překladačů pro populární programovací jazyky, což může vést k\ použití nástroje DIVINE pro verifikaci reálných programů namísto upravovaných modelů systémů.
+Proč tomu tak je? Jazyk LLVM je\ jednoduchým mezijazykem navrženým především pro snadnou implementaci optimalizací tak, aby zůstaly odstíněny od\ abstrakcí vyšších programovacích jazyků a\ zároveň aby nebyly omezovány prvky konkrétních architektur. První front-end, který překládal vyšší programovací jazyky do\ LLVM byl [Clang](http://clang.llvm.org/), který překládá jazyky C, C++ a\ Objective-C. Posléze začaly vznikat front-endy i\ pro další jazyky, jako je\ Java, C#, Haskell a\ další. Pro velký úspěch byl adoptován společností Apple Inc. Jazyk LLVM je\ v\ nástroji DIVINE upřednostňován pro svoji jednoduchost, protože je\ pak poměrně snadné generovat stavy programu, a\ zároveň existenci mnoha překladačů pro populární programovací jazyky, což může vést k\ použití nástroje DIVINE pro verifikaci reálných programů namísto upravovaných modelů systémů.
 
 Pro generování stavového prostoru se\ používá interpret jazyka LLVM. To\ znamená, že\ nástroj DIVINE potřebuje pro verifikaci mít nejen zdrojové soubory ověřovaného programu, ale i\ zdrojové soubory všech knihoven, které program používá. Pro jazyky\ C a\ C++ jsme tento problém vyřešili tak, že spolu s\ nástrojem DIVINE distribuujeme standardní knihovny pro oba jazyky. Ostatní programovací jazyky proto nástroj DIVINE zatím nepodporuje.
 
