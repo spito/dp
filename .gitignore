@@ -2,3 +2,4 @@ bin/
 mpi/
 
 *.pdf
+__pycache__
