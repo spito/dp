@@ -201,7 +201,7 @@ bool Daemon::processControl( Channel channel ) {
     case Code::Disconnect:
         cleanup();
         release( std::move( channel ) );
-        break;
+        return false;
     case Code::Peers:
         startGrouping( message, std::move( channel ) );
         break;
@@ -296,6 +296,10 @@ void Daemon::processDisconnected( Channel dead ) {
         else
             Logger::log( "internal error happened - other connection than rope to the child has died" );
         setDefault();
+        break;
+    case State::Free:
+        NOTE();
+        Logger::log( "closed connection to " + info( dead ) + " which is weird" );
         break;
     default:
         NOTE();

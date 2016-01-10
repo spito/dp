@@ -5,6 +5,7 @@
 #include <atomic>
 #include <mutex>
 #include <vector>
+#include <algorithm>
 
 #include <brick-hashset.h>
 
@@ -56,6 +57,61 @@ template< typename Package >
 using Set = brick::hashset::FastConcurrent< Package, Hasher< Package > >;
 
 template< typename Package >
+using Chunk = std::queue< Package >;
+
+template< typename Package >
+using Queue = brick::shmem::LockedQueue< Chunk< Package > >;
+
+template< typename Package >
+struct QueueAccessor {
+    using Chunk = Chunk< Package >;
+
+    QueueAccessor( Queue< Package > & q ) :
+        _q( q )
+    {}
+
+    bool empty() {
+        if ( _incoming.empty() )
+            _incoming = _q.pop();
+        if ( _incoming.empty() )
+            flush();
+        return _incoming.empty();
+    }
+    void flush() {
+        if ( !_outgoing.empty() ) {
+            Chunk tmp;
+            std::swap( tmp, _outgoing );
+            _q.push( std::move( tmp ) );
+
+            if ( _chunkSize < _maxChunkSize )
+                _chunkSize = std::min( 2 * _chunkSize, _maxChunkSize );
+        }
+    }
+
+    void push( Package p ) {
+        _outgoing.push( p );
+        if ( _outgoing.size() >= _chunkSize )
+            flush();
+    }
+
+    bool pop( Package &p ) {
+        if ( empty() )
+            return false;
+        p = _incoming.front();
+        _incoming.pop();
+        return true;
+    }
+
+private:
+    const unsigned _maxChunkSize = 64;
+    unsigned _chunkSize = 2;
+
+    Queue< Package > &_q;
+    Chunk _outgoing;
+    Chunk _incoming;
+};
+
+template< typename Package >
 struct Common {
     Common( int workLoad, int selection, int rank, int worldSize ) :
         _workLoad{ workLoad },
@@ -67,18 +123,11 @@ struct Common {
     {
         _set.setSize( 1024 );
     }
-    void push( const Package &p ) {
-        std::lock_guard< std::mutex > _( _m );
-        _queue.push( p );
+
+    Queue< Package > &queue() {
+        return _queue;
     }
-    bool pop( Package &p ) {
-        std::lock_guard< std::mutex > _( _m );
-        if ( _queue.empty() )
-            return false;
-        p = _queue.front();
-        _queue.pop();
-        return true;
-    }
+
     bool quit() const {
         return _done;
     }
@@ -126,8 +175,7 @@ private:
     int _selection;
     int _rank;
     int _worldSize;
-    std::mutex _m;
-    std::queue< Package > _queue;
+    Queue< Package > _queue;
     std::atomic< bool > _done;
     std::atomic< unsigned > _processed;
     Set< Package > _set;
@@ -139,7 +187,8 @@ struct BaseWorker {
 
     BaseWorker( int id, Common< Package > &common ) :
         _id{ id },
-        _common( common )
+        _common( common ),
+        _qa( _common.queue() )
     {}
 
     int id() const {
@@ -168,10 +217,10 @@ struct BaseWorker {
     // void dispatcher( Common &, std::vector< Self > & )
 protected:
     void push( Package p ) {
-        _common.push( p );
+        _qa.push( p );
     }
     bool pop( Package &p ) {
-        return _common.pop( p );
+        return _qa.pop( p );
     }
     bool quit() const {
         return _common.quit();
@@ -202,6 +251,7 @@ private:
     int _id;
     Common< Package > &_common;
     typename Set< Package >::ThreadData _td;
+    QueueAccessor< Package > _qa;
     std::future< void > _handle;
 };
 
@@ -220,8 +270,11 @@ struct Workers {
     }
 
     void queueInitials() {
-        if ( W::isMaster( _common ) )
-            _common.push( {} );
+        if ( W::isMaster( _common ) ) {
+            Chunk< Package > ch;
+            ch.push( {} );
+            _common.queue().push( std::move( ch ) );
+        }
     }
 
     void run() {

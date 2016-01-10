@@ -26,15 +26,20 @@ struct Worker : BaseWorker< S, Package > {
     }
 
     static void dispatcher ( Common &common, const std::vector< Self > & ) {
+        Self::init( common );
         while ( !common.quit() ) {
-            Daemon::instance().probe( [&]( Channel channel ) {
+            int p = Daemon::instance().probe( [&]( Channel channel ) {
                     Self::processDispatch( common, channel );
                 },
                 ChannelType::Master,
                 100
             );
+            if ( p == 0 )
+                Self::flush();
         }
     }
+    static void init( Common & ) {}
+    static void flush() {}
 
     static int rank() {
         return Daemon::instance().rank();
@@ -106,8 +111,13 @@ struct Shared : Worker< Shared, Package > {
         }
     }
 
+    static void init( Common &common ) {
+        qa.reset( new QueueAccessor< Package >( common.queue() ) );
+    }
+
     static void processDispatch( Common &common, Channel channel ) {
         static typename Set< Package >::ThreadData td;
+
         InputMessage incoming;
         Package p;
         incoming >> p;
@@ -116,7 +126,7 @@ struct Shared : Worker< Shared, Package > {
         switch( incoming.tag< Tag >() ) {
         case Tag::Data:
             if ( common.withTD( td ).insert( p ).isnew() )
-                common.push( p );
+                qa->push( p );
             break;
         case Tag::Done:
             common.done();
@@ -125,7 +135,18 @@ struct Shared : Worker< Shared, Package > {
             break;
         }
     }
+    static void flush() {
+        static int x = 0;
+        if ( ++x == 100 ) {
+            qa->flush();
+            x = 0;
+        }
+    }
+private:
+    static std::unique_ptr< QueueAccessor< Package > > qa;
 };
+template< typename Package >
+std::unique_ptr< QueueAccessor< Package> > Shared< Package >::qa;
 
 template< typename Package >
 struct Dedicated : Worker< Dedicated, Package > {

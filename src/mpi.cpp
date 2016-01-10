@@ -124,6 +124,8 @@ struct LoadWorker : Worker< LoadWorker, Package > {
     }
 
     static void dispatcher( Common< Package > &common, const std::vector< LoadWorker > & ) {
+        qa.reset( new QueueAccessor< Package >( common.queue() ) );
+        int x = 0;
         while ( !common.quit() ) {
             MPI_Status status;
             ::sched_yield();
@@ -137,6 +139,12 @@ struct LoadWorker : Worker< LoadWorker, Package > {
                 }
                 processDispatch( common, status.MPI_SOURCE, status.MPI_TAG );
             }
+            else {
+                if ( ++x == 100 ) {
+                    qa->flush();
+                    x = 0;
+                }
+            }
         }
     }
 
@@ -147,7 +155,7 @@ struct LoadWorker : Worker< LoadWorker, Package > {
         MPI_Status status;
         MPI_Recv( &p, sizeof( p ), MPI_BYTE, from, tag, MPI_COMM_WORLD, &status );
         if ( common.withTD( td ).insert( p ).isnew() )
-            common.push( p );
+            qa->push( p );
     }
 
 private:
@@ -193,7 +201,10 @@ private:
         std::lock_guard< std::mutex > _{ MPI_Mutex };
         MPI_Send( &p, sizeof( p ), MPI_BYTE, o, int( Tag::Data ), MPI_COMM_WORLD );
     }
+    static std::unique_ptr< QueueAccessor< Package > > qa;
 };
+template< typename Package >
+std::unique_ptr< QueueAccessor< Package > > LoadWorker< Package >::qa;
 
 struct Box {
 
