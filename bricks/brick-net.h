@@ -33,12 +33,13 @@ namespace net {
 
 namespace settings {
     // set default timeout to sockets
+    // 8 minutes in debug mode, 5 seconds elsewhere
     static constexpr int timeout =
-//#ifdef DEBUG
-//        8 * 60 * 1000
-//#else
-        8 * 60  * 1000
-//#endif
+#ifdef DEBUG
+        8 * 60 * 1000
+#else
+        5  * 1000
+#endif
     ;
 }
 
