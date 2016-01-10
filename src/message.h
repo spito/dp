@@ -79,7 +79,7 @@ struct ResponseException : brick::net::NetException {
         _what += "} given: ";
         _what += codeToString( given );
         _what += " (";
-        _what += std::to_string( int( given ) )
+        _what += std::to_string( int( given ) );
         _what += ")";
     }
     const char *what() const noexcept override {
