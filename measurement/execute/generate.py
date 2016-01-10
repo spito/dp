@@ -37,16 +37,22 @@ options = [
         'workLoad': [ 3000 ],
         'selection': [ 1 ]
     } ),
+    Option( 'loadSLDemo', kindDemo, hList(1, 22), {
+        'hosts': range( 16, 23 ),
+        'algorithms': [ 'load dedicated', 'load shared' ],
+        'workLoad': [ 6000 ],
+        'selection': [ 1 ]
+    } ),
     Option( 'loadLongDemo', kindDemo, hList(1), {
         'algorithms': [ 'load dedicated long', 'load shared long' ],
         'workLoad': [ 500 ],
         'selection': [ 1, 25 ]
     } ),
-    Option( 'pingDemo', kindDemo, hList(9), {
+    Option( 'pingDemo', kindDemo, hList(1, 22), {
         'hosts': range( 2, 9 ),
         'algorithms': [ 'ping dedicated', 'ping shared' ],
         'workLoad': [ 10000 ],
-        'selection': [ 2 ]
+        'selection': [ 3 ]
     } ),
     Option( 'loadShortMpi', kindMpi, hList(1, 22), {
         'hosts': range( 1, 23 ),
@@ -54,16 +60,22 @@ options = [
         'workLoad': [ 3000 ],
         'selection': [ 1 ]
     } ),
+    Option( 'loadSLMpi', kindMpi, hList(1, 22), {
+        'hosts': range( 16, 23 ),
+        'algorithms': [ 'load' ],
+        'workLoad': [ 6000 ],
+        'selection': [ 1 ]
+    } ),
     Option( 'loadLongMpi', kindMpi, hList(1), {
         'algorithms': [ 'load long' ],
         'workLoad': [ 500 ],
         'selection': [ 1, 25 ]
     } ),
-    Option( 'pingMpi', kindMpi, hList(9), {
+    Option( 'pingMpi', kindMpi, hList(1, 22), {
         'hosts': range( 2, 9 ),
         'algorithms': [ 'ping' ],
         'workLoad': [ 10000 ],
-        'selection': [ 2 ]
+        'selection': [ 3 ]
     } )
 ]
 
@@ -130,7 +142,7 @@ class Generator(object):
                 print(str(r), file=f)
 
 def help( args ):
-    print( 'usage: {} testCase'.format( args[0] ) )
+    print( 'usage: {} testCase [testCase [...]]'.format( args[0] ) )
     if len( args ) > 1:
         print( 'wrong testCase value: {}'.format( args[1] ) )
     print( 'testCase could be one of the following:' )
@@ -144,20 +156,21 @@ if __name__ != '__main__':
 
 args = sys.argv
 
-if len( args ) != 2:
+if len( args ) == 1:
     help( args )
     sys.exit( 2 )
 
-match = None
+for testCase in args[1:]:
+    match = None
 
-for opt in options:
-    if args[ 1 ] == opt.name():
-        match = opt
+    for opt in options:
+        if testCase == opt.name():
+            match = opt
 
-if match is None:
-    help( args )
-    sys.exit( 3 )
+    if match is None:
+        help( args )
+        sys.exit( 3 )
 
-g = Generator( match.program(), match.hostList(), match.switch() )
-g.generate( match.name(), match.options() )
+    g = Generator( match.program(), match.hostList(), match.switch() )
+    g.generate( match.name(), match.options() )
 
