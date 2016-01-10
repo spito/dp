@@ -298,10 +298,14 @@ void Daemon::processDisconnected( Channel dead ) {
         setDefault();
         break;
     case State::Free:
+    case State::Enslaved:
+    case State::FormingGroup:
         NOTE();
         Logger::log( "closed connection to " + info( dead ) + " which is weird" );
+        setDefault();
         break;
-    default:
+    case State::Running:
+    case State::Grouped:
         NOTE();
         Logger::log( "closed connection to " + info( dead ) );
         ::exit( 0 );
