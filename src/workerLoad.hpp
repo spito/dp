@@ -133,7 +133,7 @@ struct Dedicated : Worker< Dedicated, Package > {
     using Common = Common< Package >;
 
     void main() {
-
+        std::queue< Package > packages;
         while ( !this->quit() ) {
             Package p;
             if ( this->pop( p ) ) {
@@ -142,11 +142,19 @@ struct Dedicated : Worker< Dedicated, Package > {
                 } );
             }
             Daemon::instance().probe( [&,this]( Channel channel ) {
-                    receive( channel );
+                    InputMessage msg;
+                    Package p;
+                    msg >> p;
+                    channel->receive( msg );
+                    packages.push( p );
                 },
                 this->id(),
                 0
             );
+            while ( !packages.empty() ) {
+                this->expand( packages.front(), this->id() );
+                packages.pop();
+            }
         }
     }
 
