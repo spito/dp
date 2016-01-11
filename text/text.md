@@ -15,7 +15,7 @@ Tématem této diplomové práce je\ prozkoumat různé přístupy k\ řízení 
 
 \label{sec:intro:graph}
 
-Pojem graf, se\ kterým dále operuji, znamená množinu objektů -- dále označované jako vrcholy --, jejichž vztahy jsou vyjádřeny hranami mezi nimi. Velmi neformálně a\ zjednodušeně je\ možné si\ graf představit jako mapu, kde města a\ vesnice představují vrcholy grafu a\ silniční síť mezi obcemi představují hrany. Nekdy je\ potřeba, aby hrany měly směr -- tedy byly orientované -- asi jako když je\ některá ulice jednosměrná. Formálnější definice (neorientovaného) grafu by\ mohla vypadat nějak takto:
+Pojem graf, se\ kterým dále operuji, znamená množinu objektů -- dále označované jako vrcholy -- jejichž vztahy jsou vyjádřeny hranami mezi nimi. Velmi neformálně a\ zjednodušeně je\ možné si\ graf představit jako mapu, kde města a\ vesnice představují vrcholy grafu a\ silniční síť mezi obcemi představují hrany. Nekdy je\ potřeba, aby hrany měly směr -- tedy byly orientované -- asi jako když je\ některá ulice jednosměrná. Formálnější definice (neorientovaného) grafu by\ mohla vypadat nějak takto:
 
 > Neorientovaný graf je\ dvojce $G = (V, E)$, kde $V$ je\ neprázdná množina vrcholů a\ $E$ je\ množina hran, pro kterou platí $E \subseteq \left\{\left\{u, v\right\}| u,v \in V, u \neq v \right\}$.
 
@@ -305,7 +305,7 @@ Z\ pohledu použití spojitých socketů v\ programu \v síťové komunikační 
 2.  Požádání o spojení funkcí [`connect`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/connect.html).
 
 \begin{figure}[h]
-    \includegraphics[trim=0cm 20.5cm 10.5cm 0cm,width=\textwidth] {TCP-connect.pdf}
+    \includegraphics[trim=0cm 20.5cm 10.5cm 0cm,width=\textwidth] {src/TCP-connect.pdf}
     \caption{Diagram ustanovení spojení}
     \label{TCP-conn}
 \end{figure}
@@ -393,7 +393,7 @@ Ukázka použití v unixové komunikační doméně[^note-site]:
 5.  Přečíst a zpracovat zprávu.
 
 \begin{figure}[h]
-    \includegraphics[trim=0cm 21.5cm 11.5cm 0cm,width=\textwidth] {UDP-communication.pdf}
+    \includegraphics[trim=0cm 21.5cm 11.5cm 0cm,width=\textwidth] {src/UDP-communication.pdf}
     \caption{Komunikace skrz UDP}
     \label{UDP-comm}
 \end{figure}
@@ -467,7 +467,7 @@ Nová implementace bude nasazena na\ výpočetním stroji, jehož architektura j
 
 \label{sec:new:analysis}
 
-Pro volbu správného typu socketů je\ třeba pečlivě zvážit vlastnosti jednotlivých typů, neboť následná implementace se\ může velmi lišit. Cílem je\ implementovat síťovou komunikační vrstvu do\ nástroje DIVINE, takže nebudu rozebírat vlastnosti socketů v\ unixové komunikační doméně.
+Pro volbu správného typu socketů je\ třeba pečlivě zvážit vlastnosti jednotlivých typů, neboť následná implementace se\ může velmi lišit. Cílem je\ implementovat síťovou komunikační vrstvu do\ nástroje DIVINE, takže nebudu příliš rozebírat vlastnosti socketů v\ unixové komunikační doméně.
 
 ## Spojité sockety
 
@@ -481,7 +481,7 @@ Spojité sockety mají několik vlastností, ať\ už\ dobrých, či\ horších,
 
 ### Udržování spojení
 
-Distribuované výpočty, které nástroj DIVINE provádí, vyžadují, aby\ žádný z\ participatů výpočtu nepřerušil kontakt s\ ostatními. To\ se\ může stát jednak chybou v\ síti -- rozpojením sítě --, jednak zastavením výpočtu na\ stroji, ke\ kterému může dojít například z\ důvodu chyby v\ programu. U\ spojitých socketů jsou při\ přerušení spojení notifikování oba\ participanti komunikace, tudíž může dojít k\ následnému korektnímu ukončení distribuovaného výpočtu.
+Distribuované výpočty, které nástroj DIVINE provádí, vyžadují, aby\ žádný z\ participatů výpočtu nepřerušil kontakt s\ ostatními. To\ se\ může stát jednak chybou v\ síti -- rozpojením sítě -- jednak zastavením výpočtu na\ stroji, ke\ kterému může dojít například z\ důvodu chyby v\ programu. U\ spojitých socketů jsou při\ přerušení spojení notifikování oba\ participanti komunikace, tudíž může dojít k\ následnému korektnímu ukončení distribuovaného výpočtu.
 
 Nevýhodou je\ nutnost pravidelné výměny zprávy, která říká, že\ spojení je\ stále aktivní, mezi participanty. Tato výměna je\ ale nezbytná pouze v\ případě, že\ v\ mezičase nebyla mezi participanty komunikace zaslána žádná zpráva. Vzhledem k\ předpokladu, že\ mezi výpočetními stroji bude docházet k\ čilé výměně dat, nepokládám tuto nevýhodu za\ kritickou.
 
@@ -505,11 +505,11 @@ TCP sockety mají navíc mechanizmus, který zaručuje (v\ případě, že\ to\ 
 
 TCP vytváří abstrakci, že\ přenášená data jsou souvislý proud dat. Protože TCP pakety mají omezenou maximální velikost, dochází při poslání velkého bloku dat k\ rozdělení záznamu do více paketů, které jsou samostatně poslány sítí a\ na\ straně přijemce opět poskládány. Na\ toto se také vztahuje garance nepoškozených dat, která je implementována tak, že jsou pakety tvořící jeden blok dat sekvenčně očíslovány, takže případně prohození pořadí paketů zachytí příjemce a\ dle čísel poskládá správné pořadí.
 
-Tato vlastnost TCP je\ z\ jedné strany výhodou, protože není třeba v\ samotné aplikaci řešit, zda se\ data vejdou do\ paketu, či\ zda je\ nutné je\ rozdělit a\ posléze spojit -- výhodou je, že\ není třeba implementovat vlastní mechanizmus. Nevýhodou pak může být případně zdržení, neboť ztracený či\ poškozený paket zdržuje nejen celou zprávu, ale\ celý jeden směr komunikačního spojení, protože nemůže být přenesen jiný, bezproblémový, blok dat.
+Tato vlastnost TCP je\ z\ jedné strany výhodou, protože není třeba v\ samotné aplikaci řešit, zda se\ data vejdou do\ paketu, či\ zda je\ nutné je\ rozdělit a\ posléze spojit -- výhodou je, že\ není třeba implementovat vlastní mechanizmus. Nevýhodou pak může být případně zdržení, neboť ztracený či\ poškozený paket zdržuje nejen celou zprávu, ale\ celý jeden směr komunikačního spojení, protože nemůže být přenesen jiný, bezproblémový blok dat.
 
 ### Režie spojená s garancemi
 
-Předem zmíněné výhody vyvažuje na\ druhé straně režije spojená jak s\ udržováním spojení tak se\ zasíláním opravných paketů. Udržování spojení je\ realizováno periodicky se\ opakujícím posíláním krátkého TCP paketu mezi komunikujícími stranami. Toto vyměňování zpráv má nějakou nezanedbatelnou režii, ovšem posílání krátkých paketů je\ nutné pouze v\ případě, že\ ono spojení nebude řádně vytěžováno -- každý poslaný TCP paket je\ totiž známkou toho, že\ spojení je\ stále udržováno.
+Předem zmíněné výhody vyvažuje na\ druhé straně režije spojená jak s\ udržováním spojení, tak se\ zasíláním opravných paketů. Udržování spojení je\ realizováno periodicky se\ opakujícím posíláním krátkého TCP paketu mezi komunikujícími stranami. Toto vyměňování zpráv má nějakou nezanedbatelnou režii, ovšem posílání krátkých paketů je\ nutné pouze v\ případě, že\ ono spojení nebude řádně vytěžováno -- každý poslaný TCP paket je\ totiž známkou toho, že\ spojení je\ stále udržováno.
 
 Co\ se\ týká garancí na\ doručení, vyvstávají zde dva potenciální problémy. První z\ nich je, že\ operační systém si\ musí držet v\ paměti již odeslaná data, a\ to\ z\ důvodu případného opakování přenosu. Může tedy docházet ke\ zbytečnému využívání paměti. Druhým problémem je\ nutnost potvrzení doručení paketu. Toto je opět možné realizovat samostatným krátkým paketem v\ případě zřídkavého datového provozu v\ opačném směru, nebo přidáním příznaku doručení do\ hlavičky paketu jdoucím po\ stejné lince zpět.
 
@@ -599,7 +599,7 @@ Výkonný proces poskytuje distribuovanému algoritmu možnost poslat zprávu n�
 
 Je\ pravidlem, že\ výkonné procesy jsou navzájem propojeny stejným počtem kanálů, přičemž primární účel kanálů je\ přepravovat data distribuovaného algoritmu. Mimo to\ je\ mezi každým výkonným procesem udržováno jedno řídicí spojení. Výkonný proces je\ po\ čas výpočtu spojen s\ klientem jedním řídicím spojením, žádné datové kanály mezi nimi nejsou otevřeny.
 
-Pro zachování sémantiky výstupních operací s\ MPI je\ server koncipován tak, aby zachytával jakékoliv pokusy o\ zápis na\ výstup a\ přeposílal je klientovi, který je\ zobrazí. Toho je\ ve\ výkonném procesu dosaženo přesměrováním standardního výstupu a\ standardního chybového výstupu a\ nastartováním dvou dalších vláken -- jednp pro každý výstup -- které se\ starají o\ samotné přeposílání. Více je popsáno v podkapitole Protokol.
+Pro zachování sémantiky výstupních operací s\ MPI je\ server koncipován tak, aby zachytával jakékoliv pokusy o\ zápis na\ výstup a\ přeposílal je klientovi, který je\ zobrazí. Toho je\ ve\ výkonném procesu dosaženo přesměrováním standardního výstupu a\ standardního chybového výstupu a\ nastartováním dvou dalších vláken -- jednp pro každý výstup -- které se\ starají o\ samotné přeposílání. Více je popsáno v podkapitole\ \ref{sec:new:prot}.
 
 Pro zjednodušení ladění chyb při vytváření nové implementace komunikační vrstvy, kdy se\ server fyzicky nachází na\ jiném stroji než spuštěný klient, jsem přidal do\ serveru možnost logovat jednotlivé prováděné operace. V\ demonstračním programu se\ jedná především o\ záznamy vstupů do\ funkcí, které obsluhují reakce na\ příkazy, a\ záznamy problematických situací (popsáno později).
 
@@ -782,7 +782,7 @@ Server se\ může v\ průběhu svého běhu nacházet v\ jednom z\ následujích
 Některé stavy jsou vyhrazeny pouze pro hlavní proces (*Free*, *Enslaved*, *FormingGroup*, *Supervising*). Do zbývajících stavů se\ může dostat pouze výkonné vlákno. Pokud se\ klient dotáže serveru na\ to, v\ jakém je\ stavu, jako odpověď dostane jeden ze\ stavů hlavního procesu. Zjistit stav výkonného procesu není možné.
 
 \begin{figure}[h]
-    \includegraphics[trim=0 14.5cm 15cm 0,width=\textwidth] {States.pdf}
+    \includegraphics[trim=0 14.5cm 15cm 0,width=\textwidth] {src/States.pdf}
     \caption{Přechodový diagram stavů}
     \label{states}
 \end{figure}
@@ -794,7 +794,7 @@ Server může měnit svůj stav na\ základě příkazu od\ klienta. Na\ základ
 Jak již bylo lehce zmíněno, ustanovení sítě probíhá ve\ třech fázích: navázání spojení, propojení a\ spuštění. Na\ \ref{establish} je\ zakreslen průběh úspěšného ustanovení sítě. Jednotlivé fáze jsou pak rozepsány níže.
 
 \begin{figure}[h!]
-    \includegraphics[trim=0 3cm 14cm 0,width=\textwidth] {Establishing.pdf}
+    \includegraphics[trim=0 3cm 14cm 0,width=\textwidth] {src/Establishing.pdf}
     \caption{Ustanovení sítě}
     \label{establish}
 \end{figure}
@@ -976,7 +976,7 @@ Většina komunikačních metod může při problémech v\ síti vyhazovat různ
 :   \ \
     Metoda sloužící k\ zaslání dané zprávy *msg* všem procesům ve\ skupině pomocí kanálu *chID*. Pokud se\ neuvede parametr *chID*, bude jako komunikační kanál zvolen řídicí kanál.
 
-    Aktuální implementace této metody je\ taková, že\ dojde k\ vytvoření $N - 1$ vláken, které každé pošle zprávu jednomu procesu. Po skončení odesílání se\ zkontroluje, zda se\ podařilo zprávu poslat všem. Pokud ano,vrátí metoda hodnotu `true`, jinak `false`. Metoda nevyhazuje žádné výjimky.
+    Aktuální implementace této metody je\ taková, že\ dojde k\ vytvoření *N - 1* vláken, které každé pošle zprávu jednomu procesu. Po skončení odesílání se\ zkontroluje, zda se\ podařilo zprávu poslat všem. Pokud ano,vrátí metoda hodnotu `true`, jinak `false`. Metoda nevyhazuje žádné výjimky.
 
     Vzhledem k\ tomu, že\ je\ metoda málo používaná, zvolil jsem řešení s\ paralelním odesíláním. Pokud by\ v\ budoucnu začala metoda být více používaná, bylo by\ vhodné změnit implementaci odesílání z\ paralelní na\ hyperkubickou \cite{hillis1989connection}.
 
@@ -990,7 +990,7 @@ Většina komunikačních metod může při problémech v\ síti vyhazovat různ
     *   `void applicator(Channel channel);` -- Základní varianta funkce *applicator* může skrze parametr *channel* zpracovat příchozí zprávu, případně také skrze stejný kanál odpovědět.
     *   `bool applicator(Channel channel);` -- Rozšířená varianta funkce *applicator* může navíc v\ návratové hodnotě sdělit, jestli se\ má pokračovat v\ aplikování funkce *applicator* na\ další připravené kanály. Pro pokračování je\ třeba vrátit `true`, pro ukončení zpracování `false`.
 
-    Parametr *timeout* udává ve\ vteřinách, jak dlouho má\ metoda `probe` čekat. Pokud je *timeout* roven $0$, nebude `probe` čekat vůbec, naopak pokud bude hodnota parametru $-1$, bude čekat, dokud nebude některé spojení připraveno na\ příjem zprávy. Implicitní hodnota parametru *timeout* je $-1$.
+    Parametr *timeout* udává ve\ vteřinách, jak dlouho má\ metoda `probe` čekat. Pokud je *timeout* roven *0*, nebude `probe` čekat vůbec, naopak pokud bude hodnota parametru *-1*, bude čekat, dokud nebude některé spojení připraveno na\ příjem zprávy. Implicitní hodnota parametru *timeout* je *-1*.
 
     Metoda `probe` vrací číselnou hodnotu kolikrát byla na\ příchozí spojení zavolána funkce *applicator*. Počet zpracovaných příchozích spojení se\ ale může lišit, neboť metoda `probe` zpracovává veškeré zprávy, ale jenom zprávy kategorie `Data` předává ke\ zpracování funkci *applicator*.
 
@@ -1000,46 +1000,218 @@ Většina komunikačních metod může při problémech v\ síti vyhazovat různ
 
 \chapter{Experimentální porovnání}\label{chap:exp}
 
-Nová implementace poskytuje nástroji DIVINE několik způsoby použití, z\ nichž jsem vybral dva relevantní scénáře. První z\ nich je, že\ bude v\ rámci každého procesu jedno dedikované vlákno, které bude komunikovat s\ ostatními procesy, přičemž stejná situace je\ u\ stávající komunikační vrstvy, která používá MPI.
+Nová implementace poskytuje nástroji DIVINE několik způsoby použití, z\ nichž jsem vybral dva relevantní scénáře. První z\ nich je, že\ bude v\ rámci každého procesu jedno dedikované vlákno, které bude přijímat zprávy od ostatních procesů, přičemž stejná situace je\ u\ stávající komunikační vrstvy, která používá MPI. Tento scénář použití nové implementace je\ v\ měřeních popsán jako *Shared*.
 
-Druhý možný scénář použití nového komunikačního rozhraní je, že\ každý proces bude spojen s\ ostatními procesy tolika datovými kanály, kolik pracovních vláken bude v\ rámci každého procesu spuštěno.^[To\ mimo jiné implikuje, že\ všechny procesy budou mít spuštěný stejný počet vláken.] Každé pracovní vlákno bude mít identifikační číslo v\ rámci procesu a\ sadu kanálů, které ho\ budou spojovat s\ vlákny stejného identifikačního čísla v\ jiných procesech. Vlákna tak spolu budou komunikovat jednak pomocí sdílené paměti v\ rámci jednoho procesu a\ každé vlákno může kontaktovat jedno vlákno z\ každého dalšího procesu, k\ němuž bude mít samostatný kanál.
+Druhý možný scénář použití nového komunikačního rozhraní je, že\ každý proces bude spojen s\ ostatními procesy tolika datovými kanály, kolik pracovních vláken bude v\ rámci každého procesu spuštěno.^[To\ mimo jiné implikuje, že\ všechny procesy budou mít spuštěný stejný počet vláken.] Každé pracovní vlákno bude mít identifikační číslo v\ rámci procesu a\ sadu kanálů, které ho\ budou spojovat s\ vlákny stejného identifikačního čísla v\ jiných procesech. Vlákna tak spolu budou komunikovat jednak pomocí sdílené paměti v\ rámci jednoho procesu a\ každé vlákno může kontaktovat jedno vlákno z\ každého dalšího procesu, k\ němuž bude mít samostatný kanál. Tento scénář je\ v\ měřeních popsán jako *Dedicated*.
 
-Tyto způsoby použití nového komunikačního rozhraní se\ spolu s\ MPI podrobí experimentálnímu porovnání a\ na\ základě časového měření zhodnotím jejich chování. Pozornost budu zaměřovat kromě absolutních časových hodnot na\ schopnost škálovat, a\ to jak v\ počtu vláken na\ proces, tak v\ počtu procesů samých.
+Tyto scénáře použití nového komunikačního rozhraní se\ spolu s\ MPI podrobí experimentálnímu porovnání a\ na\ základě časového měření zhodnotím jejich chování. Pozornost zaměřuji kromě absolutních časových hodnot na\ schopnost škálovat, a\ to jak v\ počtu vláken na\ proces, tak v\ počtu procesů samých.
 
-Měřeny budou celkem tři testy: test latence, test posílání krátkých zpráv a\ test posílání dlouhých zpráv. Všechny testy mají simulovat chování nástroje DIVINE, test latence spíše cílí na\ možný scénář komunikace v\ nové verzi nástroje DIVINE, zatímco zbylé dva simulují běh stávající verze DIVINE. Měření probíhala na\ strojích `pheme01` až\ `pheme16`.
+Měřeny byly celkem dva testy: test latence a\ test posílání zpráv. Měření probíhala na\ *22* strojích `pheme`. Pro každé měření byl náhodně vybrán požadovaný počet strojů, aby byla snížena možnost, že\ některý stroj bude pracovat pomaleji než ostatní. Každé měření bylo *10* opakováno, aby bylo sníženo riziko náhodných výkyvů v\ síti, a\ z těchto měření
 
 # Test latence
 
 \label{sec:exp:lat}
 
-Test latence probíhá tak, že\ každé vlákno postupně vygeneruje čísla od\ $1$ až\ po\ stanovené $N$, a\ posílá je\ na\ zpracování jinému procesu, které ho\ obratem vrátí zpátky, akorát vynásobené $-1$. Určení jiného procesu je\ dvojí -- buď je\ určeno na\ základě vygenerovaného čísla, nebo je\ určeno náhodně.
+Test latence probíhá tak, že\ každé vlákno postupně vygeneruje čísla od\ *1* až\ po\ *10\ 000*, a\ pošle je\ na\ zpracování jinému procesu, které ho\ obratem vrátí zpátky, akorát vynásobené *-1*. Pro každé číslo si\ vlákno pomocí pseudonáhodného generátoru čísel určí proces, kterého se\ bude dotazovat.
+
+## Porovnání dle scénářů
+
+
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/pingDedicated.pdf}
+    \captionof{figure}{Škálování vláken při použití scénáře Dedicated}
+    \label{pingDedicated}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/pingShared.pdf}
+    \captionof{figure}{Škálování vláken při použití scénáře Shared}
+    \label{pingShared}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/pingMPI.pdf}
+    \captionof{figure}{Škálování vláken při použití scénáře MPI}
+    \label{pingMPI}
+\end{minipage}
+
+
+## Porovnání dle počtu vláken
+
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/ping1thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 1 vlákně}
+    \label{ping1t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/ping2thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 2 vláknech}
+    \label{ping2t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/ping3thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 3 vláknech}
+    \label{ping3t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/ping4thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 4 vláknech}
+    \label{ping4t}
+\end{minipage}
+
 
 # Testy škálovatelnosti
 
 \label{sec:exp:skal}
 
-Testy škálovatelnosti simulují průchod orientovaným grafem v\ obdobném duchu, jakým ho\ prochází nástroj DIVINE. Vrchol grafu je\ reprezentován dvěma čísly. V\ jednom z\ procesů dojde k\ vytvoření počátečního vrcholu grafu s\ nulovými hodnotami, který je\ poslán na\ zpracování. Zpracování probíhá tak, že\ je\ postupně jedno a\ druhé číslo z\ reprezentace vrcholu navýšeno o\ 1 a\ následně odesláno k\ dalšímu zpracování. Každý vrchol je\ na\ základě hashe jednoznačně přidělený procesu s\ určitým rankem.
+Testy škálovatelnosti simulují průchod orientovaným grafem v\ obdobném duchu, jakým ho\ prochází nástroj DIVINE. Vrchol grafu je\ reprezentován dvěma čísly. V\ jednom z\ procesů dojde k\ vytvoření počátečního vrcholu grafu s\ nulovými hodnotami, který je\ poslán na\ zpracování. Zpracování probíhá tak, že\ je\ postupně jedno a\ druhé číslo z\ reprezentace vrcholu navýšeno o\ 1 a\ následně odesláno k\ dalšímu zpracování. Každý vrchol je\ na\ základě haše jednoznačně přidělený procesu s\ určitým rankem. V\ rámci testů je\ ukončení výpočtu zaručeno nejvyšší možnou hodnotou obou čísel reprezentující vrchol, po\ jejichž dosažení nedochází dále k\ předávání nově vytvořených vrcholů ke\ zpracování. V\ testu je\ pro *1* --- *16* procesů postupně generován graf o\ *9\ 000\ 000* vrcholech a\ pro *16* --- *22* procesů má generovaný graf ve\ výsledku *100\ 000\ 000* vrcholů.
 
-V\ rámci testu je\ ukončení výpočtu zaručeno nejvyšší možnou hodnotou obou čísel reprezentující, po\ jejichž dosažení nedochází dále k\ předávání nově vytvořených vrcholů ke\ zpracování. V\ testu je\ použita hodnota $1000$, z\ čehož vyplývá, že simulace prohledá graf o\ $10^{6}$ vrcholech. Pro realističtější výsledky je\ ke\ každému vygenerování nového vrcholu připojen rekurzivní výpočet 25. fibonacciho čísla^[<https://oeis.org/A000045>], což způsobí podobnou časovou režii jako generování nového vrcholu v\ grafu nástrojem DIVINE.
+## Porovnání dle scénářů
 
-Oba testy probíhají stejně, jediné, v\ čem se\ liší, je\ velikost vrcholu v\ grafu. V\ případě krátké zprávy vrchol obsahuje pouze 3\ čísla, kdežto dlouhé zprávy mají velikost přes 1\ KB.
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 11cm 0 12.5cm,width=\textwidth] {src/loadDedicated.pdf}
+    \captionof{figure}{Škálování vláken při použití scénáře Dedicated: 1 --- 16 procesů}
+    \label{loadDedicated}
+\end{minipage}
 
-## Krátké zprávy
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/loadLDedicated.pdf}
+    \captionof{figure}{Škálování vláken při použití scénáře Dedicated: 16 -- 22 procesů}
+    \label{loadLDedicated}
+\end{minipage}
 
-XXX
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 11cm 0 12.5cm,width=\textwidth] {src/loadShared.pdf}
+    \captionof{figure}{Škálování vláken při použití scénáře Shared: 1 --- 16 procesů}
+    \label{loadShared}
+\end{minipage}
 
-## Dlouhé zprávy
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/loadLShared.pdf}
+    \captionof{figure}{Škálování vláken při použití scénáře Shared: 16 --- 22 procesů}
+    \label{loadLShared}
+\end{minipage}
 
-XXX
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 11cm 0 12.5cm,width=\textwidth] {src/loadMPI.pdf}
+    \captionof{figure}{Škálování vláken při použití scénáře MPI: 1 --- 16 procesů}
+    \label{loadMPI}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/loadLMPI.pdf}
+    \captionof{figure}{Škálování vláken při použití scénáře MPI: 16 --- 22 procesů}
+    \label{loadLMPI}
+\end{minipage}
+
+## Porovnání dle počtu vláken
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 11cm 0 12.5cm,width=\textwidth] {src/load1thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 1 vlákně: 1 --- 16 procesů}
+    \label{load1t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/loadL1thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 1 vlákně: 16 --- 22 procesů}
+    \label{loadL1t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 11cm 0 12.5cm,width=\textwidth] {src/load2thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 2 vláknech: 1 --- 16 procesů}
+    \label{load2t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/loadL2thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 2 vláknech: 16 --- 22 procesů}
+    \label{loadL2t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 11cm 0 12.5cm,width=\textwidth] {src/load3thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 3 vláknech: 1 --- 16 procesů}
+    \label{load3t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/loadL3thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 3 vláknech: 16 --- 22 procesů}
+    \label{loadL3t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 11cm 0 12.5cm,width=\textwidth] {src/load4thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 4 vláknech: 1 --- 16 procesů}
+    \label{load4t}
+\end{minipage}
+
+\hspace*{-\parindent}
+\begin{minipage}[c]{\textwidth}
+\centering
+    \includegraphics[trim=0 5cm 0 5cm,width=\textwidth] {src/loadL4thread.pdf}
+    \captionof{figure}{Porovnání scénářů při 4 vláknech: 16 --- 22 procesů}
+    \label{loadL4t}
+\end{minipage}
 
 # Vyhodnocení
 
 \label{sec:exp:resu}
 
-XXX
+Test latence ukázal, že\ moje implementace nezvládá příliš dobře velký počet malých zpráv zasílaných od\ jednoho procesu ke\ druhému. Upřímně řečeno jsem překvapen, jak tento test zvládla knihovna Open MPI, u\ které navíc nebyl výrazně patrný problém se vzrůstajícím počtem vláken. Osobně přikládám tento výsledek využití vyrovnávacích pamětí a\ seskupování více zpráv do\ jednoho paketu. U\ scénáře *Dedicated* se\ ukázalo, že\ ačkoliv něškáluje tak dobře jako MPI v\ rámci procesů, velmi dobře škáluje v\ počtu vláken zapojených do komunikace. Scénář *Shared* v\ tomto ohledu zcela propadl, neboť neškáluje ani v\ rámci procesů, ani v\ rámci vláken.
+
+U\ testu škálovatelnost se\ ukázalo, že\ scénář *Shared* je\ nepatrně lepší než scénář *Dedicated* při malém počtu procesů. Dále můžeme pozorovat, že\ ačkoliv je\ zprvu implementace MPI pomalejší, s\ přibývajícím počtem procesů srovnává krok a\ od počtu zhruba *8* procesů je skoro stejně rychlá jako nové komunikační rozhraní. Všechny implementace vykazují při vysokém počtu procesů nevyváženost, která je\ ovšem u\ scénáře *Dedicated* nejnižší.
+
+U\ tohoto testu se\ projevuje jedna zajímavá věc -- některé vzrůstající počet procesů nejen, že\ nemusí urychlit výpočet, ale může ho\ dokonce výrazně zpomalit. Tento jev nastává z\ důvodu chybné hašovací funkce, jejíž použití vykazuje výrazné shlukování práce na\ podmnožině procesů, pokud je\ počet procesů dělitelný *6*. V\ případě použití *6* procesů je\ patrný velký časový skok a\ menší časový skok je\ možné pozorovat i\ v\ případě počtu *12*. Při použití *18* procesů dokonce test v\ časovém termínu nedoběhl. Naopak použití vyššího prvočíselného počtu procesů se\ jeví jako dobrá volba s\ ohledem na\ časy *7*, *17* a\ *19* procesů.
+
+
 
 \chapter{Závěr}\label{chap:conc}
 
 Cíl práce, tedy návrh a\ implementace nového komunikačního rohraní s\ následným porovnání vůči stávajícímu řešení, jsem splnil. Měření neprobíhala přímo s\ použitím nástroje DIVINE, jak jsem očekával, ale jako nezávislé simulace. Toto selhání je\ jednak dílem nedostatku času z\ mé\ strany, jednak tím, že\ v\ průběhu vytváření diplomové práce současně vznikala nová verze nástroje DIVINE, která nebyla připravena na\ spuštění.
 
-Výsledky měření ...
+Výsledky měření ukazují, že mnou navržená a\ implementovaná komunikační vrstva je\ vhodná pro použití v\ nástroji DIVINE. Její rozhraní, které na\ rozdíl od\ standardu MPI podporuje paralelní přístup, bude doufám jednoduché na\ použití začlenění do\ nástroje DIVINE.
+
+Pro budoucí zkoumání této oblasti je\ vhodné se\ zaměřit na\ vytvoření vyrovnávacích pamětí, což by\ mělo přinést další zrychlení v\ případě krátkých zpráv. Dalším směrem, kterým by\ se\ mohlo zkoumání ubírat, je implementace protokolu nad UDP a\ její porovnání s\ mojí implementací a\ s\ implementací MPI.

@@ -22,6 +22,7 @@
 \usepackage{url}
 \usepackage{amssymb,amsmath}
 \usepackage{verbatim}
+\usepackage{caption}
 \usepackage[final]{listings}
 \lstset{ language=C++ }
 \usepackage{paralist}
@@ -37,15 +38,11 @@
 \usepackage{multirow}
 \usepackage{microtype}
 
-\newcommand{\divine}{\mbox{\textsf{DIVINE}}\xspace}
-\newcommand{\lart}{\mbox{\textsf{LART}}\xspace}
-
 \newcommand{\FI}{Faculty of Informatics}
 \newcommand{\MU}{Masaryk University}
 
 \newcommand{\Jirik}{doc. RNDr. Jiří Barnat, Ph.D.}
 \newcommand{\Mornfall}{RNDr. Petr Ročkai, Ph.D.}
-\newcommand{\Jana}{RNDr. Jana Tůmová, Ph.D.}
 
 \newcommand{\thesistitle}{TCP vrstva pro verifikační nástroj DIVINE}
 \newcommand{\thesissubtitle}{Diplomová práce}
@@ -66,8 +63,6 @@
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
-\newcommand{\TODO}[1]{\textbf{\color{red}#1}}
-
 % autoref names
 \addto\extrasenglish{
     \renewcommand{\chapterautorefname}{Chapter}
@@ -85,7 +80,7 @@
 \begin{center}
     {\Large \sc \FI, \MU}
     \vskip4em
-    \includegraphics[width = 4cm, height = 4cm] {logo_fi.pdf}
+    \includegraphics[width = 4cm, height = 4cm] {src/logo_fi.pdf}
     \vskip4em
     {\begin{spacing}{1}
         \Huge \bf \thesistitle
@@ -126,15 +121,10 @@ Paralelizmus, DIVINE
 \cleardoublepage
 
 \section*{Poděkování}
-First I would like to thank the Parallel and Distributed Systems Laboratory.
-It is great place to learn new things and to work on interesting problems,
-with nice people ready to help to a newcomer like me. Namely, I would like to
-thank \Jirik{} for inviting me to laboratory and advising this thesis,
-\Mornfall{} for giving me insights into C++ and \divine{} and
-\Jana{} for supporting and motivating my journey for knowledge.
 
-I would also like to thank my family and my friends for supporting me and having
-patience with me.
+Chtěl bych poděkovat mému vedoucímu docentu RNDr. Jiřímu Barnatovi, Ph.D., především za~jeho trpělivost a~ochotu mi poradit.
+Dále pak mé díky patří mým přátelům z~laboratoře ParaDiSe, za~příjemně strávené roky bádáním a~diskusemi.
+V~neposlední řadě bych chtěl poděkovat všem, kteří se~kolem mne vyskytovali v~době, kdy jsem psal tuto práci.
 
 \cleardoublepage
 
@@ -146,9 +136,8 @@ patience with me.
 
 \input{text}
 
-%\appendix
-%\chapter{Archive Structure and Compilation} \label{chap:appendix}
-%\input{appendix}
+\appendix
+\input{appendix}
 
 \addcontentsline{toc}{chapter}{Literatura}
 \bibliographystyle{plain}
