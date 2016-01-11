@@ -3,13 +3,13 @@ import sys
 from collections import OrderedDict
 from structures import *
 
-def hList(f, n=8):
+def hList(f=1, n=22):
     return [ 'pheme{:02d}'.format( i ) for i in range(f, f+n) ]
 
 commonValues = {
-    'hosts': range( 1, 9 ),
+    'hosts': range( 1, 17 ),
     'threads': [ 1, 2, 3, 4 ],
-    'runs': 3
+    'runs': 10
 }
 
 kindDemo = Kind('./demo', '-h', OrderedDict([
@@ -31,48 +31,46 @@ kindMpi = Kind( 'mpiexec', '-hostfile', OrderedDict( [
 ] ) )
 
 options = [
-    Option( 'loadShortDemo', kindDemo, hList(1, 22), {
-        'hosts': range( 1, 23 ),
+    Option( 'loadShortDemo', kindDemo, hList(), {
         'algorithms': [ 'load dedicated', 'load shared' ],
         'workLoad': [ 3000 ],
         'selection': [ 1 ]
     } ),
-    Option( 'loadSLDemo', kindDemo, hList(1, 22), {
+    Option( 'loadSLDemo', kindDemo, hList(), {
         'hosts': range( 16, 23 ),
         'algorithms': [ 'load dedicated', 'load shared' ],
-        'workLoad': [ 6000 ],
+        'workLoad': [ 10000 ],
         'selection': [ 1 ]
     } ),
-    Option( 'loadLongDemo', kindDemo, hList(1), {
+    Option( 'loadLongDemo', kindDemo, hList(), {
         'algorithms': [ 'load dedicated long', 'load shared long' ],
-        'workLoad': [ 500 ],
-        'selection': [ 1, 25 ]
+        'workLoad': [ 1000 ],
+        'selection': [ 1 ]
     } ),
-    Option( 'pingDemo', kindDemo, hList(1, 22), {
-        'hosts': range( 2, 9 ),
+    Option( 'pingDemo', kindDemo, hList(), {
+        'hosts': range( 2, 13 ),
         'algorithms': [ 'ping dedicated', 'ping shared' ],
         'workLoad': [ 10000 ],
         'selection': [ 3 ]
     } ),
-    Option( 'loadShortMpi', kindMpi, hList(1, 22), {
-        'hosts': range( 1, 23 ),
+    Option( 'loadShortMpi', kindMpi, hList(), {
         'algorithms': [ 'load' ],
         'workLoad': [ 3000 ],
         'selection': [ 1 ]
     } ),
-    Option( 'loadSLMpi', kindMpi, hList(1, 22), {
+    Option( 'loadSLMpi', kindMpi, hList(), {
         'hosts': range( 16, 23 ),
         'algorithms': [ 'load' ],
-        'workLoad': [ 6000 ],
+        'workLoad': [ 10000 ],
         'selection': [ 1 ]
     } ),
-    Option( 'loadLongMpi', kindMpi, hList(1), {
+    Option( 'loadLongMpi', kindMpi, hList(), {
         'algorithms': [ 'load long' ],
-        'workLoad': [ 500 ],
-        'selection': [ 1, 25 ]
+        'workLoad': [ 1000 ],
+        'selection': [ 1 ]
     } ),
-    Option( 'pingMpi', kindMpi, hList(1, 22), {
-        'hosts': range( 2, 9 ),
+    Option( 'pingMpi', kindMpi, hList(), {
+        'hosts': range( 2, 13 ),
         'algorithms': [ 'ping' ],
         'workLoad': [ 10000 ],
         'selection': [ 3 ]
@@ -143,8 +141,9 @@ class Generator(object):
 
 def help( args ):
     print( 'usage: {} testCase [testCase [...]]'.format( args[0] ) )
+    print( 'usage: {} all'.format( args[0] ) )
     if len( args ) > 1:
-        print( 'wrong testCase value: {}'.format( args[1] ) )
+        print( 'wrong testCase value: {}'.format( ' '.join( args[1:] ) ) )
     print( 'testCase could be one of the following:' )
     for opt in options:
         print( '\t{}'.format( opt.name() ) )
@@ -159,6 +158,10 @@ args = sys.argv
 if len( args ) == 1:
     help( args )
     sys.exit( 2 )
+if len( args ) == 2 and args[1] == 'all':
+    del args[1]
+    for opt in options:
+        args += [opt.name()]
 
 for testCase in args[1:]:
     match = None
