@@ -1,0 +1,146 @@
+\documentclass[11pt,twoside,a4paper]{book}
+\usepackage[shorthands=off,czech]{babel} % package for multilingual support
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{csquotes}
+
+\usepackage{xcolor}
+\definecolor{dark-red}{rgb}{0.6,0.15,0.15}
+\definecolor{dark-green}{rgb}{0.15,0.4,0.15}
+\definecolor{medium-blue}{rgb}{0,0,0.5}
+\usepackage[ plainpages=false
+           , pdfpagelabels
+           , unicode
+           , draft=false
+           , colorlinks=true
+           , linkcolor={dark-red}
+           , citecolor={dark-green}
+           , urlcolor={medium-blue}
+           , unicode=true
+           ]{hyperref}
+
+\usepackage{url}
+\usepackage{amssymb,amsmath}
+\usepackage{verbatim}
+\usepackage{caption}
+\usepackage[final]{listings}
+\lstset{ language=C++ }
+\usepackage{paralist}
+% use upquote for straight quotes in verbatim environments
+\usepackage{upquote}
+\usepackage{markdownsyntax}
+
+\usepackage{xspace}
+\usepackage{pgf}
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+
+\usepackage{multirow}
+\usepackage{microtype}
+
+\newcommand{\FI}{Faculty of Informatics}
+\newcommand{\MU}{Masaryk University}
+
+\newcommand{\Jirik}{doc. RNDr. Jiří Barnat, Ph.D.}
+\newcommand{\Mornfall}{RNDr. Petr Ročkai, Ph.D.}
+
+\newcommand{\thesistitle}{TCP vrstva pro verifikační nástroj DIVINE}
+\newcommand{\thesissubtitle}{Diplomová práce}
+\newcommand{\thesisauthor}{Jiří Weiser}
+\newcommand{\thesisYearCity}{Brno, 2016}
+\newcommand{\thesisadvisor}{\Jirik}
+
+\newcommand{\defmultiline}[1]{\protect{\parbox{\textwidth}{\texttt{#1}}}}
+
+\newcommand{\note}{\textit{Note:}\xspace}
+
+\usepackage{setspace}
+
+\oddsidemargin .85in
+\evensidemargin .65in
+\textwidth 12.7cm
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% autoref names
+\addto\extrasenglish{
+    \renewcommand{\chapterautorefname}{Chapter}
+    \renewcommand{\sectionautorefname}{Section}
+    \renewcommand{\subsectionautorefname}{Section}
+}
+
+\begin{document}
+
+% initial pages from Mornfall + modifications
+
+\frontmatter
+\pagestyle{empty}
+
+\begin{center}
+    {\Large \sc \FI, \MU}
+    \vskip4em
+    \includegraphics[width = 4cm, height = 4cm] {src/logo_fi.pdf}
+    \vskip4em
+    {\begin{spacing}{1}
+        \Huge \bf \thesistitle
+    \end{spacing}}
+    \vskip2em
+    {\Large \sc \thesissubtitle}
+    \vskip4em
+    {\LARGE \bf \thesisauthor}
+    \vfill
+    {\hfill \large \thesisYearCity}
+\end{center}
+
+\cleardoublepage
+
+\section*{Prohlášení}
+Prohlašuji, že tato práce je mým původním autorským dílem, které jsem
+vypracoval samostatně. Všechny zdroje, prameny a~literaturu, které jsem
+při vypracování používal nebo z~nich čerpal, v~práci řádně cituji s~uvedením
+úplného odkazu na~příslušný zdroj.
+
+\vfill
+\textbf{Vedoucí práce:} \thesisadvisor
+
+\cleardoublepage
+
+\section*{Abstrakt}
+
+V~práci je~prezentována motivace pro distribuované výpočty a~jejich vztah ke knihovně MPI.
+Dále je~v~práci navržen a~popsán nový přístup k~řízení distribuovaného výpočtu, který lze
+použít v~lokálních sítích. V~závěru práce je~nové řešení experimentálně porovnáno s~knihovnou
+MPI. Porovnání je~zaměřeno převážně na~paralelní přístup ke~komunikačnímu rozhraní.
+
+\section*{Klíčová slova}
+
+Distribuované výpočty, MPI, Síť, TCP, Formální verifikace,
+Paralelizmus, DIVINE
+
+\cleardoublepage
+
+\section*{Poděkování}
+
+Chtěl bych poděkovat svému vedoucímu docentu RNDr. Jiřímu Barnatovi, Ph.D., především za~jeho trpělivost a~ochotu mi poradit.
+Dále pak mé díky patří mým přátelům z~laboratoře ParaDiSe, za~příjemně strávené roky bádáním a~diskusemi.
+V~neposlední řadě bych chtěl poděkovat všem, kteří se~kolem mne vyskytovali v~době, kdy jsem psal tuto práci a~měli pro mne pochopení.
+
+\cleardoublepage
+
+\thispagestyle{empty}
+
+\pagestyle{headings}
+\tableofcontents
+\mainmatter
+
+\input{text}
+
+\appendix
+\input{appendix}
+
+\addcontentsline{toc}{chapter}{Literatura}
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
+\end{document}
