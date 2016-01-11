@@ -312,12 +312,8 @@ struct PingWorker : Worker< PingWorker, Package > {
 private:
     static void request( int rank, Dispatch< Package > &dispatchData, DataPack< Package > item ) {
         item.data()->first *= -1;
-#if 0
         MPI_Isend( item.data(), sizeof( Package ), MPI_BYTE, dispatchData.from(), int( Tag::Response ), MPI_COMM_WORLD, item.request() );
         dispatchData.push( std::move( item ) );
-#else
-        MPI_Send( item.data(), sizeof( Package ), MPI_BYTE, dispatchData.from(), int( Tag::Response ), MPI_COMM_WORLD );
-#endif
     }
 
     inline int owner( Package p ) {
