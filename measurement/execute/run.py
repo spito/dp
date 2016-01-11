@@ -43,7 +43,7 @@ def prettyName(name, hosts):
         result += [i]
     return '-'.join(result)
 
-timeout = 12*60*60
+timeout = 1000
 
 def run(batch):
     path =  '../{}/'.format( batch )
