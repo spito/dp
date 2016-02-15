@@ -11,8 +11,8 @@
 {
 	"version": "0.1.0",
 	"isShellCommand": true,
-	"showOutput": "never",
-    "echoCommand": false,
+	"showOutput": "silent",
+    "echoCommand": true,
     "command": "pandoc",
     "tasks": [
         {
@@ -44,8 +44,7 @@
             "suppressTaskName": true,
             "args": [
                 "--slide-level=2",
-                "-V",
-                "documentclass=paradise-slide",
+                "--template=${fileDirname}\\beamer_template.tex",
                 "-s",
                 "${file}",
                 "-t",
@@ -62,8 +61,7 @@
             "suppressTaskName": true,
             "args": [
                 "--slide-level=2",
-                "-V",
-                "documentclass=paradise-slide",
+                "--template=${fileDirname}\\beamer_template.tex",
                 "-s",
                 "${file}",
                 "-t",
